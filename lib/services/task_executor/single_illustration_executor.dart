@@ -28,45 +28,6 @@ class SingleIllustrationExecutor {
   final LlmService _llmService = LlmService.instance;
   final DrawingService _drawingService = DrawingService.instance;
 
-  /// "此处生成插图"功能
-  Future<void> generateIllustrationHere({
-    required Book book,
-    required ChapterStructure chapter,
-    required LineStructure line,
-    required String imageSaveDir,
-  }) async {
-    // 1. 提取上下文
-    final contextText = _extractContextAroundLine(line, chapter, 4000);
-
-    // 2. 调用LLM生成绘图数据
-    final illustrationsData = await _generateAndParseIllustrationData(contextText, 1);
-    if (illustrationsData.isEmpty) {
-      throw Exception("未能从LLM响应中解析出有效的绘图项。");
-    }
-    
-    final itemData = illustrationsData.first;
-    final llmPrompt = itemData['prompt'] as String?;
-    final lineNumber = line.lineNumberInSourceFile; // 强制使用目标行的行号
-
-    if (llmPrompt == null) {
-        throw Exception("LLM未能生成有效的prompt。");
-    }
-
-    // 3. 构建最终绘画提示词
-    final (positivePrompt, negativePrompt) = _drawPromptBuilder.build(llmGeneratedPrompt: llmPrompt);
-
-    // 4. 调用绘图服务生成并保存图片
-    await _drawAndSaveImages(
-      positivePrompt: positivePrompt,
-      negativePrompt: negativePrompt,
-      chapter: chapter,
-      lineNumber: lineNumber,
-      saveDir: imageSaveDir,
-      contextText: contextText, // 传递上下文用于角色匹配
-      //  将最终的绘画提示词保存到 sceneDescription 中
-      sceneDescriptionToSave: positivePrompt,
-    );
-  }
 
   /// "重新生成插图"功能
   Future<void> regenerateIllustration({
@@ -95,6 +56,70 @@ class SingleIllustrationExecutor {
       saveDir: imageSaveDir,
       contextText: contextText, // 传递上下文
       // 保留原有的 sceneDescription
+      sceneDescriptionToSave: positivePrompt,
+    );
+  }
+
+
+  // 为划选文本生成插图的功能
+  Future<void> generateIllustrationForSelection({
+    required Book book,
+    required ChapterStructure chapter,
+    required LineStructure targetLine,
+    required String selectedText,
+    required String imageSaveDir,
+  }) async {
+    // 1. 提取上下文，以划选区域为中心，扩展约4000 token
+    final contextText = _extractContextAroundLine(targetLine, chapter, 4000);
+
+    // 2. 调用新的 prompt 构建器，传入完整上下文和划选文本
+    final (systemPrompt, messages) = _llmPromptBuilder.buildForSelectedText(
+      contextText: contextText,
+      selectedText: selectedText,
+    );
+    
+    // 3. 调用 LLM 服务并解析单个 JSON 对象
+    final activeApi = _configService.getActiveLanguageApi();
+    final llmResponse = await _llmService.requestCompletion(systemPrompt: systemPrompt, messages: messages, apiConfig: activeApi);
+
+    Map<String, dynamic> itemData;
+    try {
+      String potentialJson = llmResponse;
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```', dotAll: true).firstMatch(llmResponse);
+      if (jsonMatch != null) {
+        potentialJson = jsonMatch.group(1) ?? llmResponse;
+      }
+      final startBraceIndex = potentialJson.indexOf('{');
+      final endBraceIndex = potentialJson.lastIndexOf('}');
+      if (startBraceIndex != -1 && endBraceIndex != -1 && endBraceIndex > startBraceIndex) {
+        final jsonString = potentialJson.substring(startBraceIndex, endBraceIndex + 1);
+        itemData = jsonDecode(jsonString);
+      } else {
+        throw Exception("未能从LLM响应中解析出有效的JSON对象。");
+      }
+    } catch (e) {
+      print('处理LLM响应失败: $e\n原始响应: $llmResponse');
+      throw Exception("解析LLM响应失败。");
+    }
+
+    final llmPrompt = itemData['prompt'] as String?;
+    if (llmPrompt == null) {
+      throw Exception("LLM未能生成有效的prompt。");
+    }
+
+    // 4. 构建最终绘画提示词
+    final (positivePrompt, negativePrompt) = _drawPromptBuilder.build(llmGeneratedPrompt: llmPrompt);
+
+    // 5. 调用绘图服务生成并保存图片
+    await _drawAndSaveImages(
+      positivePrompt: positivePrompt,
+      negativePrompt: negativePrompt,
+      chapter: chapter,
+      // 插图附加到目标行（划选的最后一行）
+      lineNumber: targetLine.lineNumberInSourceFile,
+      saveDir: imageSaveDir,
+      // 上下文使用提取的完整上下文进行角色匹配
+      contextText: contextText,
       sceneDescriptionToSave: positivePrompt,
     );
   }
@@ -194,58 +219,4 @@ class SingleIllustrationExecutor {
     return contextLines.join('\n');
   }
 
-  Future<List<Map<String, dynamic>>> _generateAndParseIllustrationData(String textContent, int numScenes) async {
-    // 使用新的Builder构建LLM请求的提示
-    final (systemPrompt, messages) = _llmPromptBuilder.build(textContent: textContent, numScenes: numScenes);
-    try {
-      final activeApi = _configService.getActiveLanguageApi();
-      
-      // [需求 1] 移除速度限制器调用
-      // final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);
-      // await llmRateLimiter.acquire();
-      
-      final llmResponse = await _llmService.requestCompletion(systemPrompt: systemPrompt, messages: messages, apiConfig: activeApi);
-
-      // 1. 从Markdown代码块中提取内容（如果存在）
-      String potentialJson = llmResponse;
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```', dotAll: true).firstMatch(llmResponse);
-      if (jsonMatch != null) {
-        potentialJson = jsonMatch.group(1) ?? llmResponse;
-      }
-      potentialJson = potentialJson.trim();
-
-      // 2. 主要尝试：解析JSON数组 `[...]`
-      final startIndex = potentialJson.indexOf('[');
-      final endIndex = potentialJson.lastIndexOf(']');
-
-      if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-        final jsonString = potentialJson.substring(startIndex, endIndex + 1);
-        final data = jsonDecode(jsonString);
-        if (data is List) {
-          return data.cast<Map<String, dynamic>>();
-        }
-      }
-
-      // 3. 回退尝试：如果LLM返回了单个对象 `{...}` 而不是数组
-      final startBraceIndex = potentialJson.indexOf('{');
-      final endBraceIndex = potentialJson.lastIndexOf('}');
-      if (startBraceIndex != -1 && endBraceIndex != -1 && endBraceIndex > startBraceIndex) {
-        final jsonString = potentialJson.substring(startBraceIndex, endBraceIndex + 1);
-        final data = jsonDecode(jsonString);
-        if (data is Map<String, dynamic>) {
-          // 将单个对象包装在列表中以匹配返回类型
-          return [data]; 
-        }
-      }
-
-      // 如果两种尝试都失败
-      print('未能从LLM响应中解析出有效的JSON数组或对象。');
-      print('原始响应: $llmResponse');
-      return [];
-
-    } catch (e) {
-      print('处理LLM响应时失败: $e');
-      return [];
-    }
-  }
 }

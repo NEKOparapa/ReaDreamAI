@@ -86,4 +86,83 @@ class LlmPromptBuilder {
 
     return (systemPrompt , messages );
   }
+  
+  // 为划选文本构建 Prompt
+  (String, List<Map<String, String>>) buildForSelectedText({
+    required String contextText,
+    required String selectedText,
+  }) {
+    // 角色卡片逻辑可以复用
+    final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
+    final activeCardIdsJson = _configService.getSetting<List<dynamic>>('active_drawing_character_card_ids', []);
+    final activeCardIds = activeCardIdsJson.map((id) => id.toString()).toSet();
+
+    final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
+    final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
+
+    String characterInstruction = '';
+    String characterInfoBlock = '';
+    if (activeCards.isNotEmpty) {
+      characterInstruction = '4. 如果小说文本中出现以下角色，请参考给定的角色信息，以确保角色形象的统一性。';
+      final buffer = StringBuffer();
+      buffer.writeln('### 参考角色信息:');
+      buffer.writeln('---');
+      for (final card in activeCards) {
+        final characterNameToUse = card.characterName.isNotEmpty ? card.characterName : card.name;
+        buffer.writeln('- 角色名字: $characterNameToUse');
+        if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
+        if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
+        if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
+        if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
+      }
+      buffer.writeln('---');
+      characterInfoBlock = buffer.toString();
+    }
+
+    final systemPrompt = """
+    你是一个专业的小说插图生成助手，专注于从小说文本中提取最具画面感的场景，并为每个场景生成详细的绘图提示词。""";
+
+    // 用户指令针对单一、指定的文本，但提供了更完整的上下文
+    final userPrompt = """
+    仔细分析下面提供的这段小说上下文。
+
+    你的任务是，为其中【高亮指定的场景】生成一个详细的英文AI绘画提示词 (prompt)。
+    上下文仅用于帮助你理解情节、人物关系和环境，你的绘画提示词必须严格围绕【高亮指定的场景】展开。
+
+    任务要求:
+    1. 生成对【高亮指定的场景】的中文简要描述(scene_description)。
+    2. 基于【高亮指定的场景】的文本，生成一个详细的英文AI绘画提示词 (prompt)。
+        - 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
+        - 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
+        - 尽量使用具体的视觉性语言和AI绘画标签。
+        - 不要包含任何艺术风格、画质或艺术家名字。
+    3. 严格按照下面的JSON格式返回，直接返回一个JSON对象，不要包含任何JSON格式之外的额外说明或注释。
+    $characterInstruction
+
+    $characterInfoBlock
+    ### 小说上下文:
+    ---
+    $contextText
+    ---
+
+    ### 【高亮指定的场景】:
+    ---
+    $selectedText
+    ---
+
+    ### JSON输出格式:
+    ```json
+    {
+      "scene_description": "对该场景的简短中文描述。",
+      "prompt": "1man, rugged face, a scar on his left cheek..."
+    }
+    ```
+    """;
+
+    final messages = [
+      {'role': 'user', 'content': userPrompt}
+    ];
+
+    return (systemPrompt, messages);
+  }
 }

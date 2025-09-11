@@ -155,10 +155,10 @@ class LiblibPlatform implements DrawingPlatform {
     const String templateUuid = '07e00af4fc464c7ab55ff906f8acf1b7'; // 根据文档，图生图使用固定的模板UUID
 
     final payload = {
-      'templateUUID': templateUuid, // 注意：文档中的key是templateUUID
+      'templateUuid': templateUuid, 
       'generateParams': {
         'prompt': prompt,
-        'negativePrompt': negativePrompt, // 即使API不支持，也传递，让API忽略
+        'negativePrompt': negativePrompt, 
         'sourceImage': imageUrl,
         'imgCount': count,
       }

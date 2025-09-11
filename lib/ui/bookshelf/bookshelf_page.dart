@@ -1,4 +1,4 @@
-// ui/pages/bookshelf_page.dart
+// lib/ui/bookshelf/bookshelf_page.dart
 
 import 'dart:convert';
 import 'dart:io';
@@ -16,7 +16,7 @@ import '../../models/bookshelf_entry.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/file_parser/file_parser.dart';
 import '../../base/config_service.dart';
-import 'reader_page.dart';
+import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
 
@@ -320,8 +320,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
   void _openBook(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
+      // 统一导航到 BookReaderPage
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => ReaderPage(book: book)),
+        MaterialPageRoute(builder: (context) => BookReaderPage(book: book)),
       );
     } else {
       _showTopMessage('加载书籍详情失败', isError: true);
