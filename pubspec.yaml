@@ -35,7 +35,6 @@ dependencies:
   crypto: ^3.0.3            # 用于LiblibAI的HMAC-SHA1签名
   cupertino_icons: ^1.0.8 # iOS风格的图标
 
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
