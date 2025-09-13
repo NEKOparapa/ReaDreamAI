@@ -8,8 +8,8 @@ class LlmPromptBuilder {
 
   LlmPromptBuilder(this._configService);
 
-  /// 构建用于生成插图场景的LLM提示词。
-  (String, List<Map<String, String>>) build({
+  /// 生成提示词结构
+  (String, List<Map<String, String>>) buildForSceneDiscovery({
     required String textContent,
     required int numScenes,
   }) {
@@ -21,12 +21,9 @@ class LlmPromptBuilder {
     final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
     final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
 
-    // 如果有激活的角色卡片，则构建角色信息提示块和对应的指令
-    String characterInstruction = '';
+    // 如果有激活的角色卡片，则构建角色信息提示块
     String characterInfoBlock = '';
     if (activeCards.isNotEmpty) {
-      characterInstruction = '5. 如果小说文本中出现以下角色，请参考给定的角色信息，以确保角色形象的统一性。';
-      
       final buffer = StringBuffer();
       buffer.writeln('### 参考角色信息:');
       buffer.writeln('---');
@@ -42,39 +39,30 @@ class LlmPromptBuilder {
       characterInfoBlock = buffer.toString();
     }
 
+    // 从配置中获取系统提示词
+    final systemPrompt = _configService.getActivePromptCardContent();
 
-    // 系统角色提示，定义AI的行为和目标
-    final systemPrompt = """
-    你是一个专业的小说插图生成助手，专注于从小说文本中提取最具画面感的场景，并为每个场景生成详细的绘图提示词。""";
-
-    // 用户指令，包含具体要求、输入文本和输出格式
+    // 用户指令
     final userPrompt =  """
-    仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，挑选出 $numScenes 个最具画面感的场景。
+    请从小说文本中提取并生成一个包含 $numScenes 个场景的JSON数组。 每个场景应包含:
+    - scene_description: 对该场景的中文简要描述
+    - prompt: AI绘画提示词
+    - insertion_line_number: 该场景插图应插入的具体行号
 
-    对于每个场景的要求:
-    1.  生成对该场景的中文简要描述(scene_description)。
-    2.  生成英文的AI绘画提示词 (prompt)。
-        - 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
-        - 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。。
-        - 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
-        - 不要包含任何艺术风格、画质或艺术家名字
-    3.  场景插图应插入的具体行号 (insertion_line_number)。
-    4.  严格按照下面的JSON格式返回，直接返回一个JSON数组，不要包含任何JSON格式之外的额外说明或注释。
-    $characterInstruction
-
-    $characterInfoBlock
     ### 小说文本:
     ---
     $textContent
     ---
 
+    $characterInfoBlock
+
     ### JSON输出格式:
     ```json
     [
       {
-        "scene_description": "对该场景的简短中文描述。",
-        "prompt": "1man, rugged face, a scar on his left cheek...",
-        "insertion_line_number": 123
+        "scene_description": "对该场景的中文简要描述...",
+        "prompt": "1man, rugged face, a scar on his left cheek... ",
+        "insertion_line_number": 12
       }
     ]
     ```
@@ -84,15 +72,15 @@ class LlmPromptBuilder {
       {'role': 'user', 'content': userPrompt}
     ];
 
-    return (systemPrompt , messages );
+    return (systemPrompt, messages);
   }
   
-  // 为划选文本构建 Prompt
-  (String, List<Map<String, String>>) buildForSelectedText({
+  /// 为此处生成插图的提示词
+  (String, List<Map<String, String>>) buildForSelectedScene({
     required String contextText,
     required String selectedText,
   }) {
-    // 角色卡片逻辑可以复用
+    // 加载并筛选激活的角色卡片
     final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
     final activeCardIdsJson = _configService.getSetting<List<dynamic>>('active_drawing_character_card_ids', []);
     final activeCardIds = activeCardIdsJson.map((id) => id.toString()).toSet();
@@ -100,10 +88,9 @@ class LlmPromptBuilder {
     final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
     final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
 
-    String characterInstruction = '';
+    // 构建角色相关的指令和信息块
     String characterInfoBlock = '';
     if (activeCards.isNotEmpty) {
-      characterInstruction = '4. 如果小说文本中出现以下角色，请参考给定的角色信息，以确保角色形象的统一性。';
       final buffer = StringBuffer();
       buffer.writeln('### 参考角色信息:');
       buffer.writeln('---');
@@ -119,27 +106,20 @@ class LlmPromptBuilder {
       characterInfoBlock = buffer.toString();
     }
 
-    final systemPrompt = """
-    你是一个专业的小说插图生成助手，专注于从小说文本中提取最具画面感的场景，并为每个场景生成详细的绘图提示词。""";
+    // 系统提示词
+    const String systemPrompt = """你是一个专业的小说插图生成助手，充分理解小说上下文理解情节、人物关系和环境，并为【高亮指定的场景】生成详细的英文的AI绘图提示词。
+绘画提示词应该遵守以下要求:
+- 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
+- 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
+- 尽量使用具体的视觉性语言和AI绘画标签。
+- 不要包含任何艺术风格、画质或艺术家名字。""";
 
-    // 用户指令针对单一、指定的文本，但提供了更完整的上下文
+    // 用户指令
     final userPrompt = """
-    仔细分析下面提供的这段小说上下文。
+    请仔细分析下面提供的这段小说上下文，重点关注【高亮指定的场景】,并为该场景生成:
+    - scene_description: 对该场景的简短中文描述。
+    - prompt: 用于AI绘画的英文提示词。
 
-    你的任务是，为其中【高亮指定的场景】生成一个详细的英文AI绘画提示词 (prompt)。
-    上下文仅用于帮助你理解情节、人物关系和环境，你的绘画提示词必须严格围绕【高亮指定的场景】展开。
-
-    任务要求:
-    1. 生成对【高亮指定的场景】的中文简要描述(scene_description)。
-    2. 基于【高亮指定的场景】的文本，生成一个详细的英文AI绘画提示词 (prompt)。
-        - 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
-        - 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
-        - 尽量使用具体的视觉性语言和AI绘画标签。
-        - 不要包含任何艺术风格、画质或艺术家名字。
-    3. 严格按照下面的JSON格式返回，直接返回一个JSON对象，不要包含任何JSON格式之外的额外说明或注释。
-    $characterInstruction
-
-    $characterInfoBlock
     ### 小说上下文:
     ---
     $contextText
@@ -149,6 +129,8 @@ class LlmPromptBuilder {
     ---
     $selectedText
     ---
+
+    $characterInfoBlock
 
     ### JSON输出格式:
     ```json

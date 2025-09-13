@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 
 import 'default_configs.dart';
 import '../models/api_model.dart';
+import '../models/prompt_card_model.dart';
 import '../models/tag_card_model.dart'; // 导入TagCard模型
 import 'rate_limiter.dart';
 
@@ -198,6 +199,22 @@ class ConfigService {
     try {
       final activeTag = tags.firstWhere((tag) => tag.id == activeId);
       return activeTag.content;
+    } catch (e) {
+      return ''; // 没找到或出错则返回空
+    }
+  }
+
+  /// 根据提示词列表键和激活ID键获取激活提示词卡片的内容
+  String getActivePromptCardContent() {
+    final activeId = getSetting<String?>('active_prompt_card_id', null);
+    if (activeId == null) return '';
+
+    final cardsJson = getSetting<List<dynamic>>('prompt_cards', []);
+    final cards = cardsJson.map((json) => PromptCard.fromJson(json as Map<String, dynamic>)).toList();
+    
+    try {
+      final activeCard = cards.firstWhere((card) => card.id == activeId);
+      return activeCard.content;
     } catch (e) {
       return ''; // 没找到或出错则返回空
     }

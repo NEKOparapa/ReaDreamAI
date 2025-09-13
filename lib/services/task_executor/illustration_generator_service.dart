@@ -257,7 +257,7 @@ class IllustrationGeneratorService {
   /// 调用LLM服务生成场景描述和提示词，并解析返回的JSON数据。
   Future<List<Map<String, dynamic>>> _generateAndParseIllustrationData(String textContent, int numScenes, CancellationToken cancellationToken) async {
     // 使用新的Builder构建LLM请求的提示
-    final (systemPrompt, messages) = _llmPromptBuilder.build(textContent: textContent, numScenes: numScenes);
+    final (systemPrompt, messages) = _llmPromptBuilder.buildForSceneDiscovery(textContent: textContent, numScenes: numScenes);
 
     try {
       if (cancellationToken.isCanceled) throw Exception('任务已取消');
@@ -270,7 +270,7 @@ class IllustrationGeneratorService {
 
       // 在发起请求前，等待获取一个“令牌”，确保请求频率符合API限制
       await llmRateLimiter.acquire();
-      print("    [LLM] 获取到速率令牌，准备请求...");
+      print("    [LLM] 已获取到速率令牌，正在发送请求...");
       
       // 执行LLM请求
       final llmResponse = await _llmService.requestCompletion(

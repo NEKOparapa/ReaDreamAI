@@ -73,7 +73,7 @@ class SingleIllustrationExecutor {
     final contextText = _extractContextAroundLine(targetLine, chapter, 4000);
 
     // 2. 调用新的 prompt 构建器，传入完整上下文和划选文本
-    final (systemPrompt, messages) = _llmPromptBuilder.buildForSelectedText(
+    final (systemPrompt, messages) = _llmPromptBuilder.buildForSelectedScene(
       contextText: contextText,
       selectedText: selectedText,
     );

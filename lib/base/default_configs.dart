@@ -109,4 +109,20 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
   'active_drawing_character_card_ids': [], // 角色默认不激活
+
+  // --- 提示词设置 ---
+  'prompt_cards': [
+    {
+      'id': 'system_default_prompt',
+      'name': '通用',
+      'content': '''你是一个专业的小说插图生成助手，仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。
+英文绘画提示词应该遵守以下要求:
+- 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
+- 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
+- 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
+- 不要包含任何艺术风格、画质或艺术家名字。''',
+      'isSystemPreset': true,
+    }
+  ],
+  'active_prompt_card_id': 'system_default_prompt', // 默认激活通用场景分析
 };
