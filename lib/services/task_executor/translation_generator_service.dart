@@ -30,7 +30,7 @@ class TranslationGeneratorService {
     print("🚀 开始为书籍《${book.title}》生成翻译...");
 
     final bookshelf = await _cacheManager.loadBookshelf();
-    // 使用 a non-nullable type，如果找不到就抛出异常，因为逻辑上此时 entry 必须存在
+
     final entry = bookshelf.firstWhere((e) => e.id == book.id);
     final allChunks = entry.translationTaskChunks;
 
@@ -58,7 +58,6 @@ class TranslationGeneratorService {
         chunk.status = ChunkStatus.running;
         await onProgressUpdate(completedTasks / allChunks.length, chunk);
         
-        // --- MODIFIED: 直接传入 book 对象，避免在 _processChunk 中重复加载 ---
         final success = await _processChunk(book, chunk, cancellationToken);
         
         chunk.status = success ? ChunkStatus.completed : ChunkStatus.failed;
@@ -76,8 +75,7 @@ class TranslationGeneratorService {
     await Future.wait(futures);
     if (cancellationToken.isCanceled) throw Exception('翻译任务已取消');
 
-    // --- MODIFIED: 移除这里的最终保存，因为它现在在每个 chunk 完成后执行 ---
-    // await _cacheManager.saveBookDetail(book); 
+
     print("\n🎉 《${book.title}》所有翻译任务执行完毕。");
   }
 
@@ -93,7 +91,12 @@ class TranslationGeneratorService {
       final translatedLines = await _requestTranslation(lines, cancellationToken);
       if (cancellationToken.isCanceled) return false;
 
-      // --- MODIFIED: 直接更新传入的 book 对象，而不是重新加载 ---
+      // [修改] 增加对空结果的判断
+      if (translatedLines.isEmpty) {
+        print("  ❌ [翻译子任务失败]: LLM未能返回可解析的翻译数据。");
+        return false;
+      }
+
       for (var translatedLine in translatedLines) {
         final lineId = translatedLine['id'];
         final translatedText = translatedLine['translation'];
@@ -125,48 +128,66 @@ class TranslationGeneratorService {
     final sourceLang = _configService.getSetting<String>('translation_source_lang', '日语');
     final targetLang = _configService.getSetting<String>('translation_target_lang', '中文');
     final (systemPrompt, messages) = _buildLlmPrompt(lines, sourceLang, targetLang);
-
-    if (cancellationToken.isCanceled) throw Exception('任务已取消');
-
     final activeApi = _configService.getActiveLanguageApi();
     final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);
-    await llmRateLimiter.acquire();
 
-    final llmResponse = await _llmService.requestCompletion(
-      systemPrompt: systemPrompt,
-      messages: messages,
-      apiConfig: activeApi,
-    );
-    
-    final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
-    final jsonString = jsonMatch?.group(1) ?? llmResponse;
-    final data = jsonDecode(jsonString);
+    // 最多尝试2次（1次原始 + 1次重试）
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (cancellationToken.isCanceled) throw Exception('任务已取消');
 
-    if (data is Map<String, dynamic>) {
-        final List<Map<String, dynamic>> result = [];
-        for (var i = 0; i < lines.length; i++) {
-            final key = i.toString();
-            if (data.containsKey(key)) {
-                result.add({
-                    'id': lines[i].id,
-                    'translation': data[key],
-                });
-            }
+        if (attempt > 0) {
+          print("    [翻译] 🔄 响应解析失败，正在进行第 $attempt 次重试...");
         }
-        return result;
+        
+        // 每次尝试前都获取速率令牌
+        await llmRateLimiter.acquire();
+        print("    [翻译] 已获取到速率令牌，正在发送请求... (尝试 ${attempt + 1}/2)");
+
+        final llmResponse = await _llmService.requestCompletion(
+          systemPrompt: systemPrompt,
+          messages: messages,
+          apiConfig: activeApi,
+        );
+        
+        final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
+        final jsonString = jsonMatch?.group(1) ?? llmResponse;
+        final data = jsonDecode(jsonString);
+
+        if (data is Map<String, dynamic>) {
+            final List<Map<String, dynamic>> result = [];
+            for (var i = 0; i < lines.length; i++) {
+                final key = i.toString();
+                if (data.containsKey(key)) {
+                    result.add({
+                        'id': lines[i].id,
+                        'translation': data[key],
+                    });
+                }
+            }
+            // 成功解析并转换，立即返回
+            return result;
+        } else {
+          print('    [翻译] ❌ LLM 响应JSON格式错误: 响应不是一个有效的JSON对象。');
+          // 继续循环以重试
+        }
+      } catch (e) {
+        print('    [翻译] ❌ 处理LLM响应时失败 (尝试 ${attempt + 1}/2): $e');
+        // 捕获异常后，循环将继续进行下一次尝试
+      }
     }
     
+    // 两次尝试都失败后，返回空列表
     return [];
   }
   
-  /// 构建发送给 LLM 的提示词 (此方法无需修改)
+  /// 构建发送给 LLM 的提示词
   (String, List<Map<String, String>>) _buildLlmPrompt(List<LineStructure> lines, String sourceLang, String targetLang) {
-    // ... (代码保持不变)
     final systemPrompt = """你是一位专业的翻译家。你的任务是将提供的文本从 $sourceLang 翻译成 $targetLang。请保持原文的意义、语调和格式。
     ### 翻译原则
     忠实准确地进行翻译。原作是伟大艺术作品，允许使用直白或粗俗的描述，不应随意删减或篡改，不应回避或淡化，以保持作品的原貌。
 
-    ### 格式要求:
+    ### 输出格式:
     ```json
     {
       "0": "译文1",
@@ -183,7 +204,7 @@ class TranslationGeneratorService {
     final userPrompt = """
     请将以下文本从 $sourceLang 翻译成 $targetLang。
 
-    ### 输入内容 (JSON 对象):
+    ### 原文文本:
     $linesJson
     """;
 

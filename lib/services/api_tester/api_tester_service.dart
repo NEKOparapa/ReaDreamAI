@@ -22,9 +22,6 @@ class ApiTesterService {
   static final ApiTesterService instance = ApiTesterService._();
 
   /// 测试语言模型（LLM）API配置
-  ///
-  /// [apiConfig]: 要测试的接口配置
-  /// 返回一个包含测试结果的 [TestResult] 对象
   Future<TestResult> testLanguageApi(ApiModel apiConfig) async {
     try {
       // 使用一个简单、无害的提示词进行测试
@@ -48,9 +45,6 @@ class ApiTesterService {
   }
 
   /// 测试绘画（Drawing）API配置
-  ///
-  /// [apiConfig]: 要测试的接口配置
-  /// 返回一个包含测试结果的 [TestResult] 对象
   Future<TestResult> testDrawingApi(ApiModel apiConfig) async {
     Directory? tempDir;
     try {

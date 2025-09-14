@@ -190,7 +190,7 @@ class IllustrationGeneratorService {
       if (cancellationToken.isCanceled) return false;
 
       if (illustrationsData.isEmpty) {
-        print("    [LLM] ❌ 未能从LLM响应中解析出有效的绘图项。");
+        print("    [LLM] ❌ 未能从LLM响应中解析出有效的绘图项（重试后依然失败）。");
         return false;
       }
       print("    [LLM] ✅ 成功解析，找到 ${illustrationsData.length} 个绘图项。现在提交到绘图队列...");
@@ -253,53 +253,56 @@ class IllustrationGeneratorService {
     }
   }
 
-
   /// 调用LLM服务生成场景描述和提示词，并解析返回的JSON数据。
   Future<List<Map<String, dynamic>>> _generateAndParseIllustrationData(String textContent, int numScenes, CancellationToken cancellationToken) async {
-    // 使用新的Builder构建LLM请求的提示
     final (systemPrompt, messages) = _llmPromptBuilder.buildForSceneDiscovery(textContent: textContent, numScenes: numScenes);
+    final activeApi = _configService.getActiveLanguageApi();
+    final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);
 
-    try {
-      if (cancellationToken.isCanceled) throw Exception('任务已取消');
+    // 最多尝试2次（1次原始 + 1次重试）
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (cancellationToken.isCanceled) throw Exception('任务已取消');
 
-      // 获取当前激活的语言模型API配置
-      final activeApi = _configService.getActiveLanguageApi();
-      
-      // 为该API获取对应的速率限制器（控制QPS/RPM）
-      final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);
+        if (attempt > 0) {
+          print("    [LLM] 🔄 响应解析失败，正在进行第 $attempt 次重试...");
+        }
 
-      // 在发起请求前，等待获取一个“令牌”，确保请求频率符合API限制
-      await llmRateLimiter.acquire();
-      print("    [LLM] 已获取到速率令牌，正在发送请求...");
-      
-      // 执行LLM请求
-      final llmResponse = await _llmService.requestCompletion(
-        systemPrompt: systemPrompt,
-        messages: messages,
-        apiConfig: activeApi,
-      );
+        // 在每次尝试前都等待获取一个“令牌”
+        await llmRateLimiter.acquire();
+        print("    [LLM] 已获取到速率令牌，正在发送请求... (尝试 ${attempt + 1}/2)");
+        
+        // 执行LLM请求
+        final llmResponse = await _llmService.requestCompletion(
+          systemPrompt: systemPrompt,
+          messages: messages,
+          apiConfig: activeApi,
+        );
+        print("    [LLM] LLM 响应内容: $llmResponse");
 
-      // 从返回的文本中提取JSON部分
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
-      final jsonString = jsonMatch?.group(1) ?? llmResponse;
-      
-      // 直接将JSON字符串解析为List
-      final data = jsonDecode(jsonString);
+        // 从返回的文本中提取JSON部分
+        final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
+        final jsonString = jsonMatch?.group(1) ?? llmResponse;
+        
+        // 直接将JSON字符串解析为List
+        final data = jsonDecode(jsonString);
 
-      print("    [LLM] LLM 响应内容: $llmResponse");
-
-      // 检查返回的数据是否为List类型
-      if (data is List) {
-        // 将List中的每个元素转换为 Map<String, dynamic> 并返回
-        return data.cast<Map<String, dynamic>>();
-      } else {
-        print('    [LLM] ❌ LLM 响应JSON格式错误: 响应不是一个有效的JSON数组。');
-        return [];
+        // 检查返回的数据是否为List类型
+        if (data is List) {
+          // 成功解析，立即返回结果
+          return data.cast<Map<String, dynamic>>();
+        } else {
+          print('    [LLM] ❌ LLM 响应JSON格式错误: 响应不是一个有效的JSON数组。');
+          // 继续循环进行重试
+        }
+      } catch (e) {
+        print('    [LLM] ❌ 处理LLM响应时失败 (尝试 ${attempt + 1}/2): $e');
+        // 捕获异常后，循环将继续进行下一次尝试
       }
-    } catch (e) {
-      print('    [LLM] ❌ 处理LLM响应时失败: $e');
-      return [];
     }
+
+    // 如果两次尝试都失败了，则返回空列表
+    return [];
   }
 
   /// 调用绘图服务为单个场景生成并保存图片。
@@ -337,7 +340,8 @@ class IllustrationGeneratorService {
     
     // Pool控制并发数，RateLimiter控制请求频率
     final drawingRateLimiter = _configService.getRateLimiterForApi(activeApi);
-    print("      [绘图] 等待速率限制器 (QPS: ${activeApi.qps}, RPM: ${activeApi.rpm})...");
+    // 已修改：更新日志输出
+    print("      [绘图] 等待速率限制器 (RPM: ${activeApi.rpm})...");
     await drawingRateLimiter.acquire(); // 等待获取速率令牌
     print("      [绘图] 已获取速率令牌，并发槽位已就绪，正在执行API请求...");
 

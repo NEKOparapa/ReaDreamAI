@@ -146,8 +146,9 @@ class ConfigService {
       return _rateLimiters[api.id]!;
     } else {
       // 如果不存在，则创建一个新的，并存入缓存
-      print("为 API '${api.name}' (ID: ${api.id}) 创建新的速率限制器 (RPM: ${api.rpm}, QPS: ${api.qps})");
-      final newLimiter = RateLimiter(rpm: api.rpm, qps: api.qps);
+      // 已修改：更新日志和 RateLimiter 构造函数
+      print("为 API '${api.name}' (ID: ${api.id}) 创建新的速率限制器 (RPM: ${api.rpm})");
+      final newLimiter = RateLimiter(rpm: api.rpm);
       _rateLimiters[api.id] = newLimiter;
       return newLimiter;
     }

@@ -46,10 +46,10 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   late ApiProvider _selectedProvider;
   late ApiFormat _selectedFormat;
 
-  // 预设平台选项 (保持不变)
+  // 预设平台选项
   final List<PlatformInfo> _platformOptions = [
     PlatformInfo(provider: ApiProvider.openai, name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1', icon: Icons.cloud_outlined, defaultFormat: ApiFormat.openai),
-    PlatformInfo(provider: ApiProvider.groq, name: 'Groq', defaultUrl: 'https://api.groq.com/openai/v1', icon: Icons.flash_on, defaultFormat: ApiFormat.openai),
+    PlatformInfo(provider: ApiProvider.volcengine, name: 'VolcEngine', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: Icons.filter_hdr_outlined, defaultFormat: ApiFormat.openai),
     PlatformInfo(provider: ApiProvider.deepseek, name: 'DeepSeek', defaultUrl: 'https://api.deepseek.com/v1', icon: Icons.search, defaultFormat: ApiFormat.openai),
     PlatformInfo(provider: ApiProvider.google, name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', icon: Icons.bubble_chart_outlined, defaultFormat: ApiFormat.google),
     PlatformInfo(provider: ApiProvider.anthropic, name: 'Anthropic', defaultUrl: 'https://api.anthropic.com/v1', icon: Icons.hub_outlined, defaultFormat: ApiFormat.anthropic),
@@ -93,7 +93,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         url: _urlController.text,
         concurrencyLimit: int.tryParse(_concurrencyController.text),
         rpm: int.tryParse(_rpmController.text),
-        qps: widget.apiModel.qps,
       );
       Navigator.pop(context, updatedModel);
     }

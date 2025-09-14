@@ -5,8 +5,9 @@ import 'package:http/http.dart' as http;
 import '../../models/api_model.dart';
 import 'drawing_platform.dart';
 import 'platforms/comfyui_platform.dart';
+import 'platforms/dashscope_platform.dart'; // 新增
+import 'platforms/google_drawing_platform.dart'; // 新增
 import 'platforms/kling_platform.dart';
-import 'platforms/liblib_platform.dart';
 import 'platforms/openai_platform.dart';
 import 'platforms/volcengine_platform.dart';
 
@@ -45,11 +46,14 @@ class DrawingService {
         case ApiProvider.volcengine: // 火山引擎平台
           platform = VolcenginePlatform(client: _client, apiConfig: apiConfig);
           break;
+        case ApiProvider.google: // Google 平台
+          platform = GoogleDrawingPlatform(client: _client, apiConfig: apiConfig);
+          break;
+        case ApiProvider.dashscope: // 阿里通义千问平台
+          platform = DashscopePlatform(client: _client, apiConfig: apiConfig);
+          break;
         case ApiProvider.kling: // Kling 平台
           platform = KlingPlatform(client: _client, apiConfig: apiConfig);
-          break;
-        case ApiProvider.liblib: // Liblib 平台
-          platform = LiblibPlatform(client: _client, apiConfig: apiConfig);
           break;
         default:
           throw UnimplementedError('[DrawingService] ❌ 绘图平台 "${apiConfig.provider.name}" 尚未实现。');

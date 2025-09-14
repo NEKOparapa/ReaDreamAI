@@ -1,7 +1,7 @@
 // lib/ui/settings/drawing_tags_settings_page.dart
 
 import 'package:flutter/material.dart';
-import '../widgets/setting_entry_card.dart';
+import 'widgets/setting_entry_card.dart';
 import 'drawing_tags/tag_category_page.dart';
 import 'drawing_tags/character_settings_page.dart';
 

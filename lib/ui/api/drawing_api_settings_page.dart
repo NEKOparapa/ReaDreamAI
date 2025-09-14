@@ -41,7 +41,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
   late TextEditingController _modelController;
   late TextEditingController _urlController;
   late TextEditingController _concurrencyController;
-  late TextEditingController _qpsController;
+  late TextEditingController _rpmController; // 已修改：使用 RPM 控制器
 
 
   late ApiProvider _selectedProvider;
@@ -49,8 +49,9 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
   // 绘画平台选项列表
   final List<DrawingPlatformInfo> _platformOptions = [
     DrawingPlatformInfo(provider: ApiProvider.volcengine, name: 'Volcengine', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: Icons.filter_hdr_outlined),
+    DrawingPlatformInfo(provider: ApiProvider.google, name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', icon: Icons.bubble_chart_outlined),
+    DrawingPlatformInfo(provider: ApiProvider.dashscope, name: '千问', defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', icon: Icons.bolt_outlined),
     DrawingPlatformInfo(provider: ApiProvider.kling, name: 'Kling', defaultUrl: 'https://api-beijing.klingai.com', icon: Icons.movie_filter_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.liblib, name: 'Liblib', defaultUrl: 'https://openapi.liblibai.cloud', icon: Icons.palette_outlined),
     DrawingPlatformInfo(provider: ApiProvider.comfyui, name: 'ComfyUI', defaultUrl: 'http://127.0.0.1:8188', icon: Icons.account_tree_outlined),
     DrawingPlatformInfo(provider: ApiProvider.custom, name: '自定义', defaultUrl: '', icon: Icons.settings_ethernet),
   ];
@@ -65,7 +66,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     _modelController = TextEditingController(text: widget.apiModel.model);
     _urlController = TextEditingController(text: widget.apiModel.url);
     _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
-    _qpsController = TextEditingController(text: widget.apiModel.qps?.toString() ?? '');
+    _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? ''); // 已修改：初始化 RPM 控制器
 
     _selectedProvider = widget.apiModel.provider;
   }
@@ -79,7 +80,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     _modelController.dispose();
     _urlController.dispose();
     _concurrencyController.dispose();
-    _qpsController.dispose();
+    _rpmController.dispose(); // 已修改：销毁 RPM 控制器
     super.dispose();
   }
 
@@ -95,11 +96,10 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
         provider: _selectedProvider,
         url: _urlController.text,
         format: widget.apiModel.format, // 绘画接口暂时不提供格式选择，沿用旧值
-        // 新增：保存速率限制设置
+        // 已修改：保存速率限制设置
         concurrencyLimit: int.tryParse(_concurrencyController.text),
-        qps: int.tryParse(_qpsController.text),
-        // 保留其他类型的速率限制值
-        rpm: widget.apiModel.rpm,
+        rpm: int.tryParse(_rpmController.text),
+        // 已删除 qps 字段
       );
       Navigator.pop(context, updatedModel);
     }
@@ -120,7 +120,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
             children: [
               _buildSectionTitle('基础信息'),
               _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
-              _buildTextField(_modelController, '模型选择', '例如：stable-diffusion-v3, comfy-workflow-name', isRequired: true),
+              _buildTextField(_modelController, '模型选择', '例如：gemini-1.5-flash-image-preview, qwen-image', isRequired: true),
               const SizedBox(height: 24),
 
               _buildSectionTitle('接口平台'),
@@ -211,7 +211,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     );
   }
 
-  // 新增：构建速率限制部分的UI
+  // 已修改：构建速率限制部分的UI
   Widget _buildRateLimitSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -223,9 +223,9 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
           '同时进行的最大请求数 (可选)',
         ),
         _buildNumberField(
-          _qpsController,
-          'QPS (每秒查询数)',
-          '每秒允许的最大查询数 (可选)',
+          _rpmController,
+          'RPM (每分钟请求数)',
+          '每分钟允许的最大请求数 (可选)',
         ),
       ],
     );
@@ -234,10 +234,11 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
   List<Widget> _buildAuthFields() {
     switch (_selectedProvider) {
       case ApiProvider.volcengine:
+      case ApiProvider.google:
+      case ApiProvider.dashscope:
       case ApiProvider.custom:
         return [_buildTextField(_apiKeyController, 'API Key', '请输入平台的 API Key', isRequired: true)];
       case ApiProvider.kling:
-      case ApiProvider.liblib:
         return [
           _buildTextField(_accessKeyController, 'Access Key', '请输入平台的 Access Key', isRequired: true),
           _buildTextField(_secretKeyController, 'Secret Key', '请输入平台的 Secret Key', isRequired: true),

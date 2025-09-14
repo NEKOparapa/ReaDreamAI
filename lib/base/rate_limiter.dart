@@ -7,15 +7,10 @@ class RateLimiter {
   final Duration _interval;
   DateTime _lastRequestTime = DateTime(0);
 
-  /// 根据每分钟请求数(RPM)或每秒查询数(QPS)创建速率限制器。
-  /// [rpm] 和 [qps] 只有一个应该被设置。如果都设置了，[qps] 优先。
-  RateLimiter({int? rpm, int? qps}) : _interval = _calculateInterval(rpm: rpm, qps: qps);
+  /// 根据每分钟请求数(RPM)创建速率限制器。
+  RateLimiter({int? rpm}) : _interval = _calculateInterval(rpm: rpm);
 
-  static Duration _calculateInterval({int? rpm, int? qps}) {
-    if (qps != null && qps > 0) {
-      // QPS 优先
-      return Duration(microseconds: (1000000 / qps).round());
-    }
+  static Duration _calculateInterval({int? rpm}) {
     if (rpm != null && rpm > 0) {
       return Duration(milliseconds: (60 * 1000 / rpm).round());
     }

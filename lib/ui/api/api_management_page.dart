@@ -1,7 +1,9 @@
+// lib/ui/api/api_management_page.dart
+
 import 'package:flutter/material.dart';
 import '../../base/config_service.dart';
 import '../../models/api_model.dart';
-import '../../services/api_tester/api_tester_service.dart'; // 1. 导入新的测试服务
+import '../../services/api_tester/api_tester_service.dart'; 
 import 'api_settings_page.dart';
 import 'drawing_api_settings_page.dart';
 
@@ -283,21 +285,20 @@ switch (provider) {
 // 语言模型
 case ApiProvider.openai:
 return Icons.cloud_outlined;
-case ApiProvider.groq:
-return Icons.flash_on;
 case ApiProvider.deepseek:
 return Icons.search;
 case ApiProvider.google:
 return Icons.bubble_chart_outlined;
 case ApiProvider.anthropic:
 return Icons.hub_outlined;
-// 绘画模型
+// 绘画与语言模型
 case ApiProvider.volcengine:
 return Icons.filter_hdr_outlined;
+// 绘画模型
 case ApiProvider.kling:
 return Icons.movie_filter_outlined;
-case ApiProvider.liblib:
-return Icons.palette_outlined;
+case ApiProvider.dashscope: 
+return Icons.bolt_outlined;
 case ApiProvider.comfyui:
 return Icons.account_tree_outlined;
 // 通用
