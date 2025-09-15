@@ -1,13 +1,13 @@
 // lib/ui/bookshelf/bookshelf_page.dart
 
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:tiktoken/tiktoken.dart'; // 用于计算token
+import 'package:path_provider/path_provider.dart';
+import 'package:tiktoken/tiktoken.dart';
 import 'package:uuid/uuid.dart';
 
 // 导入项目内部的文件
@@ -67,9 +67,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
     for (final path in paths) {
       final fileExtension = p.extension(path).toLowerCase();
       if (['.txt', '.epub'].contains(fileExtension)) {
-        if (!_entries.any((e) => e.originalPath == path)) {
-          final newEntry = await FileParser.parseAndCreateCache(path);
-          if (newEntry != null) {
+        final newEntry = await FileParser.parseAndCreateCache(path);
+        if (newEntry != null) {
+          if (!_entries.any((e) => e.id == newEntry.id)) {
             _entries.add(newEntry);
             newBookCount++;
           }
@@ -110,30 +110,115 @@ class _BookshelfPageState extends State<BookshelfPage> {
     }
   }
 
-  Future<void> _exportCacheData() async {
-    final String? outputFolder = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: '请选择导出缓存数据的文件夹',
+  // ---------- 方法改进：在文本编辑栏上面加个书籍名输入栏 ----------
+  void _showPasteImportDialog() {
+    // 创建两个控制器
+    final titleController = TextEditingController();
+    final contentController = TextEditingController();
+    
+    final screenSize = MediaQuery.of(context).size;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('粘贴文本导入'),
+          // 使用 SizedBox 约束整体大小
+          content: SizedBox(
+            width: screenSize.width * 0.8,
+            height: screenSize.height * 0.7,
+            // 使用 Column 垂直排列书名输入框和内容输入框
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 书名输入框
+                TextField(
+                  controller: titleController,
+                  autofocus: true, // 自动聚焦，方便用户直接输入
+                  decoration: const InputDecoration(
+                    labelText: '书籍名',
+                    hintText: '请输入书籍名称（可选）',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16), // 增加间距
+                // 内容输入框，使用 Expanded 填满剩余空间
+                Expanded(
+                  child: TextField(
+                    controller: contentController,
+                    maxLines: null, // 无限行
+                    expands: true, // 填满父组件 (Expanded)
+                    textAlignVertical: TextAlignVertical.top,
+                    decoration: const InputDecoration(
+                      hintText: '在此处粘贴您的文本内容...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('取消'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            FilledButton(
+              child: const Text('确认导入'),
+              onPressed: () {
+                // 获取两个输入框的内容
+                final bookTitle = titleController.text;
+                final pastedText = contentController.text;
+                Navigator.of(context).pop();
+                if (pastedText.trim().isNotEmpty) {
+                  // 将书名和内容都传递给处理函数
+                  _importPastedText(bookTitle, pastedText);
+                }
+              },
+            ),
+          ],
+        );
+      },
     );
-    if (outputFolder != null) {
-      final outputFile = File(p.join(outputFolder, 'bookshelf_data_export.json'));
-      try {
-        final jsonString = const JsonEncoder.withIndent('  ').convert(_entries);
-        await outputFile.writeAsString(jsonString);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('数据已成功导出到: ${outputFile.path}')),
-          );
+  }
+
+  // ---------- 方法改进：接收用户输入的书名 ----------
+  Future<void> _importPastedText(String titleInput, String content) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+
+      // ---------- 关键改动：决定最终使用的书名 ----------
+      // 1. 优先使用用户输入的书名（去除首尾空格后）
+      // 2. 如果用户未输入，则回退到旧逻辑：从内容第一行提取
+      String title = titleInput.trim();
+      if (title.isEmpty) {
+        title = content.trim().split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => '无标题文本').trim();
+        if (title.length > 40) {
+          title = title.substring(0, 40);
         }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('导出失败: $e'), backgroundColor: Colors.red),
-          );
-        }
+      }
+      
+      final sanitizedTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final uniqueId = const Uuid().v4().substring(0, 8);
+      // 使用最终确定的书名来创建文件名
+      final fileName = '$sanitizedTitle-$uniqueId.txt';
+      final filePath = p.join(tempDir.path, fileName);
+      
+      final file = File(filePath);
+      await file.writeAsString(content);
+
+      // 调用文件处理流程
+      await _processFiles([filePath]);
+
+    } catch (e) {
+      if (mounted) {
+        _showTopMessage('粘贴导入失败: $e', isError: true);
       }
     }
   }
-
+  
+  // 省略其他未改动的方法: _generateIllustrations, _splitBookIntoTaskChunks, 等...
+  // ... (为了简洁，这里省略了未改动的代码，实际使用时请保留)
   Future<void> _generateIllustrations(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book == null) {
@@ -320,7 +405,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
   void _openBook(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
-      // 统一导航到 BookReaderPage
       Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => BookReaderPage(book: book)),
       );
@@ -426,22 +510,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的书架'),
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.add),
-              tooltip: '添加书籍',
-              onPressed: _addBooksWithPicker),
-          IconButton(
-              icon: const Icon(Icons.download_for_offline_outlined),
-              tooltip: '导出缓存数据',
-              onPressed: _exportCacheData),
-          const SizedBox(width: 8),
-        ],
+        actions: const [],
       ),
       body: DropTarget(
         onDragDone: _onDragDone,
@@ -464,6 +539,24 @@ class _BookshelfPageState extends State<BookshelfPage> {
               : _buildBookshelfGrid(),
         ),
       ),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            onPressed: _addBooksWithPicker,
+            tooltip: '导入文件',
+            heroTag: 'import_file',
+            child: const Icon(Icons.file_open),
+          ),
+          const SizedBox(width: 16),
+          FloatingActionButton(
+            onPressed: _showPasteImportDialog,
+            tooltip: '粘贴导入',
+            heroTag: 'paste_import',
+            child: const Icon(Icons.paste),
+          ),
+        ],
+      ),
     );
   }
 
@@ -474,7 +567,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         children: [
           Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.grey),
           SizedBox(height: 16),
-          Text('拖入 TXT/EPUB 文件或点击右上角添加',
+          Text('拖入文件或点击右下角按钮添加书籍',
               style:
                   TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
           SizedBox(height: 8),
@@ -488,7 +581,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 180,
-        childAspectRatio: 2 / 3.2, // 调整宽高比以适应新的布局
+        childAspectRatio: 2 / 3.2,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -501,7 +594,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
   }
 
   Widget _buildBookItem(BookshelfEntry entry) {
-    // 检查封面图片是否存在
     final hasCover =
         entry.coverImagePath != null && File(entry.coverImagePath!).existsSync();
 
@@ -516,22 +608,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              flex: 4, // 调整封面和标题的比例，让封面更大
+              flex: 4,
               child: hasCover
                   ? Image.file(
-                      // 如果有封面，显示图片
                       File(entry.coverImagePath!),
                       fit: BoxFit.cover,
-                      // 添加错误处理，以防图片文件损坏
                       errorBuilder: (context, error, stackTrace) {
                         return _buildCoverPlaceholder(entry);
                       },
                     )
-                  : _buildCoverPlaceholder(entry), // 如果没有，显示占位符
+                  : _buildCoverPlaceholder(entry),
             ),
             Container(
-              // 将标题部分包裹在Container中以便更好地控制样式
-              height: 50, // 给标题部分一个固定的高度
+              height: 35,
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -540,9 +629,9 @@ class _BookshelfPageState extends State<BookshelfPage> {
                   Text(
                     entry.title,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    maxLines: 1, // 只显示一行
-                    overflow: TextOverflow.ellipsis, // 超出部分显示省略号
-                    textAlign: TextAlign.start, // 文本左对齐
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.start,
                   ),
                 ],
               ),
@@ -553,13 +642,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
     );
   }
 
-  // 新增一个构建封面占位符的辅助方法，提高代码复用性
   Widget _buildCoverPlaceholder(BookshelfEntry entry) {
     final colors = [
       Colors.deepPurple, Colors.teal, Colors.indigo,
       Colors.brown, Colors.blueGrey, Colors.redAccent
     ];
-    // 使用书籍ID的哈希码来选择一个稳定的颜色，这样同一本书的占位符颜色总是一样的
     final color = colors[entry.id.hashCode % colors.length];
 
     return Container(

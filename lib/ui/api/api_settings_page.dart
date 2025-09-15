@@ -4,22 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; 
 import '../../models/api_model.dart';
 
-// 用于承载平台信息的辅助类 
-class PlatformInfo {
-  final ApiProvider provider;
-  final String name;
-  final String defaultUrl;
-  final IconData icon;
-  final ApiFormat defaultFormat;
-
-  const PlatformInfo({
-    required this.provider,
-    required this.name,
-    required this.defaultUrl,
-    required this.icon,
-    required this.defaultFormat,
-  });
-}
 
 class ApiSettingsPage extends StatefulWidget {
   final ApiModel apiModel;
@@ -46,15 +30,8 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   late ApiProvider _selectedProvider;
   late ApiFormat _selectedFormat;
 
-  // 预设平台选项
-  final List<PlatformInfo> _platformOptions = [
-    PlatformInfo(provider: ApiProvider.openai, name: 'OpenAI', defaultUrl: 'https://api.openai.com/v1', icon: Icons.cloud_outlined, defaultFormat: ApiFormat.openai),
-    PlatformInfo(provider: ApiProvider.volcengine, name: 'VolcEngine', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: Icons.filter_hdr_outlined, defaultFormat: ApiFormat.openai),
-    PlatformInfo(provider: ApiProvider.deepseek, name: 'DeepSeek', defaultUrl: 'https://api.deepseek.com/v1', icon: Icons.search, defaultFormat: ApiFormat.openai),
-    PlatformInfo(provider: ApiProvider.google, name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', icon: Icons.bubble_chart_outlined, defaultFormat: ApiFormat.google),
-    PlatformInfo(provider: ApiProvider.anthropic, name: 'Anthropic', defaultUrl: 'https://api.anthropic.com/v1', icon: Icons.hub_outlined, defaultFormat: ApiFormat.anthropic),
-    PlatformInfo(provider: ApiProvider.custom, name: '自定义', defaultUrl: '', icon: Icons.settings_ethernet, defaultFormat: ApiFormat.openai),
-  ];
+  // 直接从 api_model.dart 获取预设平台列表
+  final List<ApiPlatformPreset> _platformOptions = languagePlatformPresets;
 
   @override
   void initState() {
@@ -126,7 +103,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
               const SizedBox(height: 8),
               _buildFormatSelector(),
 
-              // 新增：速率设置部分
               const SizedBox(height: 24),
               _buildRateLimitSection(),
 
@@ -148,7 +124,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   }
 
   Widget _buildSectionTitle(String title) {
-    // ... (此函数未改变)
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
       child: Text(
@@ -162,7 +137,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   }
 
   Widget _buildTextField(TextEditingController controller, String label, String hint) {
-    // ... (此函数未改变)
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -189,7 +163,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
     );
   }
   
-  // 新增：用于数值输入的辅助方法
   Widget _buildNumberField(TextEditingController controller, String label, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -206,13 +179,12 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         ),
         keyboardType: TextInputType.number,
         inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly // 只允许输入数字
+          FilteringTextInputFormatter.digitsOnly 
         ],
       ),
     );
   }
 
-  // 新增：构建速率限制部分的UI
   Widget _buildRateLimitSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -233,7 +205,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   }
 
   Widget _buildUrlField() {
-    // ... (此函数未改变)
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -260,7 +231,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       ),
     );
   }
-
+  
   Widget _buildPlatformSelector() {
     return GridView.builder(
       shrinkWrap: true,
@@ -281,15 +252,24 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             setState(() {
               _selectedProvider = option.provider;
               _selectedFormat = option.defaultFormat;
-
+              
               if (_selectedProvider != ApiProvider.custom) {
-                _urlController.text = option.defaultUrl;
-              } else {
-                if (widget.apiModel.provider != ApiProvider.custom) {
-                  _urlController.text = '';
-                } else {
-                  _urlController.text = widget.apiModel.url;
-                }
+                  _urlController.text = option.defaultUrl;
+                  _modelController.text = option.defaultModel;
+                  _concurrencyController.text = option.defaultConcurrency.toString();
+                  _rpmController.text = option.defaultRpm.toString();
+              } else { 
+                  if (widget.apiModel.provider == ApiProvider.custom) {
+                      _urlController.text = widget.apiModel.url;
+                      _modelController.text = widget.apiModel.model;
+                      _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
+                      _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
+                  } else {
+                      _urlController.text = option.defaultUrl;
+                      _modelController.text = option.defaultModel;
+                      _concurrencyController.text = option.defaultConcurrency.toString();
+                      _rpmController.text = option.defaultRpm.toString();
+                  }
               }
             });
           },
@@ -319,7 +299,6 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   }
 
   Widget _buildFormatSelector() {
-    // ... (此函数未改变)
     bool isCustomProvider = _selectedProvider == ApiProvider.custom;
 
     return Padding(

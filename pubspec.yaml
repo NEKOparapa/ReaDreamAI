@@ -34,6 +34,7 @@ dependencies:
   dart_jsonwebtoken: ^2.11.0  # 用于Kling的JWT Token生成
   crypto: ^3.0.3            # 用于LiblibAI的HMAC-SHA1签名
   cupertino_icons: ^1.0.8 # iOS风格的图标
+  url_launcher: ^6.1.14 # 用于打开外部链接
 
 dev_dependencies:
   flutter_test:
@@ -41,7 +42,7 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
   
-  # --- 新增开发依赖 ---
+  # 开发依赖
   build_runner: any # 配合 json_serializable 使用
   json_annotation: ^4.9.0 # 自动生成 toJson/fromJson
 

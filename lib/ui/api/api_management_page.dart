@@ -7,7 +7,7 @@ import '../../services/api_tester/api_tester_service.dart';
 import 'api_settings_page.dart';
 import 'drawing_api_settings_page.dart';
 
-// 用于区分接口类型的枚举 (保持不变)
+// 用于区分接口类型的枚举
 enum ApiType { language, drawing }
 
 class ApiManagementPage extends StatelessWidget {
@@ -170,7 +170,7 @@ if (confirmed == true && mounted) {
 }
 }
 
-// 3. 新增 _testApi 方法，用于处理测试逻辑
+// 测试逻辑
 void _testApi(ApiModel api) {
   // 立即显示一个"正在测试"的提示，该提示会手动关闭
   ScaffoldMessenger.of(context).showSnackBar(
@@ -267,7 +267,6 @@ final bool isActive;
 final VoidCallback onActivate;
 final VoidCallback onEdit;
 final VoidCallback onDelete;
-// 5. 新增 onTest 回调
 final VoidCallback onTest;
 
 const _ApiCard({
@@ -276,7 +275,6 @@ required this.isActive,
 required this.onActivate,
 required this.onEdit,
 required this.onDelete,
-// 6. 在构造函数中接收 onTest
 required this.onTest,
 });
 

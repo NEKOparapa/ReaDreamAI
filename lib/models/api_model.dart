@@ -1,8 +1,9 @@
 // lib/models/api_model.dart
 
+import 'package:flutter/material.dart'; // 为了使用 IconData
 import 'package:uuid/uuid.dart';
 
-// 接口平台枚举
+// 接口平台枚举 
 enum ApiProvider {
   // 语言模型
   openai,
@@ -18,13 +19,116 @@ enum ApiProvider {
   custom,
 }
 
-//接口格式枚举
+// 接口格式枚举 
 enum ApiFormat {
   openai,
   google,
   anthropic,
 }
 
+// =================================================================
+// 统一的平台预设信息类
+// =================================================================
+class ApiPlatformPreset {
+  final ApiProvider provider;
+  final String name;
+  final IconData icon;
+  final String defaultUrl;
+  final String defaultModel;
+  final ApiFormat defaultFormat;
+  final int defaultConcurrency;
+  final int defaultRpm;
+
+  const ApiPlatformPreset({
+    required this.provider,
+    required this.name,
+    required this.icon,
+    required this.defaultUrl,
+    required this.defaultModel,
+    required this.defaultFormat,
+    required this.defaultConcurrency,
+    required this.defaultRpm,
+  });
+}
+
+// =================================================================
+// 独立的语言接口平台预设列表
+// =================================================================
+final List<ApiPlatformPreset> languagePlatformPresets = [
+  const ApiPlatformPreset(
+    provider: ApiProvider.openai, name: 'OpenAI', icon: Icons.cloud_outlined, 
+    defaultUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.volcengine, name: 'VolcEngine', icon: Icons.filter_hdr_outlined, 
+    // 这是火山的语言模型预设
+    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'Doubao-pro-32k', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.deepseek, name: 'DeepSeek', icon: Icons.search, 
+    defaultUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-chat', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
+    // 这是谷歌的语言模型预设
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-1.5-flash-latest', 
+    defaultFormat: ApiFormat.google, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.anthropic, name: 'Anthropic', icon: Icons.hub_outlined, 
+    defaultUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-3-haiku-20240307', 
+    defaultFormat: ApiFormat.anthropic, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
+    defaultUrl: '', defaultModel: '', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+  ),
+];
+
+// =================================================================
+// 独立的绘画接口平台预设列表
+// =================================================================
+final List<ApiPlatformPreset> drawingPlatformPresets = [
+  const ApiPlatformPreset(
+    provider: ApiProvider.volcengine, name: 'Volcengine', icon: Icons.filter_hdr_outlined,
+    // 这是火山的绘画模型预设
+    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'sdxl-lightning', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
+    // 这是谷歌的绘画模型预设 (注意：谷歌的图像生成通常集成在多模态模型中)
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-1.5-pro-latest', 
+    defaultFormat: ApiFormat.google, defaultConcurrency: 1, defaultRpm: 30
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.dashscope, name: '千问', icon: Icons.bolt_outlined, 
+    defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', defaultModel: 'wanx-v1', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.kling, name: 'Kling', icon: Icons.movie_filter_outlined, 
+    defaultUrl: 'https://api-beijing.klingai.com', defaultModel: 'kling-v1', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined, 
+    defaultUrl: 'http://127.0.0.1:8188', defaultModel: '', // ComfyUI模型在工作流中定义
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
+    defaultUrl: '', defaultModel: '', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+  ),
+];
+
+
+// ApiModel 类
 class ApiModel {
   String id;
   String name;
@@ -32,11 +136,11 @@ class ApiModel {
   String apiKey;
   String? accessKey; 
   String? secretKey;  
-  String model;   // 模型名称
-  ApiProvider provider;   // 接口平台
-  ApiFormat format;      // 接口格式
-  int? concurrencyLimit; // 并发数限制
-  int? rpm;              // 每分钟请求数 (Requests Per Minute)
+  String model;
+  ApiProvider provider;
+  ApiFormat format;
+  int? concurrencyLimit;
+  int? rpm;
 
   ApiModel({
     required this.id,
@@ -52,37 +156,36 @@ class ApiModel {
     this.rpm,
   });
 
-
-  // 工厂方法创建一个新的 ApiModel 实例
   factory ApiModel.create(String name) {
+    // 直接从独立的语言列表中查找默认预设 (OpenAI)
+    final preset = languagePlatformPresets.firstWhere((p) => p.provider == ApiProvider.openai);
     return ApiModel(
       id: const Uuid().v4(),
       name: name,
-      url: 'https://api.openai.com/v1',
-      provider: ApiProvider.openai,
-      format: ApiFormat.openai,
-      model: 'gpt-4o-mini',
-      concurrencyLimit: 2, // 默认并发数为 2
-      rpm: 30,             // 默认每分钟 30 次请求
+      url: preset.defaultUrl,
+      provider: preset.provider,
+      format: preset.defaultFormat,
+      model: preset.defaultModel,
+      concurrencyLimit: preset.defaultConcurrency,
+      rpm: preset.defaultRpm,
     );
   }
 
-
-  // 工厂方法创建一个新的绘画 ApiModel 实例
   factory ApiModel.createDrawing(String name) {
+    // 直接从独立的绘画列表中查找默认预设 (Volcengine)
+    final preset = drawingPlatformPresets.firstWhere((p) => p.provider == ApiProvider.volcengine);
     return ApiModel(
       id: const Uuid().v4(),
       name: name,
-      url: 'https://ark.cn-beijing.volces.com/api/v3', // 使用一个更常见的默认值
-      provider: ApiProvider.volcengine,
-      format: ApiFormat.openai,
-      model: 'sdxl',
-      concurrencyLimit: 1, // 默认并发数为 1
-      rpm: 30,              // 默认每分钟 30 次请求
+      url: preset.defaultUrl,
+      provider: preset.provider,
+      format: preset.defaultFormat,
+      model: preset.defaultModel,
+      concurrencyLimit: preset.defaultConcurrency,
+      rpm: preset.defaultRpm,
     );
   }
 
-  // 从JSON解析ApiModel对象
   factory ApiModel.fromJson(Map<String, dynamic> json) {
     return ApiModel(
       id: json['id'],
@@ -105,7 +208,6 @@ class ApiModel {
     );
   }
 
-  // 将ApiModel对象序列化为JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,

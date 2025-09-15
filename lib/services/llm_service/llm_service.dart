@@ -30,7 +30,6 @@ class LlmService {
   }
 
   /// 使用 OpenAI 兼容的 API 格式发起请求。
-  /// 适用于火山方舟、OpenAI、Deepseek、Groq 等。
   Future<String> _requestWithOpenAiFormat(
     String? systemPrompt,
     List<Map<String, String>> messages,

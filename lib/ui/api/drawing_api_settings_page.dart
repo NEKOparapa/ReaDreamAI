@@ -1,23 +1,8 @@
 // lib/ui/api/drawing_api_settings_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 导入以使用 FilteringTextInputFormatter
+import 'package:flutter/services.dart';
 import '../../models/api_model.dart';
-
-// 用于承载绘画平台信息的辅助类
-class DrawingPlatformInfo {
-  final ApiProvider provider;
-  final String name;
-  final String defaultUrl;
-  final IconData icon;
-
-  const DrawingPlatformInfo({
-    required this.provider,
-    required this.name,
-    required this.defaultUrl,
-    required this.icon,
-  });
-}
 
 class DrawingApiSettingsPage extends StatefulWidget {
   final ApiModel apiModel;
@@ -41,20 +26,12 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
   late TextEditingController _modelController;
   late TextEditingController _urlController;
   late TextEditingController _concurrencyController;
-  late TextEditingController _rpmController; // 已修改：使用 RPM 控制器
-
+  late TextEditingController _rpmController;
 
   late ApiProvider _selectedProvider;
 
-  // 绘画平台选项列表
-  final List<DrawingPlatformInfo> _platformOptions = [
-    DrawingPlatformInfo(provider: ApiProvider.volcengine, name: 'Volcengine', defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', icon: Icons.filter_hdr_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.google, name: 'Google', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', icon: Icons.bubble_chart_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.dashscope, name: '千问', defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', icon: Icons.bolt_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.kling, name: 'Kling', defaultUrl: 'https://api-beijing.klingai.com', icon: Icons.movie_filter_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.comfyui, name: 'ComfyUI', defaultUrl: 'http://127.0.0.1:8188', icon: Icons.account_tree_outlined),
-    DrawingPlatformInfo(provider: ApiProvider.custom, name: '自定义', defaultUrl: '', icon: Icons.settings_ethernet),
-  ];
+  // 直接从 api_model.dart 获取预设平台列表
+  final List<ApiPlatformPreset> _platformOptions = drawingPlatformPresets;
 
   @override
   void initState() {
@@ -66,7 +43,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     _modelController = TextEditingController(text: widget.apiModel.model);
     _urlController = TextEditingController(text: widget.apiModel.url);
     _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
-    _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? ''); // 已修改：初始化 RPM 控制器
+    _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
 
     _selectedProvider = widget.apiModel.provider;
   }
@@ -80,7 +57,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     _modelController.dispose();
     _urlController.dispose();
     _concurrencyController.dispose();
-    _rpmController.dispose(); // 已修改：销毁 RPM 控制器
+    _rpmController.dispose();
     super.dispose();
   }
 
@@ -95,11 +72,9 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
         model: _modelController.text,
         provider: _selectedProvider,
         url: _urlController.text,
-        format: widget.apiModel.format, // 绘画接口暂时不提供格式选择，沿用旧值
-        // 已修改：保存速率限制设置
+        format: widget.apiModel.format,
         concurrencyLimit: int.tryParse(_concurrencyController.text),
         rpm: int.tryParse(_rpmController.text),
-        // 已删除 qps 字段
       );
       Navigator.pop(context, updatedModel);
     }
@@ -120,7 +95,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
             children: [
               _buildSectionTitle('基础信息'),
               _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
-              _buildTextField(_modelController, '模型选择', '例如：gemini-1.5-flash-image-preview, qwen-image', isRequired: true),
+              _buildTextField(_modelController, '模型选择', '例如：sdxl-lightning, wanx-v1', isRequired: true),
               const SizedBox(height: 24),
 
               _buildSectionTitle('接口平台'),
@@ -130,7 +105,6 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
               _buildUrlField(),
               ..._buildAuthFields(),
 
-              // 新增：速率设置部分
               const SizedBox(height: 24),
               _buildRateLimitSection(),
 
@@ -151,6 +125,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     );
   }
 
+  // _buildSectionTitle, _buildTextField, _buildNumberField, _buildRateLimitSection, _buildAuthFields, _buildUrlField 方法保持不变
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
@@ -188,7 +163,6 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     );
   }
   
-  // 新增：用于数值输入的辅助方法
   Widget _buildNumberField(TextEditingController controller, String label, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -205,13 +179,12 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
         ),
         keyboardType: TextInputType.number,
         inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly // 只允许输入数字
+          FilteringTextInputFormatter.digitsOnly
         ],
       ),
     );
   }
 
-  // 已修改：构建速率限制部分的UI
   Widget _buildRateLimitSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,7 +254,8 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
       ),
     );
   }
-
+  
+  // onTap 逻辑保持不变
   Widget _buildPlatformSelector() {
     return GridView.builder(
       shrinkWrap: true,
@@ -301,14 +275,25 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
           onTap: () {
             setState(() {
               _selectedProvider = option.provider;
-              if (_selectedProvider != ApiProvider.custom && _selectedProvider != ApiProvider.comfyui) {
+              final bool isEditable = _selectedProvider == ApiProvider.custom || _selectedProvider == ApiProvider.comfyui;
+
+              if (!isEditable) {
                 _urlController.text = option.defaultUrl;
-              } else {
-                 if (widget.apiModel.provider != ApiProvider.custom && widget.apiModel.provider != ApiProvider.comfyui) {
-                   _urlController.text = option.defaultUrl;
-                 } else {
-                   _urlController.text = widget.apiModel.url;
-                 }
+                _modelController.text = option.defaultModel;
+                _concurrencyController.text = option.defaultConcurrency.toString();
+                _rpmController.text = option.defaultRpm.toString();
+              } else { 
+                if (widget.apiModel.provider == _selectedProvider) {
+                  _urlController.text = widget.apiModel.url;
+                  _modelController.text = widget.apiModel.model;
+                  _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
+                  _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
+                } else {
+                  _urlController.text = option.defaultUrl;
+                  _modelController.text = option.defaultModel;
+                  _concurrencyController.text = option.defaultConcurrency.toString();
+                  _rpmController.text = option.defaultRpm.toString();
+                }
               }
             });
           },
