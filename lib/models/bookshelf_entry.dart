@@ -137,14 +137,12 @@ class BookshelfEntry {
   // copyWith 方法便于状态更新
   BookshelfEntry copyWith({
     String? coverImagePath,
-    // 插图任务相关
     TaskStatus? status,
     List<IllustrationTaskChunk>? taskChunks,
     String? errorMessage,
     bool clearErrorMessage = false,
     DateTime? createdAt,
     DateTime? updatedAt,
-    // 新增: 翻译任务相关
     TaskStatus? translationStatus,
     List<TranslationTaskChunk>? translationTaskChunks,
     String? translationErrorMessage,
