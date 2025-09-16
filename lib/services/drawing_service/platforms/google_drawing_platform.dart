@@ -22,9 +22,8 @@ class _ImageData {
 /// Google Gemini 平台的具体实现。
 class GoogleDrawingPlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
 
-  GoogleDrawingPlatform({required this.client, required this.apiConfig});
+  GoogleDrawingPlatform({required this.client});
 
   @override
   Future<List<String>?> generate({
@@ -34,6 +33,7 @@ class GoogleDrawingPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     String? referenceImagePath,
   }) async {
     if (count > 1) {
@@ -60,7 +60,7 @@ class GoogleDrawingPlatform implements DrawingPlatform {
     }
     
     try {
-      final imagePath = await _executeGenerationRequest(parts, saveDir);
+      final imagePath = await _executeGenerationRequest(parts, saveDir,apiConfig);
       if (imagePath != null) {
         print('[Google Gemini] ✅ 图片生成成功。');
         return [imagePath];
@@ -75,7 +75,7 @@ class GoogleDrawingPlatform implements DrawingPlatform {
   }
 
   // 执行实际的生成请求
-  Future<String?> _executeGenerationRequest(List<Map<String, dynamic>> parts, String saveDir) async {
+  Future<String?> _executeGenerationRequest(List<Map<String, dynamic>> parts, String saveDir,ApiModel apiConfig,) async {
     final endpoint = Uri.parse('${apiConfig.url}/models/${apiConfig.model}:generateContent');
     final headers = {
       "Content-Type": "application/json",

@@ -61,7 +61,7 @@ class SingleIllustrationExecutor {
   }
 
 
-  // 为划选文本生成插图的功能
+  // "为划选文本生成插图"功能
   Future<void> generateIllustrationForSelection({
     required Book book,
     required ChapterStructure chapter,
@@ -132,7 +132,7 @@ class SingleIllustrationExecutor {
     required int lineNumber,
     required String saveDir,
     required String sceneDescriptionToSave,
-    required String contextText, // 新增：用于查找角色参考图
+    required String contextText, 
   }) async {
     final imagesPerScene = _configService.getSetting<int>('image_gen_images_per_scene', 2);
     final sizeString = _configService.getSetting<String>('image_gen_size', appDefaultConfigs['image_gen_size']);

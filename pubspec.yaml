@@ -44,7 +44,6 @@ dev_dependencies:
   
   # 开发依赖
   build_runner: any # 配合 json_serializable 使用
-  json_annotation: ^4.9.0 # 自动生成 toJson/fromJson
 
 
 flutter:

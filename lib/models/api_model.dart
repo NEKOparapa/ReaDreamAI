@@ -1,6 +1,6 @@
 // lib/models/api_model.dart
 
-import 'package:flutter/material.dart'; // 为了使用 IconData
+import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 // 接口平台枚举 
@@ -10,11 +10,14 @@ enum ApiProvider {
   deepseek,
   google,
   anthropic,
-  // 绘画模型
+  // 绘画与视频模型
   volcengine,
+  // 绘画模型
   kling,
   dashscope, 
   comfyui,
+  // 视频模型
+  bailian, // 新增：百炼
   // 通用
   custom,
 }
@@ -101,7 +104,7 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
-    // 这是谷歌的绘画模型预设 (注意：谷歌的图像生成通常集成在多模态模型中)
+    // 这是谷歌的绘画模型预设
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-1.5-pro-latest', 
     defaultFormat: ApiFormat.google, defaultConcurrency: 1, defaultRpm: 30
   ),
@@ -124,6 +127,29 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
     provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
     defaultUrl: '', defaultModel: '', 
     defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+  ),
+];
+
+// =================================================================
+// 独立的视频接口平台预设列表
+// =================================================================
+final List<ApiPlatformPreset> videoPlatformPresets = [
+  const ApiPlatformPreset(
+    provider: ApiProvider.bailian, name: '百炼(通义)', icon: Icons.whatshot_outlined, 
+    defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', 
+    defaultModel: 'wan2.2-t2v-plus', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.volcengine, name: '火山', icon: Icons.filter_hdr_outlined,
+    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', 
+    defaultModel: 'doubao-seedance-1-0-pro-250528', // 使用文档中的示例模型
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
+    defaultUrl: '', defaultModel: '', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
   ),
 ];
 
@@ -174,6 +200,22 @@ class ApiModel {
   factory ApiModel.createDrawing(String name) {
     // 直接从独立的绘画列表中查找默认预设 (Volcengine)
     final preset = drawingPlatformPresets.firstWhere((p) => p.provider == ApiProvider.volcengine);
+    return ApiModel(
+      id: const Uuid().v4(),
+      name: name,
+      url: preset.defaultUrl,
+      provider: preset.provider,
+      format: preset.defaultFormat,
+      model: preset.defaultModel,
+      concurrencyLimit: preset.defaultConcurrency,
+      rpm: preset.defaultRpm,
+    );
+  }
+
+  // 新增：创建视频接口的工厂方法
+  factory ApiModel.createVideo(String name) {
+    // 从视频列表中查找默认预设 (百炼)
+    final preset = videoPlatformPresets.firstWhere((p) => p.provider == ApiProvider.bailian);
     return ApiModel(
       id: const Uuid().v4(),
       name: name,

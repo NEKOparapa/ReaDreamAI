@@ -5,8 +5,8 @@ import 'package:http/http.dart' as http;
 import '../../models/api_model.dart';
 import 'drawing_platform.dart';
 import 'platforms/comfyui_platform.dart';
-import 'platforms/dashscope_platform.dart'; // 新增
-import 'platforms/google_drawing_platform.dart'; // 新增
+import 'platforms/dashscope_platform.dart'; 
+import 'platforms/google_drawing_platform.dart'; 
 import 'platforms/kling_platform.dart';
 import 'platforms/openai_platform.dart';
 import 'platforms/volcengine_platform.dart';
@@ -31,35 +31,37 @@ class DrawingService {
     required int width,
     required int height,
     required ApiModel apiConfig,
-    String? referenceImagePath, // 新增参数
+    String? referenceImagePath, 
   }) async {
     try {
       final DrawingPlatform platform;
       // 根据 API 配置中的 provider 类型，选择并实例化对应的平台实现。
+      // 注意：实例化时不再传入 apiConfig
       switch (apiConfig.provider) {
         case ApiProvider.custom: // 自定义 平台
-          platform = OpenAiPlatform(client: _client, apiConfig: apiConfig);
+          platform = OpenAiPlatform(client: _client);
           break;
         case ApiProvider.comfyui: // ComfyUI 平台
-          platform = ComfyUiPlatform(client: _client, apiConfig: apiConfig);
+          platform = ComfyUiPlatform(client: _client);
           break;
         case ApiProvider.volcengine: // 火山引擎平台
-          platform = VolcenginePlatform(client: _client, apiConfig: apiConfig);
+          platform = VolcenginePlatform(client: _client);
           break;
         case ApiProvider.google: // Google 平台
-          platform = GoogleDrawingPlatform(client: _client, apiConfig: apiConfig);
+          platform = GoogleDrawingPlatform(client: _client);
           break;
         case ApiProvider.dashscope: // 阿里通义千问平台
-          platform = DashscopePlatform(client: _client, apiConfig: apiConfig);
+          platform = DashscopePlatform(client: _client);
           break;
         case ApiProvider.kling: // Kling 平台
-          platform = KlingPlatform(client: _client, apiConfig: apiConfig);
+          platform = KlingPlatform(client: _client);
           break;
         default:
           throw UnimplementedError('[DrawingService] ❌ 绘图平台 "${apiConfig.provider.name}" 尚未实现。');
       }
 
       // 调用所选平台的 generate 方法来生成图像。
+      // 注意：在这里将 apiConfig 作为参数传入
       return await platform.generate(
         positivePrompt: positivePrompt,
         negativePrompt: negativePrompt,
@@ -67,7 +69,8 @@ class DrawingService {
         count: count,
         width: width,
         height: height,
-        referenceImagePath: referenceImagePath, // 传递参数
+        apiConfig: apiConfig, // <--- 将 apiConfig 作为参数传递
+        referenceImagePath: referenceImagePath,
       );
     } catch (e, st) {
       // 捕获并打印任何在生成过程中发生的错误。

@@ -13,9 +13,8 @@ import '../drawing_platform.dart';
 /// 火山引擎（Volcengine）平台的具体实现。
 class VolcenginePlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
 
-  VolcenginePlatform({required this.client, required this.apiConfig});
+  VolcenginePlatform({required this.client});
 
   // --- 公共入口方法 ---
 
@@ -27,6 +26,7 @@ class VolcenginePlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     String? referenceImagePath, // 接收到的参考图路径或URL
   }) async {
     // 1. 判断是否有参考图，并进行预处理
@@ -52,6 +52,7 @@ class VolcenginePlatform implements DrawingPlatform {
           count: count,
           width: width,
           height: height,
+          apiConfig: apiConfig,
           imageParameter: imageParameter, // 传入处理好的参考图数据
         );
       } else {
@@ -68,6 +69,7 @@ class VolcenginePlatform implements DrawingPlatform {
       count: count,
       width: width,
       height: height,
+      apiConfig: apiConfig,
     );
   }
 
@@ -81,6 +83,7 @@ class VolcenginePlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
   }) async {
     final payload = {
       "prompt": positivePrompt,
@@ -92,7 +95,7 @@ class VolcenginePlatform implements DrawingPlatform {
       "watermark": false,
     };
 
-    return _executeGenerationRequest(payload: payload, saveDir: saveDir);
+    return _executeGenerationRequest(payload: payload, saveDir: saveDir, apiConfig: apiConfig);
   }
 
   // --- 私有实现方法：图生图 ---
@@ -104,6 +107,7 @@ class VolcenginePlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     required String imageParameter, // URL 或 Base64 Data URI
   }) async {
     final payload = {
@@ -118,7 +122,7 @@ class VolcenginePlatform implements DrawingPlatform {
       'image': imageParameter,
     };
 
-    return _executeGenerationRequest(payload: payload, saveDir: saveDir);
+    return _executeGenerationRequest(payload: payload, saveDir: saveDir, apiConfig: apiConfig);
   }
 
   // --- 通用核心逻辑：执行API请求与处理 ---
@@ -126,6 +130,7 @@ class VolcenginePlatform implements DrawingPlatform {
   Future<List<String>?> _executeGenerationRequest({
     required Map<String, dynamic> payload,
     required String saveDir,
+    required ApiModel apiConfig,
   }) async {
     const baseUrl = 'https://ark.cn-beijing.volces.com/api/v3';
     final endpoint = Uri.parse('$baseUrl/images/generations');

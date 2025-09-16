@@ -14,19 +14,20 @@ import '../drawing_platform.dart';
 /// Liblib 平台的具体实现。
 class LiblibPlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
+  // final ApiModel apiConfig; // <--- 移除成员变量
 
   // 将 Liblib 平台的 Base URL 定义为固定的静态常量。
   static const String _baseUrl = 'https://openapi.liblibai.cloud';
   // 定义 API 的 URI 路径为常量，方便管理。
   static const _txt2imgUri = '/api/generate/webui/text2img/ultra';
-  static const _img2imgUri = '/api/generate/webui/img2img/ultra'; // 新增图生图URI
+  static const _img2imgUri = '/api/generate/webui/img2img/ultra';
   static const _statusUri = '/api/generate/webui/status';
 
-  LiblibPlatform({required this.client, required this.apiConfig});
+  // 构造函数不再接收 apiConfig
+  LiblibPlatform({required this.client});
 
   /// 为 API 请求生成签名。
-  Map<String, String> _generateSignature(String uri) {
+  Map<String, String> _generateSignature(String uri, ApiModel apiConfig) { // <--- 接收 apiConfig
     final accessKey = apiConfig.accessKey;
     final secretKey = apiConfig.secretKey;
     if (accessKey == null || accessKey.isEmpty) {
@@ -52,19 +53,7 @@ class LiblibPlatform implements DrawingPlatform {
     };
   }
 
-  /// 将宽高尺寸映射到 API 支持的宽高比字符串。
-  String _mapToAspectRatio(int width, int height) {
-    if (width == 1024 && height == 1024) return 'square';
-    if (width == 768 && height == 1024) return 'portrait';
-    if (width == 1280 && height == 720) return 'landscape';
-    return 'square';
-  }
-  
-  /// 检查字符串是否为有效的HTTP/HTTPS URL
-  bool _isUrl(String path) {
-    final uri = Uri.tryParse(path);
-    return uri != null && uri.isAbsolute && (uri.scheme == 'http' || uri.scheme == 'https');
-  }
+  // ... ( _mapToAspectRatio 和 _isUrl 方法不变 )
 
   @override
   Future<List<String>?> generate({
@@ -74,26 +63,26 @@ class LiblibPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
-    String? referenceImagePath, // 新增参数
+    required ApiModel apiConfig, // <--- apiConfig 作为参数传入
+    String? referenceImagePath,
   }) async {
     String? taskUuid;
 
-    // 根据是否存在有效的参考图URL，决定使用文生图还是图生图
     if (referenceImagePath != null && _isUrl(referenceImagePath)) {
       print('[LiblibAI] 📸 检测到参考图URL，切换到图生图模式。');
-      taskUuid = await _createImg2ImgTask(positivePrompt, negativePrompt, count, referenceImagePath);
+      taskUuid = await _createImg2ImgTask(positivePrompt, negativePrompt, count, referenceImagePath, apiConfig); // <--- 传递 apiConfig
     } 
     else {
       if (referenceImagePath != null) {
         print('[LiblibAI] ⚠️ 提供的参考图路径不是一个有效的URL，将忽略并使用文生图模式。');
       }
       print('[LiblibAI] ✍️ 使用文生图模式。');
-      taskUuid = await _createText2ImgTask(positivePrompt, negativePrompt, count, width, height);
+      taskUuid = await _createText2ImgTask(positivePrompt, negativePrompt, count, width, height, apiConfig); // <--- 传递 apiConfig
     }
 
     if (taskUuid == null) return null;
 
-    final resultData = await _pollTaskStatus(taskUuid);
+    final resultData = await _pollTaskStatus(taskUuid, apiConfig); // <--- 传递 apiConfig
     if (resultData == null) return null;
 
     final images = resultData['images'] as List?;
@@ -112,12 +101,12 @@ class LiblibPlatform implements DrawingPlatform {
   }
 
   /// 创建文生图任务
-  Future<String?> _createText2ImgTask(String prompt, String negativePrompt, int count, int width, int height) async {
+  Future<String?> _createText2ImgTask(String prompt, String negativePrompt, int count, int width, int height, ApiModel apiConfig) async { // <--- 接收 apiConfig
     print('[LiblibAI] 🚀 正在创建文生图任务...');
-    final authParams = _generateSignature(_txt2imgUri);
+    final authParams = _generateSignature(_txt2imgUri, apiConfig); // <--- 传递 apiConfig
     final uri = Uri.parse('$_baseUrl$_txt2imgUri').replace(queryParameters: authParams);
 
-    final templateUuid = apiConfig.model;
+    final templateUuid = apiConfig.model; // 使用传入的 apiConfig
     if (templateUuid.isEmpty) {
       throw Exception('Liblib 平台进行文生图，需要在 API 配置的“模型”字段中提供模板 UUID。');
     }
@@ -147,12 +136,12 @@ class LiblibPlatform implements DrawingPlatform {
   }
 
   /// 创建图生图任务
-  Future<String?> _createImg2ImgTask(String prompt, String negativePrompt, int count, String imageUrl) async {
+  Future<String?> _createImg2ImgTask(String prompt, String negativePrompt, int count, String imageUrl, ApiModel apiConfig) async { // <--- 接收 apiConfig
     print('[LiblibAI] 🚀 正在创建图生图任务...');
-    final authParams = _generateSignature(_img2imgUri);
+    final authParams = _generateSignature(_img2imgUri, apiConfig); // <--- 传递 apiConfig
     final uri = Uri.parse('$_baseUrl$_img2imgUri').replace(queryParameters: authParams);
 
-    const String templateUuid = '07e00af4fc464c7ab55ff906f8acf1b7'; // 根据文档，图生图使用固定的模板UUID
+    const String templateUuid = '07e00af4fc464c7ab55ff906f8acf1b7';
 
     final payload = {
       'templateUuid': templateUuid, 
@@ -178,7 +167,7 @@ class LiblibPlatform implements DrawingPlatform {
   }
 
   /// 轮询任务状态。
-  Future<Map<String, dynamic>?> _pollTaskStatus(String taskUuid) async {
+  Future<Map<String, dynamic>?> _pollTaskStatus(String taskUuid, ApiModel apiConfig) async { // <--- 接收 apiConfig
     print('[LiblibAI] ⏳ 正在轮询任务状态，UUID: $taskUuid...');
     const maxRetries = 40;
     const waitInterval = Duration(seconds: 5);
@@ -186,7 +175,7 @@ class LiblibPlatform implements DrawingPlatform {
     for (var i = 0; i < maxRetries; i++) {
       await Future.delayed(waitInterval);
 
-      final authParams = _generateSignature(_statusUri);
+      final authParams = _generateSignature(_statusUri, apiConfig); // <--- 传递 apiConfig
       final uri = Uri.parse('$_baseUrl$_statusUri').replace(queryParameters: authParams);
       final response = await client.post(uri, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'generateUuid': taskUuid}));
       final data = jsonDecode(response.body);
@@ -214,7 +203,19 @@ class LiblibPlatform implements DrawingPlatform {
     return null;
   }
 
-  /// 下载单张图片。
+  // ... ( _downloadImage, _mapToAspectRatio, _isUrl 方法保持不变，因为它们不使用 apiConfig )
+  String _mapToAspectRatio(int width, int height) {
+    if (width == 1024 && height == 1024) return 'square';
+    if (width == 768 && height == 1024) return 'portrait';
+    if (width == 1280 && height == 720) return 'landscape';
+    return 'square';
+  }
+  
+  bool _isUrl(String path) {
+    final uri = Uri.tryParse(path);
+    return uri != null && uri.isAbsolute && (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
   Future<String?> _downloadImage(String url, String saveDir) async {
     try {
       print('[LiblibAI] 📥 正在下载图片: $url');

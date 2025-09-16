@@ -17,10 +17,11 @@ import '../drawing_platform.dart';
 /// ComfyUI 平台的具体实现。
 class ComfyUiPlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
+  // final ApiModel apiConfig; // <--- 移除成员变量
   final ConfigService _configService = ConfigService();
 
-  ComfyUiPlatform({required this.client, required this.apiConfig});
+  // 构造函数不再接收 apiConfig
+  ComfyUiPlatform({required this.client});
 
   @override
   Future<List<String>?> generate({
@@ -30,7 +31,8 @@ class ComfyUiPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
-    String? referenceImagePath, // 新增参数
+    required ApiModel apiConfig, // <--- apiConfig 作为参数传入
+    String? referenceImagePath,
   }) async {
     /// ComfyUI 绘图调用的主要流程
     
@@ -41,19 +43,19 @@ class ComfyUiPlatform implements DrawingPlatform {
     // 2. 生成一个唯一的客户端 ID，用于 WebSocket 连接。
     final clientId = const Uuid().v4();
     // 3. 将工作流提交到 ComfyUI 的任务队列中，并获取任务 ID。
-    final promptId = await _queuePrompt(workflow, clientId);
+    final promptId = await _queuePrompt(workflow, clientId, apiConfig); 
     if (promptId == null) return null;
 
     // 4. 通过 WebSocket 等待任务执行完成。
-    final success = await _waitForCompletion(promptId, clientId);
+    final success = await _waitForCompletion(promptId, clientId, apiConfig); 
     if (!success) return null;
 
     // 5. 任务完成后，通过 API 获取任务的详细历史记录。
-    final history = await _getHistory(promptId);
+    final history = await _getHistory(promptId, apiConfig); 
     if (history == null) return null;
 
     // 6. 从历史记录中解析出图像信息，并下载到本地。
-    return await _downloadImagesFromHistory(history, saveDir);
+    return await _downloadImagesFromHistory(history, saveDir, apiConfig); 
   }
 
   /// 准备 ComfyUI 工作流。
@@ -128,7 +130,7 @@ class ComfyUiPlatform implements DrawingPlatform {
   }
 
   /// 将准备好的工作流提交到 ComfyUI 的任务队列。
-  Future<String?> _queuePrompt(Map<String, dynamic> workflow, String clientId) async {
+  Future<String?> _queuePrompt(Map<String, dynamic> workflow, String clientId, ApiModel apiConfig) async {
     print('[ComfyUI] 🚀 正在提交工作流...');
     // 构建提交工作流的 API 地址。
     final uri = Uri.parse('${apiConfig.url}/prompt');
@@ -153,7 +155,7 @@ class ComfyUiPlatform implements DrawingPlatform {
   }
 
   /// 通过 WebSocket 等待任务完成。
-  Future<bool> _waitForCompletion(String promptId, String clientId) async {
+  Future<bool> _waitForCompletion(String promptId, String clientId, ApiModel apiConfig) async {
     final completer = Completer<bool>();
     // 将 http/https 协议替换为 ws/wss 来建立 WebSocket 连接。
     final wsUri = Uri.parse(apiConfig.url.replaceFirst('http', 'ws') + '/ws?clientId=$clientId');
@@ -229,7 +231,7 @@ class ComfyUiPlatform implements DrawingPlatform {
   }
 
   /// 获取指定任务 ID 的历史记录。
-  Future<Map<String, dynamic>?> _getHistory(String promptId) async {
+  Future<Map<String, dynamic>?> _getHistory(String promptId, ApiModel apiConfig) async {
     print('[ComfyUI] 正在获取任务历史记录，ID: $promptId');
     final uri = Uri.parse('${apiConfig.url}/history/$promptId');
     final response = await client.get(uri);
@@ -243,7 +245,7 @@ class ComfyUiPlatform implements DrawingPlatform {
   }
 
   /// 从历史记录中解析并下载所有生成的图像。
-  Future<List<String>?> _downloadImagesFromHistory(Map<String, dynamic> history, String saveDir) async {
+  Future<List<String>?> _downloadImagesFromHistory(Map<String, dynamic> history, String saveDir, ApiModel apiConfig) async {
     final List<Future<String?>> downloadFutures = [];
     final outputs = history['outputs'] as Map<String, dynamic>;
 
@@ -256,7 +258,7 @@ class ComfyUiPlatform implements DrawingPlatform {
           final subfolder = imageInfo['subfolder'] as String;
           final type = imageInfo['type'] as String;
           // 为每张图片创建一个下载任务。
-          downloadFutures.add(_downloadImage(filename, subfolder, type, saveDir));
+          downloadFutures.add(_downloadImage(filename, subfolder, type, saveDir,apiConfig));
         }
       }
     }
@@ -272,7 +274,7 @@ class ComfyUiPlatform implements DrawingPlatform {
   }
 
   /// 下载单张图片。
-  Future<String?> _downloadImage(String filename, String subfolder, String type, String saveDir) async {
+  Future<String?> _downloadImage(String filename, String subfolder, String type, String saveDir, ApiModel apiConfig) async {
     // 构建 ComfyUI 的图像查看/下载 URL。
     final uri = Uri.parse('${apiConfig.url}/view?filename=$filename&subfolder=$subfolder&type=$type');
     try {

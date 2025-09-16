@@ -172,6 +172,15 @@ class ConfigService {
     );
   }
 
+  /// 获取正在激活的视频接口
+  ApiModel getActiveVideoApi() {
+    return _getActiveApi(
+      'activeVideoApiId',
+      'videoApis',
+      '视频接口',
+    );
+  }
+
   /// 通用的获取激活API的逻辑
   ApiModel _getActiveApi(String activeIdKey, String apiListKey, String apiTypeName) {
     final activeId = getSetting<String?>(activeIdKey, null);

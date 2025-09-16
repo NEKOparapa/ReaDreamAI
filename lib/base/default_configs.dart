@@ -1,5 +1,3 @@
-// lib/base/default_configs.dart
-
 /// 全局应用默认配置
 const Map<String, dynamic> appDefaultConfigs = {
   // --- 应用设置 ---
@@ -13,6 +11,10 @@ const Map<String, dynamic> appDefaultConfigs = {
   'image_gen_images_per_scene': 2,
   'image_gen_max_workers': 1,
   'image_gen_size': '1024*1024', 
+
+  // --- 视频设置 ---
+  'video_gen_duration': '5s',
+  'video_gen_resolution': '720p',
 
   // --- 翻译设置 --- 
   'translation_tokens': 4000,
@@ -34,9 +36,11 @@ const Map<String, dynamic> appDefaultConfigs = {
   // --- 接口管理设置 ---
   'languageApis': [],
   'drawingApis': [],
+  'videoApis': [],
   'activeLanguageApiId': null,
   'activeDrawingApiId': null,
-
+  'activeVideoApiId': null,
+  
   // --- 绘图标签设置 ---
   // 绘图质量
   'drawing_quality_tags': [

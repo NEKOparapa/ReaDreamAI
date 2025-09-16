@@ -15,9 +15,8 @@ import '../drawing_platform.dart';
 /// 支持文生图和图生图模式。
 class OpenAiPlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
 
-  OpenAiPlatform({required this.client, required this.apiConfig});
+  OpenAiPlatform({required this.client});
 
   @override
   Future<List<String>?> generate({
@@ -27,6 +26,7 @@ class OpenAiPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig, 
     String? referenceImagePath,
   }) async {
     // 根据是否存在参考图，决定调用不同的生成方法
@@ -38,6 +38,7 @@ class OpenAiPlatform implements DrawingPlatform {
         count: count,
         width: width,
         height: height,
+        apiConfig: apiConfig,
         referenceImagePath: referenceImagePath,
       );
     } else {
@@ -48,6 +49,7 @@ class OpenAiPlatform implements DrawingPlatform {
         count: count,
         width: width,
         height: height,
+        apiConfig: apiConfig,
       );
     }
   }
@@ -60,6 +62,7 @@ class OpenAiPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig, 
   }) async {
     print('[OpenAI - Txt2Img] 🚀 正在请求生成图像...');
     final endpoint = Uri.parse('${apiConfig.url}/images/generations');
@@ -103,6 +106,7 @@ class OpenAiPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     required String referenceImagePath,
   }) async {
     print('[OpenAI - Img2Img] 🚀 正在请求生成图像...');

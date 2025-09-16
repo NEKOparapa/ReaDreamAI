@@ -13,9 +13,9 @@ import '../drawing_platform.dart';
 /// 阿里通义千问 (Dashscope) 平台的具体实现。
 class DashscopePlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
 
-  DashscopePlatform({required this.client, required this.apiConfig});
+  // 构造函数不再接收 apiConfig
+  DashscopePlatform({required this.client});
 
   static const Map<String, double> _supportedRatios = {
     '1664*928': 16.0 / 9.0,
@@ -60,6 +60,7 @@ class DashscopePlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     String? referenceImagePath,
   }) async {
     final List<Map<String, dynamic>> content = [

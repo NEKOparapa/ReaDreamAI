@@ -14,11 +14,10 @@ import '../drawing_platform.dart';
 /// Kling 平台的具体实现。
 class KlingPlatform implements DrawingPlatform {
   final http.Client client;
-  final ApiModel apiConfig;
 
   static const String _baseUrl = 'https://api-beijing.klingai.com';
 
-  KlingPlatform({required this.client, required this.apiConfig});
+  KlingPlatform({required this.client});
 
   /// 根据传入的参数决定执行文生图还是图生图。
   @override
@@ -29,6 +28,7 @@ class KlingPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     String? referenceImagePath,
   }) async {
     // 如果提供了参考图路径，则执行图生图流程
@@ -41,6 +41,7 @@ class KlingPlatform implements DrawingPlatform {
         count: count,
         width: width,
         height: height,
+        apiConfig: apiConfig,
         referenceImagePath: referenceImagePath,
       );
     } else {
@@ -53,6 +54,7 @@ class KlingPlatform implements DrawingPlatform {
         count: count,
         width: width,
         height: height,
+        apiConfig: apiConfig,
       );
     }
   }
@@ -69,6 +71,7 @@ class KlingPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
   }) async {
     final payload = {
       'prompt': positivePrompt,
@@ -78,10 +81,10 @@ class KlingPlatform implements DrawingPlatform {
       'aspect_ratio': _mapToAspectRatio(width, height),
     };
 
-    final taskId = await _createGenerationTask(payload);
+    final taskId = await _createGenerationTask(payload,apiConfig);
     if (taskId == null) return null;
 
-    return _executeGenerationFlow(taskId, saveDir);
+    return _executeGenerationFlow(taskId, saveDir,apiConfig);
   }
 
   //----------------------------------------------------------------------------
@@ -96,6 +99,7 @@ class KlingPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
+    required ApiModel apiConfig,
     required String referenceImagePath,
   }) async {
     String imageValue;
@@ -123,10 +127,10 @@ class KlingPlatform implements DrawingPlatform {
       'image': imageValue,
     };
 
-    final taskId = await _createGenerationTask(payload);
+    final taskId = await _createGenerationTask(payload,apiConfig);
     if (taskId == null) return null;
 
-    return _executeGenerationFlow(taskId, saveDir);
+    return _executeGenerationFlow(taskId, saveDir,apiConfig);
   }
 
   //----------------------------------------------------------------------------
@@ -134,11 +138,11 @@ class KlingPlatform implements DrawingPlatform {
   //----------------------------------------------------------------------------
 
   /// 执行通用的生成流程：创建任务 -> 轮询状态 -> 下载结果。
-  Future<List<String>?> _executeGenerationFlow(String taskId, String saveDir) async {
+  Future<List<String>?> _executeGenerationFlow(String taskId, String saveDir, ApiModel apiConfig) async {
     print('[Kling] ✅ 任务创建成功，ID: $taskId');
 
     // 轮询任务状态，直到任务完成或失败。
-    final resultData = await _pollTaskStatus(taskId);
+    final resultData = await _pollTaskStatus(taskId, apiConfig);
     if (resultData == null) return null;
     print('[Kling] ✅ 任务状态轮询完成，结果: ${resultData['task_status']}');
 
@@ -163,10 +167,10 @@ class KlingPlatform implements DrawingPlatform {
   }
 
   /// 向 Kling API 提交请求以创建图像生成任务。
-  Future<String?> _createGenerationTask(Map<String, dynamic> payload) async {
+  Future<String?> _createGenerationTask(Map<String, dynamic> payload, ApiModel apiConfig) async {
     final uri = Uri.parse('$_baseUrl/v1/images/generations');
     final headers = {
-      'Authorization': 'Bearer ${_generateAuthToken()}',
+      'Authorization': 'Bearer ${_generateAuthToken(apiConfig)}',
       'Content-Type': 'application/json'
     };
 
@@ -193,7 +197,7 @@ class KlingPlatform implements DrawingPlatform {
   }
 
   /// 轮询任务状态，直到任务完成、失败或超时。
-  Future<Map<String, dynamic>?> _pollTaskStatus(String taskId) async {
+  Future<Map<String, dynamic>?> _pollTaskStatus(String taskId, ApiModel apiConfig) async {
     const maxRetries = 60;
     const waitInterval = Duration(seconds: 5);
 
@@ -201,7 +205,7 @@ class KlingPlatform implements DrawingPlatform {
       await Future.delayed(waitInterval);
 
       final uri = Uri.parse('$_baseUrl/v1/images/generations/$taskId');
-      final headers = {'Authorization': 'Bearer ${_generateAuthToken()}'};
+      final headers = {'Authorization': 'Bearer ${_generateAuthToken(apiConfig)}'};
 
       try {
         final response = await client.get(uri, headers: headers).timeout(const Duration(seconds: 15));
@@ -229,7 +233,7 @@ class KlingPlatform implements DrawingPlatform {
   }
 
   /// 从给定的 URL 下载图片并保存到本地。
-  Future<String?> _downloadImage(String url, String saveDir) async {
+  Future<String?> _downloadImage(String url, String saveDir,) async {
     try {
       print('[Kling] 📥 正在下载图片: $url');
       final response = await client.get(Uri.parse(url)).timeout(const Duration(seconds: 120));
@@ -252,7 +256,7 @@ class KlingPlatform implements DrawingPlatform {
   }
 
   /// 生成用于身份验证的 JWT (JSON Web Token)。
-  String _generateAuthToken() {
+  String _generateAuthToken(ApiModel apiConfig) {
     final accessKey = apiConfig.accessKey;
     final secretKey = apiConfig.secretKey;
 
