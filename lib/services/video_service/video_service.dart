@@ -29,6 +29,7 @@ class VideoService {
     required String saveDir,
     required int count,
     required String resolution,
+    required int duration, 
     String? referenceImagePath,
     required ApiModel apiConfig,
   }) async {
@@ -46,6 +47,7 @@ class VideoService {
         saveDir: saveDir,
         count: count,
         resolution: resolution,
+        duration: duration, 
         referenceImagePath: referenceImagePath,
         apiConfig: apiConfig, // 传递 apiConfig
       );

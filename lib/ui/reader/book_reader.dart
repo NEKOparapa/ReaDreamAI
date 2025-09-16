@@ -1,8 +1,7 @@
-// lib/ui/reader/book_reader.dart
-
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../models/book.dart';
 import '../../services/cache_manager/cache_manager.dart';
@@ -38,6 +37,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
   late Book _currentBook;
   bool _isTaskRunning = false;
   final _executor = SingleIllustrationExecutor.instance;
+  final _videoExecutor = SingleVideoExecutor.instance; // 视频执行器实例
 
   // --- 页面状态和设置 ---
   final PageController _pageController = PageController();
@@ -84,7 +84,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     }
   }
 
-  // 任务处理逻辑保持不变，但非常清晰，无需修改
+  // 插图任务处理逻辑
   Future<void> _handleIllustrationTask(Future<void> taskFunction) async {
     if (_isTaskRunning) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有任务在生成中，请稍候...')));
@@ -119,6 +119,47 @@ class _BookReaderPageState extends State<BookReaderPage> {
       }
     } catch (e) {
       print("生成插图失败: $e");
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text('生成失败: $e'), backgroundColor: Colors.red));
+      }
+    } finally {
+      _isTaskRunning = false;
+    }
+  }
+
+  // 视频任务处理逻辑
+  Future<void> _handleVideoTask(Future<void> taskFunction) async {
+    if (_isTaskRunning) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有任务在生成中，请稍候...')));
+      return;
+    }
+    _isTaskRunning = true;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            SizedBox(width: 16),
+            Text('正在生成视频...'),
+          ],
+        ),
+        duration: const Duration(days: 1),
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 120, left: 20, right: 20),
+      ),
+    );
+    try {
+      await taskFunction;
+      await CacheManager().saveBookDetail(_currentBook);
+      messenger.hideCurrentSnackBar();
+      if (mounted) {
+        messenger.showSnackBar(const SnackBar(content: Text('视频生成成功！正在刷新...')));
+        await _refreshBookState();
+      }
+    } catch (e) {
+      print("生成视频失败: $e");
       messenger.hideCurrentSnackBar();
       if (mounted) {
         messenger.showSnackBar(SnackBar(content: Text('生成失败: $e'), backgroundColor: Colors.red));
@@ -162,6 +203,40 @@ class _BookReaderPageState extends State<BookReaderPage> {
     }
   }
 
+  // 删除视频逻辑
+  Future<void> _deleteVideo(String videoPath, LineStructure line) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除'),
+        content: const Text('确定要删除这个视频吗？此操作不可恢复。'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      final originalPaths = List<String>.from(line.videoPaths);
+      line.videoPaths.remove(videoPath);
+      setState(() {});
+      try {
+        await File(videoPath).delete();
+        await CacheManager().saveBookDetail(_currentBook);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('视频已删除')));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除文件失败: $e'), backgroundColor: Colors.red));
+        }
+        line.videoPaths.clear();
+        line.videoPaths.addAll(originalPaths);
+        setState(() {});
+      }
+    }
+  }
+
   // 为选择文本生成插图
   Future<void> _generateIllustrationForSelection(String selectedText, LineStructure targetLine, ChapterStructure targetChapter) async {
     final illustrationsDir = await CacheManager().getOrCreateBookSubDir(_currentBook.id, 'illustrations');
@@ -184,6 +259,19 @@ class _BookReaderPageState extends State<BookReaderPage> {
         chapter: chapter,
         line: line,
         imageSaveDir: illustrationsDir.path,
+      ),
+    );
+  }
+
+  // 从图片生成视频的触发方法
+  Future<void> _generateVideoFromImage(String imagePath, LineStructure line, ChapterStructure chapter) async {
+    final videosDir = await CacheManager().getOrCreateBookSubDir(_currentBook.id, 'videos');
+    await _handleVideoTask(
+      _videoExecutor.generateVideoFromImage(
+        chapter: chapter,
+        line: line,
+        imagePath: imagePath,
+        saveDir: videosDir.path,
       ),
     );
   }
@@ -376,7 +464,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                 ),
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 56.0), // 左右留出空间，避免与按钮重叠
+                    padding: const EdgeInsets.symmetric(horizontal: 56.0),
                     child: Text(
                       chapterTitle,
                       style: const TextStyle(fontSize: 16),
@@ -466,7 +554,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
         });
       },
       itemBuilder: (context, chapterIndex) {
-        // 在翻页模式下，每一页都是一个可以独立滚动的ListView, 以防单章内容超出一屏
         return SingleChildScrollView(
           child: _buildChapterContent(chapterIndex),
         );
@@ -474,7 +561,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     );
   }
 
-  // 构建章节内容 Widget (提取出的公共部分)
+  // 构建章节内容 Widget
   Widget _buildChapterContent(int chapterIndex) {
     final chapter = _currentBook.chapters[chapterIndex];
     
@@ -483,7 +570,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 章节标题
           Padding(
             padding: const EdgeInsets.only(bottom: 32.0),
             child: Text(
@@ -497,7 +583,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
               textAlign: TextAlign.center,
             ),
           ),
-          // 章节内容
           ..._buildContentWidgets(chapter),
         ],
       ),
@@ -522,13 +607,16 @@ class _BookReaderPageState extends State<BookReaderPage> {
         currentTextLines.add((line: line, chapter: chapter));
       }
 
-      if (line.illustrationPaths.isNotEmpty) {
+      if (line.illustrationPaths.isNotEmpty || line.videoPaths.isNotEmpty) {
         submitTextBlock();
         contentWidgets.add(
           _IllustrationGallery(
             imagePaths: line.illustrationPaths,
+            videoPaths: line.videoPaths,
             onRegenerate: () => _regenerateIllustrationForLine(line, chapter),
-            onDelete: (path) => _deleteIllustration(path, line),
+            onDeleteImage: (path) => _deleteIllustration(path, line),
+            onDeleteVideo: (path) => _deleteVideo(path, line),
+            onGenerateVideo: (path) => _generateVideoFromImage(path, line, chapter),
           ),
         );
       }
@@ -554,7 +642,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
       style: TextStyle(
         fontSize: _fontSize,
-        height: 1.7, // 行间距
+        height: 1.7,
         color: _currentTheme.font,
         fontFamily: _fontFamily == 'SystemDefault' ? null : _fontFamily,
       ),
@@ -698,21 +786,45 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
 }
 
 
-// 插图画廊组件
+// 插图/视频画廊组件
 class _IllustrationGallery extends StatelessWidget {
   final List<String> imagePaths;
+  final List<String> videoPaths;
   final VoidCallback onRegenerate;
-  final ValueChanged<String> onDelete;
+  final ValueChanged<String> onDeleteImage;
+  final ValueChanged<String> onDeleteVideo;
+  final ValueChanged<String> onGenerateVideo;
 
   const _IllustrationGallery({
     required this.imagePaths,
+    required this.videoPaths,
     required this.onRegenerate,
-    required this.onDelete,
+    required this.onDeleteImage,
+    required this.onDeleteVideo,
+    required this.onGenerateVideo,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (imagePaths.isEmpty) return const SizedBox.shrink();
+    if (imagePaths.isEmpty && videoPaths.isEmpty) return const SizedBox.shrink();
+
+    final imageTiles = imagePaths.map((path) {
+      return _ImageTile(
+        key: ValueKey(path),
+        imagePath: path,
+        onRegenerate: onRegenerate,
+        onDelete: () => onDeleteImage(path),
+        onGenerateVideo: () => onGenerateVideo(path),
+      );
+    }).toList();
+
+    final videoTiles = videoPaths.map((path) {
+      return _VideoTile(
+        key: ValueKey(path),
+        videoPath: path,
+        onDelete: () => onDeleteVideo(path),
+      );
+    }).toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -720,14 +832,7 @@ class _IllustrationGallery extends StatelessWidget {
         spacing: 16.0,
         runSpacing: 16.0,
         alignment: WrapAlignment.center,
-        children: imagePaths.map((path) {
-          return _ImageTile(
-            key: ValueKey(path),
-            imagePath: path,
-            onRegenerate: onRegenerate,
-            onDelete: () => onDelete(path),
-          );
-        }).toList(),
+        children: [...imageTiles, ...videoTiles],
       ),
     );
   }
@@ -737,12 +842,14 @@ class _ImageTile extends StatelessWidget {
   final String imagePath;
   final VoidCallback onRegenerate;
   final VoidCallback onDelete;
+  final VoidCallback onGenerateVideo;
 
   const _ImageTile({
     super.key,
     required this.imagePath,
     required this.onRegenerate,
     required this.onDelete,
+    required this.onGenerateVideo,
   });
 
   void _showEnlargedImage(BuildContext context) {
@@ -786,7 +893,16 @@ class _ImageTile extends StatelessWidget {
                             onRegenerate();
                           },
                         ),
-                        const SizedBox(width: 24),
+                        const SizedBox(width: 16),
+                        IconButton(
+                          icon: const Icon(Icons.movie_creation_outlined, color: Colors.white),
+                          tooltip: '图生视频',
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            onGenerateVideo();
+                          },
+                        ),
+                        const SizedBox(width: 16),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, color: Colors.white),
                           tooltip: '删除',
@@ -848,6 +964,207 @@ class _ImageTile extends StatelessWidget {
               child: const Center(child: Icon(Icons.error_outline, color: Colors.red, size: 40)),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// 视频缩略图组件
+class _VideoTile extends StatefulWidget {
+  final String videoPath;
+  final VoidCallback onDelete;
+
+  const _VideoTile({
+    super.key,
+    required this.videoPath,
+    required this.onDelete,
+  });
+
+  @override
+  State<_VideoTile> createState() => _VideoTileState();
+}
+
+class _VideoTileState extends State<_VideoTile> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final file = File(widget.videoPath);
+    if (file.existsSync()) {
+      _controller = VideoPlayerController.file(file)
+        ..initialize().then((_) {
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+              _controller.setVolume(0); // 默认静音
+              _controller.setLooping(true);
+            });
+          }
+        });
+    } else {
+      _isInitialized = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isInitialized) {
+      _controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _showEnlargedVideo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return _VideoPlayerDialog(
+          videoPath: widget.videoPath,
+          onDelete: widget.onDelete,
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return Container(
+        width: 280,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8.0),
+        ),
+        child: const AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Center(child: Icon(Icons.movie, color: Colors.grey, size: 40)),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _showEnlargedVideo(context),
+      child: Container(
+        width: 280,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              AspectRatio(
+                aspectRatio: _controller.value.aspectRatio > 0 ? _controller.value.aspectRatio : 16/9,
+                child: VideoPlayer(_controller),
+              ),
+              MouseRegion(
+                onEnter: (_) => _controller.play(),
+                onExit: (_) => _controller.pause(),
+                child: Container(
+                  color: Colors.transparent, // 透明背景以响应悬浮事件
+                  child: Center(
+                    child: Icon(Icons.play_circle_outline, color: Colors.white.withOpacity(0.7), size: 50),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// 视频播放悬浮组件
+class _VideoPlayerDialog extends StatefulWidget {
+  final String videoPath;
+  final VoidCallback onDelete;
+
+  const _VideoPlayerDialog({required this.videoPath, required this.onDelete});
+
+  @override
+  _VideoPlayerDialogState createState() => _VideoPlayerDialogState();
+}
+
+class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
+  late VideoPlayerController _controller;
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.file(File(widget.videoPath))
+      ..initialize().then((_) {
+        if (mounted) {
+          setState(() {
+            _isInitialized = true;
+          });
+          _controller.setLooping(true);
+          _controller.play();
+        }
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).pop(),
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {}, // 防止点击视频关闭对话框
+                child: Center(
+                  child: _isInitialized
+                      ? AspectRatio(
+                          aspectRatio: _controller.value.aspectRatio,
+                          child: VideoPlayer(_controller),
+                        )
+                      : const CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {}, // 防止点击控制栏关闭对话框
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.white),
+                  tooltip: '删除视频',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    widget.onDelete();
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

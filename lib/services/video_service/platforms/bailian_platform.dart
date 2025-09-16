@@ -6,8 +6,6 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
-import 'package:mime/mime.dart'; // 需要添加依赖: flutter pub add mime
-
 import '../../../models/api_model.dart';
 import '../video_platform.dart';
 
@@ -23,6 +21,7 @@ class BailianPlatform implements VideoPlatform {
     required String saveDir,
     required int count,
     required String resolution,
+    required int duration, 
     String? referenceImagePath,
     required ApiModel apiConfig,
   }) async {
@@ -46,7 +45,8 @@ class BailianPlatform implements VideoPlatform {
       "model": apiConfig.model, // 直接使用用户配置的模型
       "input": input,  // 包含 prompt 和可选的 img_url
       "parameters": {
-        "resolution": resolution, // 分辨率
+        //"resolution": resolution,
+        //"duration": duration, 
         "prompt_extend": false, // 关闭提示词扩展
       }
     };
@@ -59,7 +59,6 @@ class BailianPlatform implements VideoPlatform {
     };
 
     try {
-      print('[百炼视频] ℹ️ 请求Payload: ${jsonEncode(payload)}');
       final initialResponse = await client.post(
         endpoint,
         headers: headers,
@@ -131,7 +130,7 @@ class BailianPlatform implements VideoPlatform {
 
   // 将图片文件转为 Base64 data URL
   Future<String?> _imageToBase64(String imagePath) async {
-    // 如果已经是URL，直接返回
+    // 如果已经是网络 URL，直接返回
     if (imagePath.startsWith('http')) return imagePath;
 
     try {
@@ -140,13 +139,35 @@ class BailianPlatform implements VideoPlatform {
         print('[百炼视频] ⚠️ 本地参考图文件不存在: $imagePath');
         return null;
       }
+      
       final bytes = await file.readAsBytes();
       final base64String = base64Encode(bytes);
-      final mimeType = lookupMimeType(imagePath) ?? 'image/png'; // 自动检测MIME类型
+      
+      // 根据文件扩展名确定 MIME 类型
+      final extension = imagePath.split('.').last.toLowerCase();
+      final mimeType = _getMimeTypeFromExtension(extension);
+      
       return 'data:$mimeType;base64,$base64String';
     } catch (e) {
       print('[百炼视频] ❌ 读取本地参考图并转为Base64时出错: $e');
       return null;
+    }
+  }
+
+  // 根据文件扩展名返回对应的 MIME 类型
+  String _getMimeTypeFromExtension(String extension) {
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'bmp':
+        return 'image/bmp';
+      case 'webp':
+        return 'image/webp';
+      default:
+        return 'image/png'; // 未知类型的默认值
     }
   }
 

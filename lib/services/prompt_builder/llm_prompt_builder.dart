@@ -147,4 +147,38 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
+  /// 为图生视频生成提示词
+  (String, List<Map<String, String>>) buildForVideoPrompt({
+    required String sceneDescription,
+  }) {
+    // 系统提示词
+    const String systemPrompt = """你是一位专业的动态视频脚本家。根据提供的静态场景描述，你需要创作一个生动、富有动感的英文视频生成提示词。
+提示词应侧重于描绘场景中的动态元素、镜头运动和时间流逝感。
+- 描述物体的移动、角色的动作、表情的细微变化。
+- 使用 'camera zoom in/out', 'panning shot', 'tilting up/down' 等运镜术语。
+- 描绘光影、天气或环境的动态变化，例如 'sunlight filtering through leaves and swaying', 'clouds drifting across the sky'。""";
+
+    // 用户指令
+    final userPrompt = """
+    请根据以下静态场景描述，生成一个用于AI视频生成的英文提示词。
+
+    ### 静态场景描述:
+    ---
+    $sceneDescription
+    ---
+
+    ### JSON输出格式:
+    ```json
+    {
+      "prompt": "A knight raises his shimmering sword, cinematic shot..."
+    }
+    ```
+    """;
+
+    final messages = [
+      {'role': 'user', 'content': userPrompt}
+    ];
+
+    return (systemPrompt, messages);
+  }
 }

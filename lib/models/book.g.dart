@@ -17,6 +17,11 @@ LineStructure _$LineStructureFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      videoPaths:
+          (json['videoPaths'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       sceneDescription: json['sceneDescription'] as String?,
       translatedText: json['translatedText'] as String?,
     );
@@ -28,6 +33,7 @@ Map<String, dynamic> _$LineStructureToJson(LineStructure instance) =>
       'lineNumberInSourceFile': instance.lineNumberInSourceFile,
       'originalContent': instance.originalContent,
       'illustrationPaths': instance.illustrationPaths,
+      'videoPaths': instance.videoPaths,
       'sceneDescription': instance.sceneDescription,
       'translatedText': instance.translatedText,
     };

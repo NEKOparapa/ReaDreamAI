@@ -10,6 +10,7 @@ abstract class VideoPlatform {
   /// [saveDir]: 视频保存目录。
   /// [count]: 生成视频的数量 (当前固定为1)。
   /// [resolution]: 视频分辨率 (例如 '720p')。
+  /// [duration]: 视频时长（秒）。
   /// [referenceImagePath]: (可选) 参考图的本地路径或URL，用于图生视频。
   /// [apiConfig]: 包含API密钥、模型等信息的配置对象，在调用时传入。
   /// 返回一个包含生成视频本地路径的列表。
@@ -18,6 +19,7 @@ abstract class VideoPlatform {
     required String saveDir,
     required int count,
     required String resolution,
+    required int duration, 
     String? referenceImagePath,
     required ApiModel apiConfig,
   });

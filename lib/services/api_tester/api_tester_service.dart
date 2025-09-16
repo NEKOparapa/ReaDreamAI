@@ -109,6 +109,7 @@ class ApiTesterService {
         saveDir: testSaveDir.path,
         count: 1,
         resolution: '720P',
+        duration: 5, 
         apiConfig: apiConfig,
       );
 

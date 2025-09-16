@@ -1,7 +1,7 @@
 // lib/models/book.dart
 
 import 'package:json_annotation/json_annotation.dart';
-part 'book.g.dart'; // 运行 flutter pub run build_runner build 来生成这个文件
+part 'book.g.dart'; //运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
 
 // 行结构：存储单行文本及其元数据
 @JsonSerializable()
@@ -11,6 +11,7 @@ class LineStructure {
   final int lineNumberInSourceFile;
   final String originalContent;
   final List<String> illustrationPaths;
+  final List<String> videoPaths; // 新增: 视频路径列表
   final String? sceneDescription;
   final String? translatedText;
 
@@ -20,21 +21,26 @@ class LineStructure {
     required this.lineNumberInSourceFile,
     required this.originalContent,
     this.illustrationPaths = const [],
+    this.videoPaths = const [], // 新增: 构造函数初始化
     this.sceneDescription,
-    this.translatedText, // 新增
+    this.translatedText,
   });
 
   // copyWith 方法，便于更新
   LineStructure copyWith({
     String? translatedText,
+    List<String>? illustrationPaths,
+    List<String>? videoPaths,
+    String? sceneDescription,
   }) {
     return LineStructure(
       id: id,
       text: text,
       lineNumberInSourceFile: lineNumberInSourceFile,
       originalContent: originalContent,
-      illustrationPaths: illustrationPaths,
-      sceneDescription: sceneDescription,
+      illustrationPaths: illustrationPaths ?? this.illustrationPaths,
+      videoPaths: videoPaths ?? this.videoPaths,
+      sceneDescription: sceneDescription ?? this.sceneDescription,
       translatedText: translatedText ?? this.translatedText,
     );
   }
@@ -44,11 +50,11 @@ class LineStructure {
 }
 
 /// 章节结构：存储章节标题和包含的所有行
-@JsonSerializable(explicitToJson: true) // 确保有 explicitToJson: true
+@JsonSerializable(explicitToJson: true)
 class ChapterStructure {
-  final String title; // 存储章节标题
-  final String sourceFile; // 存储章节对应的源文件路径
-  final List<LineStructure> lines; // 存储章节中的所有行
+  final String title;
+  final String sourceFile;
+  final List<LineStructure> lines;
 
   ChapterStructure({
     required this.title,
@@ -60,20 +66,30 @@ class ChapterStructure {
   void addIllustrationsToLine(int lineNumber, List<String> paths, String? description) {
     try {
       final line = lines.firstWhere((l) => l.lineNumberInSourceFile == lineNumber);
-      // 创建一个新的 LineStructure 实例来替换旧的，以保持不可变性
       final lineIndex = lines.indexOf(line);
       if (lineIndex != -1) {
-        lines[lineIndex] = LineStructure(
-          id: line.id,
-          text: line.text,
-          lineNumberInSourceFile: line.lineNumberInSourceFile,
-          originalContent: line.originalContent,
-          illustrationPaths: [...line.illustrationPaths, ...paths], // 合并而不是覆盖
-          sceneDescription: description ?? line.sceneDescription, // 更新描述
+        lines[lineIndex] = line.copyWith(
+          illustrationPaths: [...line.illustrationPaths, ...paths],
+          sceneDescription: description ?? line.sceneDescription,
         );
       }
     } catch (e) {
       print('Error: Could not find line with number $lineNumber to add illustration.');
+    }
+  }
+
+  // 在特定行号添加视频
+  void addVideosToLine(int lineNumber, List<String> paths) {
+    try {
+      final line = lines.firstWhere((l) => l.lineNumberInSourceFile == lineNumber);
+      final lineIndex = lines.indexOf(line);
+      if (lineIndex != -1) {
+        lines[lineIndex] = line.copyWith(
+          videoPaths: [...line.videoPaths, ...paths],
+        );
+      }
+    } catch (e) {
+      print('Error: Could not find line with number $lineNumber to add video.');
     }
   }
 

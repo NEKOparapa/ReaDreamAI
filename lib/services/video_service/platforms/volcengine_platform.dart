@@ -22,13 +22,14 @@ class VolcenginePlatform implements VideoPlatform {
     required String saveDir,
     required int count,
     required String resolution,
+    required int duration,
     String? referenceImagePath,
     required ApiModel apiConfig,
   }) async {
     final List<Map<String, dynamic>> content = [];
 
-    // 添加文本提示词和分辨率参数
-    final promptWithParams = '$positivePrompt $resolution';
+    // 添加文本提示词，并将分辨率和时长作为参数拼接到提示词中
+    final promptWithParams = '$positivePrompt resolution:${resolution.toLowerCase()} duration:$duration';
     content.add({"type": "text", "text": promptWithParams});
 
 

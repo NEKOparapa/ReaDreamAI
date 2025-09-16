@@ -13,7 +13,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'image_gen_size': '1024*1024', 
 
   // --- 视频设置 ---
-  'video_gen_duration': '5s',
+  'video_gen_duration': 5,
   'video_gen_resolution': '720p',
 
   // --- 翻译设置 --- 

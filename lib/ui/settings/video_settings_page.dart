@@ -13,17 +13,20 @@ class VideoSettingsPage extends StatefulWidget {
 class _VideoSettingsPageState extends State<VideoSettingsPage> {
   final ConfigService _configService = ConfigService();
 
-  late String _selectedDuration;
+  // --- 修改开始 ---
+  late int _selectedDuration; // 类型从 String 改为 int
   late String _selectedResolution;
 
-  final List<String> _durationOptions = ['5s', '10s'];
+  final List<int> _durationOptions = [5, 10]; // 选项列表改为 int 类型
+  // --- 修改结束 ---
+
   final List<String> _resolutionOptions = ['720p', '1080p'];
 
   @override
   void initState() {
     super.initState();
     // 从ConfigService加载设置，如果未设置则使用默认值
-    _selectedDuration = _configService.getSetting('video_gen_duration', appDefaultConfigs['video_gen_duration']);
+    _selectedDuration = _configService.getSetting<int>('video_gen_duration', appDefaultConfigs['video_gen_duration']);
     _selectedResolution = _configService.getSetting('video_gen_resolution', appDefaultConfigs['video_gen_resolution']);
   }
 
@@ -39,22 +42,31 @@ class _VideoSettingsPageState extends State<VideoSettingsPage> {
             SettingsCard(
               title: '视频时长',
               subtitle: '选择生成视频的长度',
-              control: DropdownButton<String>(
+              // --- 修改开始 ---
+              control: DropdownButton<int>( // 泛型改为 int
                 value: _selectedDuration,
                 underline: const SizedBox.shrink(),
                 borderRadius: BorderRadius.circular(12),
-                items: _durationOptions.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value));
+                // items 列表现在处理的是 int 类型
+                items: _durationOptions.map<DropdownMenuItem<int>>((int value) {
+                  return DropdownMenuItem<int>(
+                    value: value, 
+                    // 在Text中将 int 格式化为带 's' 的字符串用于显示
+                    child: Text('${value}s') 
+                  );
                 }).toList(),
-                onChanged: (String? newValue) {
+                // onChanged 回调接收的也是 int? 类型
+                onChanged: (int? newValue) {
                   if (newValue != null) {
                     setState(() => _selectedDuration = newValue);
-                    _configService.modifySetting<String>('video_gen_duration', newValue);
+                    // 保存设置时，也使用 <int> 泛型
+                    _configService.modifySetting<int>('video_gen_duration', newValue);
                   }
                 },
               ),
+              // --- 修改结束 ---
             ),
-            // 视频分辨率设置
+            // 视频分辨率设置 (这部分无需改动)
             SettingsCard(
               title: '分辨率',
               subtitle: '选择生成视频的分辨率',

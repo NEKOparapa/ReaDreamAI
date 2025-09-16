@@ -7,6 +7,7 @@ import '../../models/book.dart';
 import '../../base/config_service.dart';
 import '../../services/llm_service/llm_service.dart';
 import '../../services/drawing_service/drawing_service.dart';
+import '../../services/video_service/video_service.dart';
 import '../../models/character_card_model.dart';
 import '../../base/default_configs.dart';
 import '../prompt_builder/draw_prompt_builder.dart';
@@ -124,6 +125,7 @@ class SingleIllustrationExecutor {
     );
   }
 
+
   // 统一的绘图和保存逻辑
   Future<void> _drawAndSaveImages({
     required String positivePrompt,
@@ -219,4 +221,103 @@ class SingleIllustrationExecutor {
     return contextLines.join('\n');
   }
 
+}
+
+// ==================================================================
+// 视频生成执行器
+// ==================================================================
+class SingleVideoExecutor {
+  final LlmPromptBuilder _llmPromptBuilder;
+
+  SingleVideoExecutor._()
+      : _configService = ConfigService(),
+        _llmPromptBuilder = LlmPromptBuilder(ConfigService());
+
+  static final SingleVideoExecutor instance = SingleVideoExecutor._();
+
+  // 依赖的服务
+  final ConfigService _configService;
+  final LlmService _llmService = LlmService.instance;
+  final VideoService _videoService = VideoService.instance;
+
+  /// "从插图生成视频"功能
+  Future<void> generateVideoFromImage({
+    required ChapterStructure chapter,
+    required LineStructure line,
+    required String imagePath, 
+    required String saveDir,
+  }) async {
+
+    print('[视频生成] ℹ️ 开始生成视频');
+    // 1. 检查是否存在用于生成视频的场景描述
+    final String? sceneDescription = line.sceneDescription;
+    if (sceneDescription == null || sceneDescription.isEmpty) {
+      throw Exception("该插图没有场景描述，无法生成视频。");
+    }
+
+    // 2. 调用 LLM 生成视频专用的提示词
+    print('[视频生成] ℹ️ 调用LLM生成视频提示词');
+    final (systemPrompt, messages) = _llmPromptBuilder.buildForVideoPrompt(
+      sceneDescription: sceneDescription,
+    );
+
+    final activeApi = _configService.getActiveLanguageApi();
+    final llmResponse = await _llmService.requestCompletion(
+      systemPrompt: systemPrompt,
+      messages: messages,
+      apiConfig: activeApi,
+    );
+    
+    print('[视频生成] ℹ️ LLM响应: $llmResponse');
+    // 3. 解析 LLM 响应
+    String videoPrompt;
+    try {
+      String potentialJson = llmResponse;
+      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```', dotAll: true).firstMatch(llmResponse);
+      if (jsonMatch != null) {
+        potentialJson = jsonMatch.group(1) ?? llmResponse;
+      }
+      final startBraceIndex = potentialJson.indexOf('{');
+      final endBraceIndex = potentialJson.lastIndexOf('}');
+      if (startBraceIndex != -1 && endBraceIndex != -1 && endBraceIndex > startBraceIndex) {
+        final jsonString = potentialJson.substring(startBraceIndex, endBraceIndex + 1);
+        final itemData = jsonDecode(jsonString);
+        videoPrompt = itemData['prompt'] as String? ?? '';
+      } else {
+        throw Exception("未能从LLM响应中解析出有效的JSON对象。");
+      }
+    } catch (e) {
+      print('处理LLM响应失败: $e\n原始响应: $llmResponse');
+      throw Exception("解析LLM响应失败。");
+    }
+
+    if (videoPrompt.isEmpty) {
+      throw Exception("LLM 未能生成有效的视频提示词。");
+    }
+
+    // 4. 从配置中获取视频生成参数
+    final resolution = _configService.getSetting<String>('video_gen_resolution', '720p');
+    final duration = _configService.getSetting<int>('video_gen_duration', 5);
+    final activeVideoApi = _configService.getActiveVideoApi();
+
+    // 5. 调用视频服务生成视频
+    print('[视频生成] ℹ️ 调用视频服务生成视频，分辨率: $resolution, 时长: $duration 秒');
+    final videoPaths = await _videoService.generateVideo(
+      positivePrompt: videoPrompt,
+      saveDir: saveDir,
+      count: 1, // 通常一次只生成一个视频
+      resolution: resolution,
+      duration: duration,
+      referenceImagePath: imagePath, // 关键：传入参考图路径
+      apiConfig: activeVideoApi,
+    );
+
+    print('[视频生成] ℹ️ 视频生成完成，路径: $videoPaths');
+    // 6. 将生成的视频路径保存到 book model
+    if (videoPaths != null && videoPaths.isNotEmpty) {
+      chapter.addVideosToLine(line.lineNumberInSourceFile, videoPaths);
+    } else {
+      throw Exception("视频服务未能生成视频。");
+    }
+  }
 }
