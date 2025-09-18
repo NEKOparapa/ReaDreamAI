@@ -33,15 +33,12 @@ jobs:
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：准备发布所需的信息（简化：直接硬编码项目名，避免从 pubspec.yaml 动态读取）
+      # 步骤5：准备发布所需的信息
       - name: Prepare release info
         id: prepare_info
-        shell: pwsh # 明确使用 PowerShell Core
+        shell: pwsh
         run: |
-          # 直接设置项目名为 AiMoee（简化动态参数）
           echo "PROJECT_NAME=AiMoee" >> $env:GITHUB_ENV
-
-          # 生成一个基于 日期-时间-SHA 的唯一标签名
           $date = Get-Date -Format "yyyyMMdd-HHmmss"
           $shortSha = "${{ github.sha }}".Substring(0, 7)
           $tagName = "nightly-$date-$shortSha"
@@ -50,38 +47,37 @@ jobs:
           echo "Generated tag name: $tagName"
           echo "Project name: AiMoee"
 
-      # 步骤6：调试构建目录（新增：验证 Release 目录是否存在及其内容）
+      # 步骤6：调试构建目录（已修正路径）
       - name: Debug build directory
         shell: pwsh
         run: |
           Write-Output "Current directory: $(Get-Location)"
-          Write-Output "Build directory exists: $(Test-Path 'build')"
-          Write-Output "Windows runner directory exists: $(Test-Path 'build\windows\runner')"
-          Write-Output "Release directory exists: $(Test-Path 'build\windows\runner\Release')"
-          if (Test-Path 'build\windows\runner\Release') {
+          $releasePath = 'build\windows\x64\runner\Release' # <-- 修正路径变量
+          Write-Output "Checking for release directory: $releasePath"
+          Write-Output "Release directory exists: $(Test-Path $releasePath)"
+          if (Test-Path $releasePath) {
             Write-Output "Contents of Release directory:"
-            Get-ChildItem 'build\windows\runner\Release' | ForEach-Object { Write-Output "  - $($_.Name)" }
+            Get-ChildItem $releasePath | ForEach-Object { Write-Output "  - $($_.Name)" }
           } else {
             Write-Output "Release directory not found. Full build structure:"
             Get-ChildItem 'build' -Recurse | ForEach-Object { Write-Output "  - $($_.FullName)" }
           }
 
-      # 步骤7：将构建产物打包成 ZIP（修复路径：移除引号以允许通配符展开，并确保路径正确）
+      # 步骤7：将构建产物打包成 ZIP（已修正路径）
       - name: Package release assets
         shell: pwsh
         run: |
-          # 使用不带引号的路径以展开 * 通配符
-          Compress-Archive -Path build\windows\runner\Release\* -DestinationPath "Aimoee-windows.zip" -Force
+          # 使用正确的构建输出路径
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "Aimoee-windows.zip" -Force
 
-      # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包
-      # 注意：这个 Action 会自动为我们创建 Git 标签
+      # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包（已修正 tag_name）
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
           # 标记为预发布版本
           prerelease: true
-          # 我们在前面步骤中动态生成的唯一标签名
-          tag_name: bete
+          # 使用我们之前动态生成的唯一标签名
+          tag_name: ${{ env.TAG_NAME }}
           # Release 的标题
           name: 测试版-自动同步源码
           # 自动生成此版本与上一个版本之间的变更日志
