@@ -47,30 +47,14 @@ jobs:
           echo "Generated tag name: $tagName"
           echo "Project name: AiMoee"
 
-      # 步骤6：调试构建目录（已修正路径）
-      - name: Debug build directory
-        shell: pwsh
-        run: |
-          Write-Output "Current directory: $(Get-Location)"
-          $releasePath = 'build\windows\x64\runner\Release' # <-- 修正路径变量
-          Write-Output "Checking for release directory: $releasePath"
-          Write-Output "Release directory exists: $(Test-Path $releasePath)"
-          if (Test-Path $releasePath) {
-            Write-Output "Contents of Release directory:"
-            Get-ChildItem $releasePath | ForEach-Object { Write-Output "  - $($_.Name)" }
-          } else {
-            Write-Output "Release directory not found. Full build structure:"
-            Get-ChildItem 'build' -Recurse | ForEach-Object { Write-Output "  - $($_.FullName)" }
-          }
-
-      # 步骤7：将构建产物打包成 ZIP（已修正路径）
+      # 步骤6：将构建产物打包成 ZIP
       - name: Package release assets
         shell: pwsh
         run: |
           # 使用正确的构建输出路径
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "Aimoee-windows.zip" -Force
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "Aimoee-beta-windows.zip" -Force
 
-      # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包（已修正 tag_name）
+      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -83,6 +67,6 @@ jobs:
           # 自动生成此版本与上一个版本之间的变更日志
           generate_release_notes: true
           # 指向我们要上传的文件路径
-          files: Aimoee-windows.zip
+          files: Aimoee-beta-windows.zip
           # GitHub Actions 自动提供的 token
           token: ${{ secrets.GITHUB_TOKEN }}
