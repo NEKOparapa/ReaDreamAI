@@ -71,7 +71,7 @@ jobs:
         shell: pwsh
         run: |
           # 使用不带引号的路径以展开 * 通配符
-          Compress-Archive -Path build\windows\runner\Release\* -DestinationPath "${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip" -Force
+          Compress-Archive -Path build\windows\runner\Release\* -DestinationPath "Aimoee-windows.zip" -Force
 
       # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包
       # 注意：这个 Action 会自动为我们创建 Git 标签
@@ -81,12 +81,12 @@ jobs:
           # 标记为预发布版本
           prerelease: true
           # 我们在前面步骤中动态生成的唯一标签名
-          tag_name: ${{ env.TAG_NAME }}
+          tag_name: bete
           # Release 的标题
-          name: Pre-release ${{ env.TAG_NAME }}
+          name: 测试版-自动同步源码
           # 自动生成此版本与上一个版本之间的变更日志
           generate_release_notes: true
           # 指向我们要上传的文件路径
-          files: ${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip
+          files: Aimoee-windows.zip
           # GitHub Actions 自动提供的 token
           token: ${{ secrets.GITHUB_TOKEN }}
