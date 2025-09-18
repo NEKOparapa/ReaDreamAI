@@ -13,6 +13,10 @@ jobs:
     # 指定运行此任务的虚拟机环境
     runs-on: windows-latest
 
+    # 授予写入仓库内容的权限，以便创建 Release
+    permissions:
+      contents: write
+
     # 任务的执行步骤
     steps:
       # 步骤1：检出代码
