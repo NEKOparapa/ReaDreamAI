@@ -1,24 +1,17 @@
-# 工作流的名称
 name: Build and Deploy Pre-release
 
-# 触发工作流的事件
 on:
   push:
     # 只有当推送到 main 分支时才触发
     branches:
-      - main
+      - main # 如果你的主分支是 master，请修改为 master
 
-# 定义工作流中的任务
 jobs:
   build-and-release:
     # 任务的名称
     name: Build and Release Pre-release
     # 指定运行此任务的虚拟机环境
     runs-on: windows-latest
-
-    # 为整个 job 设置环境变量，简化后续步骤
-    env:
-      PROJECT_NAME: AiMoee # <--- 简化点：直接在此处定义你的项目名
 
     # 任务的执行步骤
     steps:
@@ -40,11 +33,14 @@ jobs:
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：生成唯一的发布标签
-      - name: Generate release tag
-        id: generate_tag # id 依然有用，虽然我们主要用 GITHUB_ENV
-        shell: pwsh
+      # 步骤5：准备发布所需的信息（简化：直接硬编码项目名，避免从 pubspec.yaml 动态读取）
+      - name: Prepare release info
+        id: prepare_info
+        shell: pwsh # 明确使用 PowerShell Core
         run: |
+          # 直接设置项目名为 AiMoee（简化动态参数）
+          echo "PROJECT_NAME=AiMoee" >> $env:GITHUB_ENV
+
           # 生成一个基于 日期-时间-SHA 的唯一标签名
           $date = Get-Date -Format "yyyyMMdd-HHmmss"
           $shortSha = "${{ github.sha }}".Substring(0, 7)
@@ -52,22 +48,16 @@ jobs:
           echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
           
           echo "Generated tag name: $tagName"
-          echo "Project name: ${{ env.PROJECT_NAME }}"
+          echo "Project name: AiMoee"
 
-      # 步骤6：将构建产物打包成 ZIP (已修复)
+      # 步骤6：将构建产物打包成 ZIP（修复路径问题：添加引号以正确处理通配符）
       - name: Package release assets
-        shell: pwsh # 明确指定 shell
+        shell: pwsh
         run: |
-          # 构造最终的 ZIP 文件名
-          $zipFileName = "${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip"
-          echo "ZIP_FILE_NAME=$zipFileName" >> $env:GITHUB_ENV # 将文件名存入环境变量，方便下一步引用
-          
-          # 使用更稳健的方式进行压缩
-          Get-ChildItem -Path build\windows\runner\Release | Compress-Archive -DestinationPath $zipFileName
-          
-          echo "Successfully created $zipFileName"
+          Compress-Archive -Path "build\windows\runner\Release\*" -DestinationPath "${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip"
 
       # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
+      # 注意：这个 Action 会自动为我们创建 Git 标签
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -79,7 +69,7 @@ jobs:
           name: Pre-release ${{ env.TAG_NAME }}
           # 自动生成此版本与上一个版本之间的变更日志
           generate_release_notes: true
-          # 指向我们要上传的文件路径 (引用上一步生成的文件名)
-          files: ${{ env.ZIP_FILE_NAME }}
+          # 指向我们要上传的文件路径
+          files: ${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip
           # GitHub Actions 自动提供的 token
           token: ${{ secrets.GITHUB_TOKEN }}
