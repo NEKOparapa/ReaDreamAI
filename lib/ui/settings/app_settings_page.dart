@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart'; 
 import '../../base/config_service.dart';
-import '../../base/config_backup_service.dart';
 import 'widgets/settings_widgets.dart';
 
 class AppSettingsPage extends StatefulWidget {
@@ -16,16 +15,12 @@ class AppSettingsPage extends StatefulWidget {
 
 class _AppSettingsPageState extends State<AppSettingsPage> {
   final ConfigService _configService = ConfigService();
-  final ConfigBackupService _backupService = ConfigBackupService();
   late bool _isDarkMode;
   late bool _proxyEnabled;
   late TextEditingController _proxyPortController;
 
-  bool _isExporting = false;
-  bool _isImporting = false;
-
   // GitHub 项目主页的 URL
-  final Uri _githubUrl = Uri.parse('https://github.com');
+  final Uri _githubUrl = Uri.parse('https://github.com/NEKOparapa/AiNiee');
 
   @override
   void initState() {
@@ -65,65 +60,6 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     }
   }
 
-  Future<void> _exportSettings() async {
-    setState(() => _isExporting = true);
-    final success = await _backupService.exportConfiguration();
-    if (!mounted) return;
-    setState(() => _isExporting = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(success ? '配置导出成功！' : '导出失败，请检查应用权限或查看日志。'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  Future<void> _importSettings() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('⚠️ 确认导入配置'),
-        content: const Text('此操作将覆盖您当前的所有数据（包括设置、书架、角色卡片等），且无法撤销。导入成功后应用将需要重启。\n\n您确定要继续吗？'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('确认导入')),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
-    setState(() => _isImporting = true);
-    final success = await _backupService.importConfiguration();
-    if (!mounted) return;
-    setState(() => _isImporting = false);
-
-    if (success) {
-      await showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('导入成功'),
-          content: const Text('配置已成功恢复。应用现在需要关闭以应用更改，请您手动重新启动。'),
-          actions: [
-            FilledButton(
-              onPressed: () => SystemNavigator.pop(), // 关闭应用
-              child: const Text('关闭应用'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('导入失败，文件可能已损坏或权限不足。'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   // 处理 URL 跳转
   Future<void> _launchUrl(Uri url) async {
     // 使用外部应用（如浏览器）打开链接
@@ -146,7 +82,7 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
           children: [
             SettingsCard(
               title: '夜间模式',
-              subtitle: _isDarkMode ? '已开启，点击切换' : '已关闭，点击切换',
+              subtitle: _isDarkMode ? '无法使用，敬请期待' : '无法使用，敬请期待',
               control: Switch(
                 value: _isDarkMode,
                 onChanged: (value) async {
@@ -217,27 +153,6 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        SettingsGroup(
-          title: '数据管理',
-          children: [
-            SettingsCard(
-              title: '导出配置',
-              subtitle: '备份所有设置、书架、角色卡片及图片',
-              control: _isExporting
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3))
-                  : const Icon(Icons.file_upload_outlined),
-              onTap: _isExporting || _isImporting ? null : _exportSettings,
-            ),
-            SettingsCard(
-              title: '导入配置',
-              subtitle: '从备份文件恢复。将覆盖当前所有数据！',
-              control: _isImporting
-                  ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3))
-                  : const Icon(Icons.file_download_outlined),
-              onTap: _isExporting || _isImporting ? null : _importSettings,
             ),
           ],
         ),

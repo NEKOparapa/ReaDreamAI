@@ -1,14 +1,14 @@
 {
   "3": {
     "inputs": {
-      "seed": 1066211922447765,
+      "seed": 853850971810308,
       "steps": 30,
-      "cfg": 7,
+      "cfg": 5.5,
       "sampler_name": "euler_ancestral",
       "scheduler": "normal",
       "denoise": 1,
       "model": [
-        "17",
+        "25",
         0
       ],
       "positive": [
@@ -42,7 +42,7 @@
   },
   "6": {
     "inputs": {
-      "text": "score_9,score_8_up,score_7_up,source_anime, 1girl, kamisato ayaka, breasts, solo, ass, bangs, looking at viewer, long hair, large breasts, skindentation, blush, blue eyes, apron, blunt bangs, blue hair, underwear, ponytail, thong, thighhighs, panties, ribbon, white thighhighs, sideboob, hair ornament, arm strap, sidelocks, hair ribbon, thighs, mole, white apron, leaning forward, tress ribbon, parted lips, frills, looking back, thigh strap, arched back, arm garter, mole under eye, from behind, nearly naked apron, light blue hair,",
+      "text": "1girl, kamisato ayaka, breasts, solo, ass, bangs, looking at viewer, long hair, large breasts, skindentation, blush, blue eyes, apron, blunt bangs, blue hair, underwear, ponytail, thong, thighhighs, panties, ribbon, white thighhighs, sideboob, hair ornament, arm strap, sidelocks, hair ribbon, thighs, mole, white apron, leaning forward, tress ribbon, parted lips, frills, looking back, thigh strap, arched back, arm garter, mole under eye, from behind, nearly naked apron, light blue hair,",
       "speak_and_recognation": {
         "__value__": [
           false,
@@ -50,7 +50,7 @@
         ]
       },
       "clip": [
-        "17",
+        "25",
         1
       ]
     },
@@ -61,7 +61,7 @@
   },
   "7": {
     "inputs": {
-      "text": "",
+      "text": "lowres, bad anatomy, bad hands, extra digits, multiple views, fewer, extra, missing, text, error, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, oldest, early, chromatic aberration, signature, artistic error, username, scan",
       "speak_and_recognation": {
         "__value__": [
           false,
@@ -69,7 +69,7 @@
         ]
       },
       "clip": [
-        "17",
+        "25",
         1
       ]
     },
@@ -81,11 +81,11 @@
   "8": {
     "inputs": {
       "samples": [
-        "18",
+        "27",
         0
       ],
       "vae": [
-        "17",
+        "25",
         2
       ]
     },
@@ -107,25 +107,25 @@
       "title": "保存图像"
     }
   },
-  "17": {
+  "25": {
     "inputs": {
-      "ckpt_name": "WAI-二元PonyXL_2.0.safetensors"
+      "ckpt_name": "WAI-SHUFFLE-NOOB_v-pred-3.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
       "title": "Checkpoint加载器(简易)"
     }
   },
-  "18": {
+  "27": {
     "inputs": {
-      "seed": 782643020678800,
+      "seed": 260811864271247,
       "steps": 8,
-      "cfg": 7,
+      "cfg": 5.5,
       "sampler_name": "euler_ancestral",
       "scheduler": "normal",
       "denoise": 0.5000000000000001,
       "model": [
-        "17",
+        "25",
         0
       ],
       "positive": [
@@ -137,7 +137,7 @@
         0
       ],
       "latent_image": [
-        "20",
+        "28",
         0
       ]
     },
@@ -146,7 +146,7 @@
       "title": "K采样器"
     }
   },
-  "20": {
+  "28": {
     "inputs": {
       "upscale_method": "nearest-exact",
       "scale_by": 1.5000000000000002,

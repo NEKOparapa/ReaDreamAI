@@ -58,7 +58,7 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
 
     if (result != null) {
       final sourceFile = File(result.files.single.path!);
-      final appDir = ConfigService().getAppDirectoryPath();
+      final appDir = ConfigService().getConfigDirectoryPath();
       final imagesDir = Directory(p.join(appDir, 'character_images'));
       if (!await imagesDir.exists()) {
         await imagesDir.create(recursive: true);

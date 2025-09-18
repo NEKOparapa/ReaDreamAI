@@ -1,4 +1,6 @@
-/// 全局应用默认配置
+// lib/base/default_configs.dart
+
+// 全局应用默认配置
 const Map<String, dynamic> appDefaultConfigs = {
   // --- 应用设置 ---
   'isDarkMode': false,
@@ -22,7 +24,8 @@ const Map<String, dynamic> appDefaultConfigs = {
   'translation_target_lang': '中文',
 
   // --- ComfyUI节点设置 ---
-  'comfyui_workflow_type': 'WAI+illustrious的API工作流', // 默认工作流类型
+  'comfyui_workflow_type': 'wai_illustrious', // 默认工作流类型代号
+  'comfyui_system_workflow_path': 'assets/comfyui/WAI_NSFW-illustrious-SDXL工作流.json', // 系统预设工作流路径
   'comfyui_custom_workflow_path': '', // 自定义工作流路径
   'comfyui_positive_prompt_node_id': '6',
   'comfyui_positive_prompt_field': 'text',
@@ -67,13 +70,32 @@ const Map<String, dynamic> appDefaultConfigs = {
   // 绘画风格
   'drawing_style_tags': [
     {
-      'id': 'system_style',
-      'name': '预设-动漫风格',
-      'content': 'anime style, anime screencap, game CG',
+      'id': 'system_realistic_style',
+      'name': '预设-写实风格',
+      'content': 'realistic, photo-realistic, ultra-realistic, hyper-realistic',
       'isSystemPreset': true,
-    }
+    },
+    {
+      'id': 'system_figurine_style',
+      'name': '预设-手办风格',
+      'content': 'figure, figurine, toy, vinyl figure',
+      'isSystemPreset': true,
+    },
+    {
+      'id': 'system_anime_style',
+      'name': '预设-动漫风格',
+      'content': 'anime style, anime screencap, 2D CG',
+      'isSystemPreset': true,
+    },
+    {
+      'id': 'system_ghibli_style',
+      'name': '预设-吉普力风格',
+      'content': 'Studio Ghibli style, Hayao Miyazaki style, Ghibli anime',
+      'isSystemPreset': true,
+    },
+
   ],
-  'active_drawing_style_tag_id': 'system_style', // 默认激活一个
+  'active_drawing_style_tag_id': 'system_anime_style', 
 
   // 其他标签
   'drawing_other_tags': [
@@ -100,16 +122,28 @@ const Map<String, dynamic> appDefaultConfigs = {
   // 角色设定
   'drawing_character_cards': [
     {
-      'id': 'system_character',
-      'name': '预设-女性角色',
-      'characterName': 'honey',
-      'identity': '1girl, solo',
-      'appearance': 'long hair, blue eyes, beautiful detailed eyes',
-      'clothing': 'white dress, strapless dress',
-      'other': '',
-      'referenceImageUrl': null, // 新增
-      'referenceImagePath': null, // 新增
-      'isSystemPreset': true,
+    'id': 'custom_character1',
+    'name': '预设-黑长直少女',
+    'characterName': 'girl',
+    'identity': '1girl, solo',
+    'appearance': 'long hair, straight hair, black hair, bangs, black eyes',
+    'clothing': 'white long skirt, elegant dress',
+    'other': '',
+    'referenceImageUrl': null,
+    'referenceImagePath': null,
+    'isSystemPreset': true,
+    },
+    {
+    'id': 'custom_character2',
+    'name': '预设-可爱萝莉',
+    'characterName': 'lily',
+    'identity': '1girl, solo',
+    'appearance': 'short hair, twintails, blonde hair, large eyes, blush, cute face',
+    'clothing': 'frilly dress, puffy sleeves, ribbon, lolita fashion',
+    'other': '',
+    'referenceImageUrl': null,
+    'referenceImagePath': null,
+    'isSystemPreset': true,
     }
   ],
   'active_drawing_character_card_ids': [], // 角色默认不激活
@@ -118,7 +152,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'prompt_cards': [
     {
       'id': 'system_default_prompt',
-      'name': '通用',
+      'name': '预设-角色向',
       'content': '''你是一个专业的小说插图生成助手，仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。
 英文绘画提示词应该遵守以下要求:
 - 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
@@ -126,7 +160,18 @@ const Map<String, dynamic> appDefaultConfigs = {
 - 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
 - 不要包含任何艺术风格、画质或艺术家名字。''',
       'isSystemPreset': true,
-    }
+    },
+    {
+    'id': 'system_background_prompt',
+    'name': '预设-平衡向',
+    'content': '''你是一个专业的小说插图生成助手，仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。对于部分场景（约30%的场景），生成纯背景插图，专注于环境和氛围，而不包含任何角色或主体。
+英文绘画提示词应该遵守以下要求:
+- 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。对于纯背景插图，省略主体、服装、姿态与情绪部分，专注于环境、背景、氛围与光影。
+- 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
+- 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
+- 不要包含任何艺术风格、画质或艺术家名字。''',
+    'isSystemPreset': true,
+    },
   ],
   'active_prompt_card_id': 'system_default_prompt', // 默认激活通用场景分析
 };

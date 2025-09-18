@@ -17,10 +17,8 @@ import '../drawing_platform.dart';
 /// ComfyUI 平台的具体实现。
 class ComfyUiPlatform implements DrawingPlatform {
   final http.Client client;
-  // final ApiModel apiConfig; // <--- 移除成员变量
   final ConfigService _configService = ConfigService();
 
-  // 构造函数不再接收 apiConfig
   ComfyUiPlatform({required this.client});
 
   @override
@@ -31,61 +29,48 @@ class ComfyUiPlatform implements DrawingPlatform {
     required int count,
     required int width,
     required int height,
-    required ApiModel apiConfig, // <--- apiConfig 作为参数传入
+    required ApiModel apiConfig,
     String? referenceImagePath,
   }) async {
-    /// ComfyUI 绘图调用的主要流程
-    
-    // 1. 准备工作流（Workflow），根据用户输入修改 JSON 模板。
     final workflow = await _prepareWorkflow(positivePrompt, negativePrompt, count, width, height);
     if (workflow == null) return null;
 
-    // 2. 生成一个唯一的客户端 ID，用于 WebSocket 连接。
     final clientId = const Uuid().v4();
-    // 3. 将工作流提交到 ComfyUI 的任务队列中，并获取任务 ID。
     final promptId = await _queuePrompt(workflow, clientId, apiConfig); 
     if (promptId == null) return null;
 
-    // 4. 通过 WebSocket 等待任务执行完成。
     final success = await _waitForCompletion(promptId, clientId, apiConfig); 
     if (!success) return null;
 
-    // 5. 任务完成后，通过 API 获取任务的详细历史记录。
     final history = await _getHistory(promptId, apiConfig); 
     if (history == null) return null;
 
-    // 6. 从历史记录中解析出图像信息，并下载到本地。
     return await _downloadImagesFromHistory(history, saveDir, apiConfig); 
   }
 
-  /// 准备 ComfyUI 工作流。
+  /// [重构] 准备 ComfyUI 工作流。逻辑大大简化。
   Future<Map<String, dynamic>?> _prepareWorkflow(String positive, String negative, int count, int width, int height) async {
-    // 从配置中获取用户选择的工作流类型。
+    // 从配置中获取用户选择的工作流类型代号。
     final workflowType = _configService.getSetting<String>('comfyui_workflow_type', appDefaultConfigs['comfyui_workflow_type']);
     String workflowPath;
-    bool isAsset = true;
+    bool isAsset;
 
-    // 根据工作流类型确定工作流文件的路径。
-    switch (workflowType) {
-      case 'WAI+illustrious的API工作流':
-        workflowPath = 'assets/comfyui/WAI+illustrious的API工作流.json';
-        break;
-      case 'WAI+NoobAI的API工作流':
-        workflowPath = 'assets/comfyui/WAI+NoobAI的API工作流.json';
-        break;
-      case 'WAI+Pony的API工作流':
-        workflowPath = 'assets/comfyui/WAI+Pony的API工作流.json';
-        break;
-      case '自定义工作流':
-        workflowPath = _configService.getSetting<String>('comfyui_custom_workflow_path', '');
-        if (workflowPath.isEmpty) {
-          throw Exception('未设置自定义ComfyUI工作流路径。');
-        }
-        isAsset = false; // 自定义工作流来自文件系统，而不是应用内资源。
-        break;
-      default:
-        // 默认回退到一个基础工作流。
-        workflowPath = 'assets/comfyui/WAI+illustrious_API.json';
+    // 根据工作流类型代号确定工作流文件的路径。
+    if (workflowType == 'custom') {
+      // 如果是自定义工作流，从 'comfyui_custom_workflow_path' 读取路径
+      workflowPath = _configService.getSetting<String>('comfyui_custom_workflow_path', '');
+      if (workflowPath.isEmpty) {
+        throw Exception('未设置自定义ComfyUI工作流路径。');
+      }
+      isAsset = false; // 自定义工作流来自文件系统
+    } else {
+      // 如果是系统预设工作流，从 'comfyui_system_workflow_path' 读取路径
+      workflowPath = _configService.getSetting<String>('comfyui_system_workflow_path', appDefaultConfigs['comfyui_system_workflow_path']);
+      if (workflowPath.isEmpty) {
+        // 安全检查，正常情况下不应发生
+        throw Exception('系统预设工作流路径为空，请在设置中重新选择一个工作流。');
+      }
+      isAsset = true; // 系统预设工作流来自应用内资源
     }
 
     try {
@@ -128,7 +113,9 @@ class ComfyUiPlatform implements DrawingPlatform {
       throw Exception('ComfyUI 工作流文件加载或解析失败于 $workflowPath: $e');
     }
   }
-
+  
+  // --- 后续方法 (_queuePrompt, _waitForCompletion, 等) 保持不变 ---
+  
   /// 将准备好的工作流提交到 ComfyUI 的任务队列。
   Future<String?> _queuePrompt(Map<String, dynamic> workflow, String clientId, ApiModel apiConfig) async {
     print('[ComfyUI] 🚀 正在提交工作流...');

@@ -1,7 +1,7 @@
 {
   "3": {
     "inputs": {
-      "seed": 138162067612093,
+      "seed": 529615076377769,
       "steps": 28,
       "cfg": 5,
       "sampler_name": "euler_ancestral",
@@ -109,7 +109,7 @@
   },
   "22": {
     "inputs": {
-      "ckpt_name": "WAI_NSFW-illustrious-SDXL_v14.safetensors"
+      "ckpt_name": "WAI_NSFW-illustrious-SDXL_v15.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
@@ -132,7 +132,7 @@
   },
   "24": {
     "inputs": {
-      "seed": 814027947867095,
+      "seed": 706341677752690,
       "steps": 8,
       "cfg": 5,
       "sampler_name": "euler_ancestral",
