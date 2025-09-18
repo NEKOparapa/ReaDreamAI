@@ -39,11 +39,10 @@ jobs:
       # 步骤5：准备发布所需的信息
       - name: Prepare release info
         id: prepare_info
-        # 使用 PowerShell 生成动态的版本标签和获取项目名
+        shell: pwsh # 明确使用 PowerShell Core
         run: |
-          # 从 pubspec.yaml 获取项目名
-          $pubspec = Get-Content pubspec.yaml | ConvertFrom-Yaml
-          $projectName = $pubspec.name
+          # 直接从 pubspec.yaml 中读取 'name:' 所在的行并提取其值
+          $projectName = (Get-Content pubspec.yaml | Select-String -Pattern "^\s*name:\s*(.*)\s*$" | ForEach-Object { $_.Matches[0].Groups[1].Value }).Trim()
           echo "PROJECT_NAME=$projectName" >> $env:GITHUB_ENV
 
           # 生成一个基于 日期-时间-SHA 的唯一标签名
