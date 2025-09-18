@@ -22,7 +22,7 @@ dependencies:
   get_it: ^7.6.4
   path_provider: any # 用于获取应用缓存目录
   archive: any       # 用于解压EPUB (zip) 文件
-  xml: any        # 用于解析EPUB内的XML文件 (.opf, toc.ncx)
+  xml: ^6.6.1        # 用于解析EPUB内的XML文件 (.opf, toc.ncx)
   html: ^0.15.2 # 用于解析和处理HTML内容
   uuid: any        # 用于为缓存文件夹生成唯一ID
   json_annotation: ^4.9.0 # 帮助处理JSON序列化 (可选但推荐)
@@ -30,7 +30,7 @@ dependencies:
   http: any #  用于网络请求
   tiktoken: ^1.0.3        # 用于计算token数
   pool: ^1.5.1 # 用于处理并发任务池
-  web_socket_channel: ^2.4.0  # 用于ComfyUI的WebSocket通信
+  web_socket_channel: ^3.0.3  # 用于ComfyUI的WebSocket通信
   dart_jsonwebtoken: ^2.11.0  # 用于Kling的JWT Token生成
   crypto: ^3.0.3            # 用于LiblibAI的HMAC-SHA1签名
   cupertino_icons: ^1.0.8 # iOS风格的图标

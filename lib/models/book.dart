@@ -6,14 +6,14 @@ part 'book.g.dart'; //运行 flutter pub run build_runner build --delete-conflic
 // 行结构：存储单行文本及其元数据
 @JsonSerializable()
 class LineStructure {
-  final int id;
-  final String text;
-  final int lineNumberInSourceFile;
-  final String originalContent;
-  final List<String> illustrationPaths;
-  final List<String> videoPaths; // 新增: 视频路径列表
-  final String? sceneDescription;
-  final String? translatedText;
+  final int id;  // 每行的唯一标识符
+  final String text; // 行文本内容
+  final int lineNumberInSourceFile; // 在源文件中的行号
+  final String originalContent; // 原始内容
+  final List<String> illustrationPaths; // 插图路径列表
+  final List<String> videoPaths;  // 视频路径列表
+  final String? sceneDescription; // 场景描述(绘图标签prompt)
+  final String? translatedText; // 翻译后的文本
 
   LineStructure({
     required this.id,
@@ -21,7 +21,7 @@ class LineStructure {
     required this.lineNumberInSourceFile,
     required this.originalContent,
     this.illustrationPaths = const [],
-    this.videoPaths = const [], // 新增: 构造函数初始化
+    this.videoPaths = const [], 
     this.sceneDescription,
     this.translatedText,
   });
@@ -114,7 +114,7 @@ class Book {
     required this.fileType,
     required this.originalPath,
     required this.cachedPath,
-    this.coverImagePath, // 添加到构造函数
+    this.coverImagePath,
     required this.chapters,
   });
 
