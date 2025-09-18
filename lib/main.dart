@@ -33,7 +33,7 @@ class MyApp extends StatelessWidget { // StatelessWidget是一个无状态的静
   Widget build(BuildContext context) {    // 重写 build 方法，每当 Flutter 框架认为需要绘制这个 Widget 时，就会调用它的 build 方法。
 
     return MaterialApp(  // MaterialApp 是一个方便的 Widget，它封装了应用通常需要的一些功能
-      title: 'AiMoee', // 应用的标题
+      title: 'AiReaa', // 应用的标题
       theme: ThemeData( // 应用的主题数据
         primarySwatch: Colors.indigo, // 设置应用的主色调为靛蓝色
         visualDensity: VisualDensity.adaptivePlatformDensity, // 适应不同平台的视觉密度

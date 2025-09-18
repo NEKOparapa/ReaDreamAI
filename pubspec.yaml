@@ -1,4 +1,4 @@
-name: demo
+name: AiReaa
 description: "A new Flutter project."
 
 
@@ -47,6 +47,7 @@ dev_dependencies:
   # 开发依赖
   build_runner: any # 配合 json_serializable 使用
   json_serializable: ^6.7.1 # 用于生成 JSON 序列化代码
+  rename: ^3.1.0
 
 flutter:
   uses-material-design: true
