@@ -1,74 +1,79 @@
-# 工作流的名称，会显示在 GitHub Actions 页面
-name: Build and Release Flutter Windows App
+# 工作流的名称
+name: Build and Deploy Pre-release
 
 # 触发工作流的事件
 on:
   push:
-    # 只有当推送的 ref 是一个 tag，并且 tag 格式匹配 'v*' (例如 v1.0.0, v2.3.4) 时才触发
-    tags:
-      - 'v*.*.*'
+    # 只有当推送到 main 分支时才触发
+    branches:
+      - main # 如果你的主分支是 master，请修改为 master
 
 # 定义工作流中的任务
 jobs:
   build-and-release:
     # 任务的名称
-    name: Build and Release
-    # 指定运行此任务的虚拟机环境，对于打包 exe 必须是 windows
+    name: Build and Release Pre-release
+    # 指定运行此任务的虚拟机环境
     runs-on: windows-latest
 
     # 任务的执行步骤
     steps:
       # 步骤1：检出代码
-      # 使用 actions/checkout@v4 拉取你的仓库代码
       - name: Checkout code
         uses: actions/checkout@v4
 
       # 步骤2：设置 Flutter 环境
-      # 使用 subosito/flutter-action@v2 来安装和配置 Flutter SDK
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable' # 或者 'beta', 'dev'
+          channel: 'stable'
 
       # 步骤3：安装项目依赖
       - name: Install dependencies
         run: flutter pub get
 
       # 步骤4：构建 Windows release 版本的应用
-      # --release 标志用于构建优化后的版本
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：准备发布文件
-      # 获取项目名称，用于命名压缩包
-      - name: Get Project Name
-        id: get_project_name
-        # 使用 PowerShell 从 pubspec.yaml 中读取 name 字段
+      # 步骤5：准备发布所需的信息
+      - name: Prepare release info
+        id: prepare_info
+        # 使用 PowerShell 生成动态的版本标签和获取项目名
         run: |
+          # 从 pubspec.yaml 获取项目名
           $pubspec = Get-Content pubspec.yaml | ConvertFrom-Yaml
           $projectName = $pubspec.name
           echo "PROJECT_NAME=$projectName" >> $env:GITHUB_ENV
-      
+
+          # 生成一个基于 日期-时间-SHA 的唯一标签名
+          $date = Get-Date -Format "yyyyMMdd-HHmmss"
+          $shortSha = "${{ github.sha }}".Substring(0, 7)
+          $tagName = "nightly-$date-$shortSha"
+          echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
+          
+          echo "Generated tag name: $tagName"
+          echo "Project name: $projectName"
+
       # 步骤6：将构建产物打包成 ZIP
       - name: Package release assets
-        # 使用 PowerShell 的 Compress-Archive 命令
-        # ${env:PROJECT_NAME} 是上一步获取的项目名
-        # ${github.ref_name} 是触发工作流的 tag 名称 (例如 v1.0.0)
         run: |
-          Compress-Archive -Path build\windows\runner\Release\* -DestinationPath ${{ env.PROJECT_NAME }}-${{ github.ref_name }}-windows.zip
+          Compress-Archive -Path build\windows\runner\Release\* -DestinationPath ${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip
 
-      # 步骤7：创建 GitHub Release 并上传 ZIP 包
-      # 使用 softprops/action-gh-release@v2 动作来完成发布
-      - name: Create GitHub Release
+      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
+      # 注意：这个 Action 会自动为我们创建 Git 标签
+      - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
-          # files 字段指向我们要上传的文件路径
-          files: ${{ env.PROJECT_NAME }}-${{ github.ref_name }}-windows.zip
-          # GITHUB_TOKEN 是 GitHub Actions 自动提供的，用于授权
-          # 无需自己创建或配置 secret
-          token: ${{ secrets.GITHUB_TOKEN }}
-          # tag_name 会自动使用触发工作流的 tag
-          # name 定义了 Release 的标题
-          name: Release ${{ github.ref_name }}
-          # body 可以定义 Release 的描述，这里我们让它自动生成
+          # 标记为预发布版本
+          prerelease: true
+          # 我们在前面步骤中动态生成的唯一标签名
+          tag_name: ${{ env.TAG_NAME }}
+          # Release 的标题
+          name: Pre-release ${{ env.TAG_NAME }}
+          # 自动生成此版本与上一个版本之间的变更日志
           generate_release_notes: true
+          # 指向我们要上传的文件路径
+          files: ${{ env.PROJECT_NAME }}-${{ env.TAG_NAME }}-windows.zip
+          # GitHub Actions 自动提供的 token
+          token: ${{ secrets.GITHUB_TOKEN }}
