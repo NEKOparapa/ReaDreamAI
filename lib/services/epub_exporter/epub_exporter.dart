@@ -5,8 +5,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:html/dom.dart' as html_dom;
-import 'package:html/parser.dart' as html_parser;
 import 'package:path/path.dart' as p;
 import 'package:xml/xml.dart';
 
