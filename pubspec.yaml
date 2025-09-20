@@ -37,7 +37,9 @@ dependencies:
   url_launcher: ^6.1.14 # 用于打开外部链接
   video_player: ^2.8.6  # 用于视频播放
   video_player_win: ^3.2.0
-  
+  collection: ^1.18.0 # 提供额外的集合类和实用工具
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -28,6 +28,8 @@ class TxtParser {
   static Future<List<ChapterStructure>> parse(String cachedPath) async {
     final file = File(cachedPath);
     final rawLines = await file.readAsLines();
+    // NEW: 在循环外获取一次文件名
+    final sourceFilename = p.basename(cachedPath);
 
     final List<ChapterStructure> chapters = [];
     List<LineStructure> currentChapterLines = [];
@@ -71,7 +73,7 @@ class TxtParser {
         if (currentChapterLines.isNotEmpty) {
           chapters.add(ChapterStructure(
             title: currentChapterTitle,
-            sourceFile: p.basename(cachedPath),
+            sourceFile: sourceFilename,
             lines: List.from(currentChapterLines),
           ));
         }
@@ -84,7 +86,8 @@ class TxtParser {
           currentChapterLines.add(LineStructure(
             id: globalLineIdCounter++,
             text: lineText,
-            lineNumberInSourceFile: i + 1,
+            // CHANGED: 使用 sourceInfo 字段记录文件名
+            sourceInfo: sourceFilename,
             originalContent: rawLines[i],
           ));
         }
@@ -95,7 +98,7 @@ class TxtParser {
     if (currentChapterLines.isNotEmpty) {
       chapters.add(ChapterStructure(
         title: currentChapterTitle,
-        sourceFile: p.basename(cachedPath),
+        sourceFile: sourceFilename,
         lines: currentChapterLines,
       ));
     }
@@ -110,7 +113,8 @@ class TxtParser {
             lines.add(LineStructure(
               id: globalLineIdCounter++,
               text: lineText,
-              lineNumberInSourceFile: i + 1,
+              // CHANGED: 使用 sourceInfo 字段记录文件名
+              sourceInfo: sourceFilename,
               originalContent: rawLines[i],
             ));
           }
@@ -118,7 +122,7 @@ class TxtParser {
         if (lines.isNotEmpty) {
            chapters.add(ChapterStructure(
             title: "全文",
-            sourceFile: p.basename(cachedPath),
+            sourceFile: sourceFilename,
             lines: lines,
           ));
         }

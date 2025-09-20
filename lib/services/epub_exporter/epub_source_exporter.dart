@@ -68,19 +68,26 @@ class _EpubSourceExporter {
         print('警告: Spine 中引用的文件不存在: $chapterFilePath');
         continue;
       }
-
+      
+      // 注意：这里的匹配逻辑可能需要根据实际情况调整
+      // 假设 sourceFile 是唯一的，或者至少是文件名匹配
       final chapter = book.chapters.firstWhere(
-        (ch) => ch.sourceFile.contains(p.basename(sourceHref)),
+        (ch) => ch.sourceFile == chapterFilePath || p.basename(ch.sourceFile) == p.basename(sourceHref),
         orElse: () => ChapterStructure(title: "Unknown", sourceFile: "", lines: []),
       );
+
+      // 如果找不到对应的章节数据，则跳过
       if (chapter.lines.isEmpty) continue;
 
       final chapterHtml = utf8.decode(chapterFile.content as List<int>);
       final relativePrefix = _calculateRelativePrefix(sourceHref);
       final modifiedHtml = _modifyHtmlContent(chapterHtml, chapter, relativePrefix);
-
-      archive.files.removeWhere((file) => file.name == chapterFilePath);
-      archive.addFile(ArchiveFile(chapterFilePath, utf8.encode(modifiedHtml).length, utf8.encode(modifiedHtml)));
+      
+      // 仅当 HTML 内容实际发生改变时才写回，以提高效率
+      if (modifiedHtml != chapterHtml) {
+        archive.files.removeWhere((file) => file.name == chapterFilePath);
+        archive.addFile(ArchiveFile(chapterFilePath, utf8.encode(modifiedHtml).length, utf8.encode(modifiedHtml)));
+      }
     }
   }
 
@@ -90,59 +97,78 @@ class _EpubSourceExporter {
   }
 
   String _modifyHtmlContent(String html, ChapterStructure chapter, String relativePrefix) {
+    // 1. 预先筛选出需要修改的行，如果为空则直接返回原始HTML，避免不必要的解析
+    final linesToModify = chapter.lines.where((line) {
+      final hasTranslation = line.translatedText != null && line.translatedText!.isNotEmpty;
+      final hasIllustrations = line.illustrationPaths.isNotEmpty;
+      final hasVideos = line.videoPaths.isNotEmpty;
+      return hasTranslation || hasIllustrations || hasVideos;
+    }).toList();
+
+    if (linesToModify.isEmpty) {
+      return html; // 没有需要修改的内容，直接返回
+    }
+
     final document = html_parser.parse(html);
     final body = document.body;
     if (body == null) return html;
 
-    final textNodes = _findTextNodes(body);
-
-    for (final line in chapter.lines) {
-      final nodesToProcess = textNodes.where((node) => node.text.contains(line.originalContent)).toList();
-      for (final node in nodesToProcess) {
-        final parent = node.parent;
+    // 2. 创建一个从原始HTML内容到DOM元素的映射，用于快速查找
+    // 使用 querySelectorAll 保证元素顺序与文档流一致
+    final contentElements = body.querySelectorAll('p, h1, h2, h3, h4, h5, h6');
+    final elementMap = <String, List<html_dom.Element>>{};
+    for (final element in contentElements) {
+      // 使用 outerHtml 作为 key，因为它最能代表原始的、未修改的元素
+      final key = element.outerHtml.trim();
+      elementMap.putIfAbsent(key, () => []).add(element);
+    }
+    
+    // 3. 遍历需要修改的行，并在文档中找到对应的元素进行操作
+    for (final line in linesToModify) {
+      final originalHtmlKey = line.originalContent.trim();
+      
+      // 检查映射中是否存在该元素
+      if (elementMap.containsKey(originalHtmlKey) && elementMap[originalHtmlKey]!.isNotEmpty) {
+        // 取出第一个匹配的元素进行处理，并将其从列表中移除，以处理重复段落的情况
+        final targetElement = elementMap[originalHtmlKey]!.removeAt(0);
+        final parent = targetElement.parent;
         if (parent == null) continue;
 
-        List<html_dom.Node> mediaElements = [];
-        if (line.videoPaths.isNotEmpty) {
-          for (final videoPath in line.videoPaths) {
-            final videoHtml = _MediaHelper.generateVideoHtml(p.basename(videoPath), relativePrefix: relativePrefix);
-            mediaElements.add(html_dom.Element.html(videoHtml));
-          }
-        }
+        // 插入图片
         if (line.illustrationPaths.isNotEmpty) {
           for (final imagePath in line.illustrationPaths) {
             final imageHtml = _MediaHelper.generateImageHtml(p.basename(imagePath), relativePrefix: relativePrefix);
-            mediaElements.add(html_dom.Element.html(imageHtml));
+            final imageElement = html_dom.Element.html(imageHtml);
+            // 在目标元素之前插入
+            parent.insertBefore(imageElement, targetElement);
+          }
+        }
+        
+        // 插入视频
+        if (line.videoPaths.isNotEmpty) {
+          for (final videoPath in line.videoPaths) {
+            final videoHtml = _MediaHelper.generateVideoHtml(p.basename(videoPath), relativePrefix: relativePrefix);
+            final videoElement = html_dom.Element.html(videoHtml);
+            // 在目标元素之前插入
+            parent.insertBefore(videoElement, targetElement);
           }
         }
 
-        for (final mediaElement in mediaElements) {
-          if (parent.parent != null && node == parent.nodes.first) {
-            parent.parent!.insertBefore(mediaElement, parent);
-          } else {
-            parent.insertBefore(mediaElement, node);
-          }
-        }
-
+        // 插入翻译文本
         if (line.translatedText != null && line.translatedText!.isNotEmpty) {
-          node.text = node.text.replaceFirst(line.originalContent, line.translatedText!);
+          final translationHtml = '''<p>${line.translatedText}</p>''';
+          final translationElement = html_dom.Element.html(translationHtml);
+          // 在目标元素之前插入
+          parent.insertBefore(translationElement, targetElement);
         }
+      } else {
+        // 如果找不到元素，可以打印一个警告
+        print('警告: 无法在HTML文件中找到匹配的原始内容: ${line.originalContent}');
       }
     }
+    
+    // 4. 返回修改后的完整HTML字符串
     return document.outerHtml;
-  }
-
-  List<html_dom.Text> _findTextNodes(html_dom.Element element) {
-    final textNodes = <html_dom.Text>[];
-    void traverse(html_dom.Node node) {
-      if (node is html_dom.Text && node.text.trim().isNotEmpty) {
-        textNodes.add(node);
-      } else if (node is html_dom.Element && node.localName != 'script' && node.localName != 'style') {
-        node.nodes.forEach(traverse);
-      }
-    }
-    traverse(element);
-    return textNodes;
   }
 
   Map<String, String> _parseManifest(XmlDocument opfDoc) {

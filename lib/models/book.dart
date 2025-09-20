@@ -1,27 +1,27 @@
 // lib/models/book.dart
 
 import 'package:json_annotation/json_annotation.dart';
-part 'book.g.dart'; //运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
+part 'book.g.dart'; // 运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
 
 // 行结构：存储单行文本及其元数据
 @JsonSerializable()
 class LineStructure {
-  final int id;  // 每行的唯一标识符
+  final int id; // 每行的唯一标识符
   final String text; // 行文本内容
-  final int lineNumberInSourceFile; // 在源文件中的行号
-  final String originalContent; // 原始内容
+  final String sourceInfo; // 在源文件中的信息（例如：'text/part0001.html'）
+  final String originalContent; // 原始内容 (例如: '<p>这是内容</p>')
   final List<String> illustrationPaths; // 插图路径列表
-  final List<String> videoPaths;  // 视频路径列表
+  final List<String> videoPaths; // 视频路径列表
   final String? sceneDescription; // 场景描述(绘图标签prompt)
   final String? translatedText; // 翻译后的文本
 
   LineStructure({
     required this.id,
     required this.text,
-    required this.lineNumberInSourceFile,
+    required this.sourceInfo, // CHANGED
     required this.originalContent,
     this.illustrationPaths = const [],
-    this.videoPaths = const [], 
+    this.videoPaths = const [],
     this.sceneDescription,
     this.translatedText,
   });
@@ -36,7 +36,7 @@ class LineStructure {
     return LineStructure(
       id: id,
       text: text,
-      lineNumberInSourceFile: lineNumberInSourceFile,
+      sourceInfo: sourceInfo, // CHANGED
       originalContent: originalContent,
       illustrationPaths: illustrationPaths ?? this.illustrationPaths,
       videoPaths: videoPaths ?? this.videoPaths,
@@ -62,10 +62,9 @@ class ChapterStructure {
     required this.lines,
   });
 
-  // 在特定行号添加插图
-  void addIllustrationsToLine(int lineNumber, List<String> paths, String? description) {
+  void addIllustrationsToLine(int lineId, List<String> paths, String? description) {
     try {
-      final line = lines.firstWhere((l) => l.lineNumberInSourceFile == lineNumber);
+      final line = lines.firstWhere((l) => l.id == lineId);
       final lineIndex = lines.indexOf(line);
       if (lineIndex != -1) {
         lines[lineIndex] = line.copyWith(
@@ -74,14 +73,13 @@ class ChapterStructure {
         );
       }
     } catch (e) {
-      print('Error: Could not find line with number $lineNumber to add illustration.');
+      print('Error: Could not find line with id $lineId to add illustration.');
     }
   }
 
-  // 在特定行号添加视频
-  void addVideosToLine(int lineNumber, List<String> paths) {
+  void addVideosToLine(int lineId, List<String> paths) {
     try {
-      final line = lines.firstWhere((l) => l.lineNumberInSourceFile == lineNumber);
+      final line = lines.firstWhere((l) => l.id == lineId);
       final lineIndex = lines.indexOf(line);
       if (lineIndex != -1) {
         lines[lineIndex] = line.copyWith(
@@ -89,13 +87,14 @@ class ChapterStructure {
         );
       }
     } catch (e) {
-      print('Error: Could not find line with number $lineNumber to add video.');
+      print('Error: Could not find line with id $lineId to add video.');
     }
   }
 
   factory ChapterStructure.fromJson(Map<String, dynamic> json) => _$ChapterStructureFromJson(json);
   Map<String, dynamic> toJson() => _$ChapterStructureToJson(this);
 }
+
 
 /// 书籍模型：代表一本完整解析后的书籍，包含了所有数据
 @JsonSerializable(explicitToJson: true) // 确保有 explicitToJson: true
@@ -105,7 +104,7 @@ class Book {
   final String fileType; // 书籍文件类型
   final String originalPath; // 书籍原始文件的绝对路径
   final String cachedPath; // 书籍缓存文件的绝对路径
-  final String? coverImagePath; // 新增封面图片路径字段
+  final String? coverImagePath; // 封面图片路径字段
   final List<ChapterStructure> chapters; // 存储书籍的所有章节
 
   Book({

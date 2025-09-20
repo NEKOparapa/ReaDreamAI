@@ -6,10 +6,10 @@ import '../../models/api_model.dart';
 import '../../services/api_tester/api_tester_service.dart';
 import 'api_settings_page.dart';
 import 'drawing_api_settings_page.dart';
-import 'video_api_settings_page.dart'; // 1. 导入新的视频设置页面
+import 'video_api_settings_page.dart';
 
 // 用于区分接口类型的枚举
-enum ApiType { language, drawing, video } // 2. 增加 video 类型
+enum ApiType { language, drawing, video }
 
 class ApiManagementPage extends StatefulWidget {
   const ApiManagementPage({super.key});
@@ -19,74 +19,34 @@ class ApiManagementPage extends StatefulWidget {
 }
 
 class _ApiManagementPageState extends State<ApiManagementPage> {
-  ApiType _selectedApiType = ApiType.language;
-
-  // 3. 改进切换方式：创建一个类型切换器
-  Widget _buildTypeSwitcher() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // 在小屏幕上允许换行
-          return Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: [
-              _buildChoiceChip(context, '语言接口', ApiType.language),
-              _buildChoiceChip(context, '绘画接口', ApiType.drawing),
-              _buildChoiceChip(context, '视频接口', ApiType.video),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildChoiceChip(BuildContext context, String label, ApiType type) {
-    final bool isSelected = _selectedApiType == type;
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) {
-          setState(() {
-            _selectedApiType = type;
-          });
-        }
-      },
-      labelStyle: TextStyle(
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected
-            ? Theme.of(context).colorScheme.onPrimary
-            : Theme.of(context).colorScheme.onSurface,
-      ),
-      backgroundColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
-      selectedColor: Theme.of(context).colorScheme.primary,
-      showCheckmark: false,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // 4. 移除 DefaultTabController，使用简单的 Scaffold 结构
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('接口管理'),
-      ),
-      body: Column(
-        children: [
-          _buildTypeSwitcher(),
-          const Divider(height: 1),
-          Expanded(
-            // 使用 ValueKey 确保在切换类型时 _ApiInterfaceView 的状态被正确重建
-            child: _ApiInterfaceView(
-              key: ValueKey(_selectedApiType),
-              apiType: _selectedApiType,
-            ),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              const TabBar(
+                tabs: [
+                  Tab(text: '语言'),
+                  Tab(text: '绘画'),
+                  Tab(text: '视频'),
+                ],
+              ),
+
+              Expanded(
+                child: const TabBarView(
+                  children: [
+                    _ApiInterfaceView(apiType: ApiType.language),
+                    _ApiInterfaceView(apiType: ApiType.drawing),
+                    _ApiInterfaceView(apiType: ApiType.video),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -96,7 +56,7 @@ class _ApiManagementPageState extends State<ApiManagementPage> {
 class _ApiInterfaceView extends StatefulWidget {
   final ApiType apiType;
 
-  const _ApiInterfaceView({super.key, required this.apiType});
+  const _ApiInterfaceView({required this.apiType});
 
   @override
   State<_ApiInterfaceView> createState() => _ApiInterfaceViewState();
@@ -107,8 +67,7 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
   final ApiTesterService _apiTesterService = ApiTesterService.instance;
   List<ApiModel> _apiList = [];
   String? _activeApiId;
-
-  // 5. 更新逻辑以支持 video 类型
+  
   String get _configKey {
     switch (widget.apiType) {
       case ApiType.language:
@@ -161,8 +120,7 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
     await _configService.modifySetting(_configKey, rawList);
     await _configService.modifySetting(_activeIdKey, _activeApiId);
   }
-
-  // 6. 更新 _addApi 逻辑
+  
   void _addApi() async {
     dynamic newApi;
     Widget page;
@@ -189,7 +147,6 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
     if (result != null) _onApiUpsert(result, isNew: true);
   }
   
-  // 7. 更新 _editApi 逻辑
   void _editApi(ApiModel apiToEdit) async {
     Widget page;
     switch (widget.apiType) {
@@ -270,7 +227,6 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
     }
   }
 
-  // 8. 更新测试逻辑
   void _testApi(ApiModel api) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -377,8 +333,7 @@ class _ApiCard extends StatelessWidget {
     required this.onDelete,
     required this.onTest,
   });
-
-  // 9. 更新图标获取逻辑
+  
   IconData _getIconForProvider(ApiProvider provider) {
     switch (provider) {
       // 语言模型
@@ -411,7 +366,6 @@ class _ApiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ... (ApiCard的build方法保持不变)
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

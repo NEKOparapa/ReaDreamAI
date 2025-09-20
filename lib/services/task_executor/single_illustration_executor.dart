@@ -53,7 +53,7 @@ class SingleIllustrationExecutor {
       positivePrompt: positivePrompt,
       negativePrompt: negativePrompt,
       chapter: chapter,
-      lineNumber: line.lineNumberInSourceFile,
+      lineId: line.id,
       saveDir: imageSaveDir,
       contextText: contextText, // 传递上下文
       // 保留原有的 sceneDescription
@@ -116,8 +116,7 @@ class SingleIllustrationExecutor {
       positivePrompt: positivePrompt,
       negativePrompt: negativePrompt,
       chapter: chapter,
-      // 插图附加到目标行（划选的最后一行）
-      lineNumber: targetLine.lineNumberInSourceFile,
+      lineId: targetLine.id,       // 插图附加到目标行（划选的最后一行）
       saveDir: imageSaveDir,
       // 上下文使用提取的完整上下文进行角色匹配
       contextText: contextText,
@@ -131,7 +130,7 @@ class SingleIllustrationExecutor {
     required String positivePrompt,
     required String negativePrompt,
     required ChapterStructure chapter,
-    required int lineNumber,
+    required int lineId,
     required String saveDir,
     required String sceneDescriptionToSave,
     required String contextText, 
@@ -176,7 +175,8 @@ class SingleIllustrationExecutor {
     );
 
     if (imagePaths != null && imagePaths.isNotEmpty) {
-      chapter.addIllustrationsToLine(lineNumber, imagePaths, sceneDescriptionToSave);
+
+      chapter.addIllustrationsToLine(lineId, imagePaths, sceneDescriptionToSave);
     } else {
       throw Exception("绘图服务未能生成图片。");
     }
@@ -188,7 +188,7 @@ class SingleIllustrationExecutor {
     final targetIndex = lines.indexOf(targetLine);
     if (targetIndex == -1) return targetLine.text;
 
-    List<String> contextLines = ["${targetLine.lineNumberInSourceFile}: ${targetLine.text}"];
+    List<String> contextLines = ["${targetLine.id}: ${targetLine.text}"];
     int currentTokens = encoding.encode(targetLine.text).length;
 
     int before = targetIndex - 1;
@@ -197,7 +197,7 @@ class SingleIllustrationExecutor {
     while (currentTokens < maxTokens && (before >= 0 || after < lines.length)) {
       if (before >= 0) {
         final line = lines[before];
-        final lineContent = "${line.lineNumberInSourceFile}: ${line.text}";
+        final lineContent = "${line.id}: ${line.text}";
         final lineTokens = encoding.encode(lineContent).length;
         if (currentTokens + lineTokens <= maxTokens) {
           contextLines.insert(0, lineContent);
@@ -209,7 +209,7 @@ class SingleIllustrationExecutor {
 
       if (after < lines.length) {
         final line = lines[after];
-        final lineContent = "${line.lineNumberInSourceFile}: ${line.text}";
+        final lineContent = "${line.id}: ${line.text}";
         final lineTokens = encoding.encode(lineContent).length;
         if (currentTokens + lineTokens <= maxTokens) {
           contextLines.add(lineContent);
@@ -315,7 +315,8 @@ class SingleVideoExecutor {
     print('[视频生成] ℹ️ 视频生成完成，路径: $videoPaths');
     // 6. 将生成的视频路径保存到 book model
     if (videoPaths != null && videoPaths.isNotEmpty) {
-      chapter.addVideosToLine(line.lineNumberInSourceFile, videoPaths);
+      // CHANGED: 使用 line.id 调用 addVideosToLine
+      chapter.addVideosToLine(line.id, videoPaths);
     } else {
       throw Exception("视频服务未能生成视频。");
     }

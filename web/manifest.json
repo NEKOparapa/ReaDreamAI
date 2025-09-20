@@ -1,6 +1,6 @@
 {
-    "name": "demo",
-    "short_name": "demo",
+    "name": "AiReaa",
+    "short_name": "AiReaa",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

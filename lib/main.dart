@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'ui/main/main_screen.dart'; // 导入ui/main/ 目录下的文件
 import 'base/config_service.dart'; // 导入配置服务
-import 'services/task_manager/task_manager_service.dart';
+import 'services/task_manager/task_manager_service.dart'; // 导入任务管理器服务
 
 void main() async { 
   // 确保 Flutter 绑定已初始化，这在 main 成为 async 时是必需的

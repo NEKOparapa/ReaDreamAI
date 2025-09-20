@@ -182,7 +182,7 @@ class IllustrationGeneratorService {
     Pool drawingPool // 接收外部传入的绘图池
   ) async {
     print("  ⚡️ [子任务启动] ${task.chunk.id} 需要AI挑选 ${task.chunk.scenesToGenerate} 个场景...");
-    final textContent = task.lineChunk.map((l) => "${l.lineNumberInSourceFile}: ${l.text}").join('\n');
+    final textContent = task.lineChunk.map((l) => "${l.id}: ${l.text}").join('\n');
 
     try {
       // 调用 LLM 生成绘图数据 (此调用受外层 llmPool 的并发限制)
@@ -314,10 +314,10 @@ class IllustrationGeneratorService {
     { String? referenceImagePath } // 新增可选参数
   ) async {
     final llmPrompt = illustrationData['prompt'] as String?;
-    final lineNumber = illustrationData['insertion_line_number'] as int?;
+    final lineId = illustrationData['insertion_line_number'] as int?; 
     final sceneDescription = illustrationData['scene_description'] as String?;
 
-    if (llmPrompt == null || lineNumber == null) return;
+    if (llmPrompt == null || lineId == null) return;
     
     if (cancellationToken.isCanceled) throw Exception('任务已取消');
 
@@ -328,7 +328,8 @@ class IllustrationGeneratorService {
     final width = sizeParts[0];
     final height = sizeParts[1];
 
-    print("      [绘图] 开始为《${chapter.title}》第 $lineNumber 行生成 $imagesPerScene 张插图 (尺寸: ${width}x${height})...");
+    // CHANGED: 更新日志，使用 lineId。
+    print("      [绘图] 开始为《${chapter.title}》ID为 $lineId 的行生成 $imagesPerScene 张插图 (尺寸: ${width}x${height})...");
     print("      - 场景: ${sceneDescription ?? '无'}");
 
     // 使用新的Builder结合LLM生成的提示词和用户配置的固定提示词，构建最终的绘图提示
@@ -361,7 +362,7 @@ class IllustrationGeneratorService {
 
     // 如果成功生成图片，将其路径关联到对应的文本行
     if (imagePaths != null && imagePaths.isNotEmpty) {
-      chapter.addIllustrationsToLine(lineNumber, imagePaths, positivePrompt);
+      chapter.addIllustrationsToLine(lineId, imagePaths, positivePrompt);
       print("      [绘图] ✅ 成功！${imagePaths.length} 张图片已保存并关联。");
       for (final path in imagePaths) {
         print("        - $path");

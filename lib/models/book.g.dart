@@ -10,7 +10,7 @@ LineStructure _$LineStructureFromJson(Map<String, dynamic> json) =>
     LineStructure(
       id: (json['id'] as num).toInt(),
       text: json['text'] as String,
-      lineNumberInSourceFile: (json['lineNumberInSourceFile'] as num).toInt(),
+      sourceInfo: json['sourceInfo'] as String,
       originalContent: json['originalContent'] as String,
       illustrationPaths:
           (json['illustrationPaths'] as List<dynamic>?)
@@ -30,7 +30,7 @@ Map<String, dynamic> _$LineStructureToJson(LineStructure instance) =>
     <String, dynamic>{
       'id': instance.id,
       'text': instance.text,
-      'lineNumberInSourceFile': instance.lineNumberInSourceFile,
+      'sourceInfo': instance.sourceInfo,
       'originalContent': instance.originalContent,
       'illustrationPaths': instance.illustrationPaths,
       'videoPaths': instance.videoPaths,
