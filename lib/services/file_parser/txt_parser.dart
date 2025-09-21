@@ -45,7 +45,6 @@ class TxtParser {
       // 检查是否是章节标题
       if (lineText.isNotEmpty) {
         // 规则1: 检查由分隔符包围的标题, e.g., --- 锲子 ---
-        // *** FIX & IMPROVEMENT *** 使用预编译的正则表达式
         if (_separatorRegex.hasMatch(lineText)) {
            if (i + 2 < rawLines.length && rawLines[i+2].trim() == lineText) {
              final potentialTitle = rawLines[i+1].trim();
