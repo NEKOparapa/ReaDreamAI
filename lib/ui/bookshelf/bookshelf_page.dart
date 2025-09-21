@@ -260,26 +260,26 @@ class _BookshelfPageState extends State<BookshelfPage> {
     final maxChunkTokens = config.getSetting<int>('image_gen_tokens', 5000);
     final List<IllustrationTaskChunk> allChunks = [];
     final encoding = encodingForModel("gpt-4");
-    
+
     for (final chapter in book.chapters) {
       if (chapter.lines.isEmpty) continue;
-      
+
       // 新增：统计章节总字符数
       int totalChapterChars = 0;
       for (final line in chapter.lines) {
         totalChapterChars += line.text.length;
       }
-      
+
       // 新增：如果章节字符数少于500，跳过该章节
       if (totalChapterChars < 500) {
         print('跳过章节《${chapter.title}》，字符数：$totalChapterChars < 500');
         continue;
       }
-      
+
       final List<List<LineStructure>> lineChunks = [];
       List<LineStructure> currentChunkLines = [];
       int currentTokens = 0;
-      
+
       for (final line in chapter.lines) {
         final lineTokens = encoding.encode(line.text).length;
         if (currentTokens + lineTokens > maxChunkTokens && currentChunkLines.isNotEmpty) {
@@ -290,18 +290,18 @@ class _BookshelfPageState extends State<BookshelfPage> {
         currentChunkLines.add(line);
         currentTokens += lineTokens;
       }
-      
+
       if (currentChunkLines.isNotEmpty) {
         lineChunks.add(List.from(currentChunkLines));
       }
-      
+
       if (lineChunks.isEmpty) continue;
-      
+
       final chunkTokens = lineChunks
           .map((chunk) => encoding.encode(chunk.map((l) => l.text).join('\n')).length)
           .toList();
       final totalChunkTokens = chunkTokens.fold<int>(0, (sum, item) => sum + item);
-      
+
       final List<int> scenesPerChunk = [];
       if (totalChunkTokens > 0) {
         int distributedScenes = 0;
@@ -315,13 +315,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
         scenesPerChunk.addAll(List.filled(lineChunks.length, 0));
         scenesPerChunk[0] = scenesPerChapter;
       }
-      
+
       for (int i = 0; i < lineChunks.length; i++) {
         if (scenesPerChunk[i] > 0) {
           final chunkLines = lineChunks[i];
           allChunks.add(IllustrationTaskChunk(
             id: const Uuid().v4(),
-            chapterTitle: chapter.title,
+            chapterId: chapter.id, // <--- 修改：使用 chapter.id
             startLineId: chunkLines.first.id,
             endLineId: chunkLines.last.id,
             scenesToGenerate: scenesPerChunk[i],
@@ -329,7 +329,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
         }
       }
     }
-    
+
     return allChunks;
   }
 
@@ -375,31 +375,31 @@ class _BookshelfPageState extends State<BookshelfPage> {
     final maxChunkTokens = config.getSetting<int>('translation_tokens', 4000);
     final List<TranslationTaskChunk> allChunks = [];
     final encoding = encodingForModel("gpt-4");
-    
+
     for (final chapter in book.chapters) {
       if (chapter.lines.isEmpty) continue;
-      
+
       // 新增：统计章节总字符数
       int totalChapterChars = 0;
       for (final line in chapter.lines) {
         totalChapterChars += line.text.length;
       }
-      
+
       // 新增：如果章节字符数少于500，跳过该章节
       if (totalChapterChars < 500) {
         print('跳过章节《${chapter.title}》，字符数：$totalChapterChars < 500');
         continue;
       }
-      
+
       List<LineStructure> currentChunkLines = [];
       int currentTokens = 0;
-      
+
       for (final line in chapter.lines) {
         final lineTokens = encoding.encode(line.text).length;
         if (currentTokens + lineTokens > maxChunkTokens && currentChunkLines.isNotEmpty) {
           allChunks.add(TranslationTaskChunk(
             id: const Uuid().v4(),
-            chapterTitle: chapter.title,
+            chapterId: chapter.id, // <--- 修改：使用 chapter.id
             startLineId: currentChunkLines.first.id,
             endLineId: currentChunkLines.last.id,
           ));
@@ -409,17 +409,17 @@ class _BookshelfPageState extends State<BookshelfPage> {
         currentChunkLines.add(line);
         currentTokens += lineTokens;
       }
-      
+
       if (currentChunkLines.isNotEmpty) {
         allChunks.add(TranslationTaskChunk(
           id: const Uuid().v4(),
-          chapterTitle: chapter.title,
+          chapterId: chapter.id, // <--- 修改：使用 chapter.id
           startLineId: currentChunkLines.first.id,
           endLineId: currentChunkLines.last.id,
         ));
       }
     }
-    
+
     return allChunks;
   }
 

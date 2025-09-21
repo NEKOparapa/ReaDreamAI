@@ -52,11 +52,13 @@ class LineStructure {
 /// 章节结构：存储章节标题和包含的所有行
 @JsonSerializable(explicitToJson: true)
 class ChapterStructure {
+  final String id;
   final String title;
   final String sourceFile;
   final List<LineStructure> lines;
 
   ChapterStructure({
+    required this.id,
     required this.title,
     required this.sourceFile,
     required this.lines,

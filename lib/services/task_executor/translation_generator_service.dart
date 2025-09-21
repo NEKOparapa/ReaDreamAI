@@ -81,7 +81,7 @@ class TranslationGeneratorService {
 
   /// 处理单个翻译任务块
   Future<bool> _processChunk(Book book, TranslationTaskChunk chunk, CancellationToken cancellationToken) async {
-    final chapter = book.chapters.firstWhere((c) => c.title == chunk.chapterTitle, orElse: () => throw Exception('Chapter not found'));
+    final chapter = book.chapters.firstWhere((c) => c.title == chunk.chapterId, orElse: () => throw Exception('Chapter not found'));
     final lines = chapter.lines.where((l) => l.id >= chunk.startLineId && l.id <= chunk.endLineId).toList();
 
     if (lines.isEmpty) return true;

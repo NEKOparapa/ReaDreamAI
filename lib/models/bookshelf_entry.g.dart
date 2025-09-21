@@ -10,7 +10,7 @@ IllustrationTaskChunk _$IllustrationTaskChunkFromJson(
   Map<String, dynamic> json,
 ) => IllustrationTaskChunk(
   id: json['id'] as String,
-  chapterTitle: json['chapterTitle'] as String,
+  chapterId: json['chapterId'] as String,
   startLineId: (json['startLineId'] as num).toInt(),
   endLineId: (json['endLineId'] as num).toInt(),
   scenesToGenerate: (json['scenesToGenerate'] as num).toInt(),
@@ -23,7 +23,7 @@ Map<String, dynamic> _$IllustrationTaskChunkToJson(
   IllustrationTaskChunk instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'chapterTitle': instance.chapterTitle,
+  'chapterId': instance.chapterId,
   'startLineId': instance.startLineId,
   'endLineId': instance.endLineId,
   'scenesToGenerate': instance.scenesToGenerate,
@@ -41,7 +41,7 @@ TranslationTaskChunk _$TranslationTaskChunkFromJson(
   Map<String, dynamic> json,
 ) => TranslationTaskChunk(
   id: json['id'] as String,
-  chapterTitle: json['chapterTitle'] as String,
+  chapterId: json['chapterId'] as String,
   startLineId: (json['startLineId'] as num).toInt(),
   endLineId: (json['endLineId'] as num).toInt(),
   status:
@@ -53,7 +53,7 @@ Map<String, dynamic> _$TranslationTaskChunkToJson(
   TranslationTaskChunk instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'chapterTitle': instance.chapterTitle,
+  'chapterId': instance.chapterId,
   'startLineId': instance.startLineId,
   'endLineId': instance.endLineId,
   'status': _$ChunkStatusEnumMap[instance.status]!,

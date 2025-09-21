@@ -26,7 +26,7 @@ enum ChunkStatus {
 @JsonSerializable()
 class IllustrationTaskChunk {
   final String id;
-  final String chapterTitle;
+  final String chapterId;
   final int startLineId;
   final int endLineId;
   final int scenesToGenerate;
@@ -34,7 +34,7 @@ class IllustrationTaskChunk {
 
   IllustrationTaskChunk({
     required this.id,
-    required this.chapterTitle,
+    required this.chapterId,
     required this.startLineId,
     required this.endLineId,
     required this.scenesToGenerate,
@@ -49,14 +49,14 @@ class IllustrationTaskChunk {
 @JsonSerializable()
 class TranslationTaskChunk {
   final String id;
-  final String chapterTitle;
+  final String chapterId;
   final int startLineId;
   final int endLineId;
   ChunkStatus status;
 
   TranslationTaskChunk({
     required this.id,
-    required this.chapterTitle,
+    required this.chapterId,
     required this.startLineId,
     required this.endLineId,
     this.status = ChunkStatus.pending,
@@ -105,7 +105,7 @@ class BookshelfEntry {
     this.errorMessage,
     this.createdAt,
     this.updatedAt,
-    // 新增: 翻译任务
+    // 翻译任务
     this.translationStatus = TaskStatus.notStarted,
     this.translationTaskChunks = const [],
     this.translationErrorMessage,

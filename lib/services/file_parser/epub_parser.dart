@@ -4,11 +4,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
+import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import '../../models/book.dart';
 
 /// 解析 EPUB 文件的工具类。
-/// 新的解析流程：
 /// 1. 将 EPUB 文件完全解压到书籍的缓存子目录中。
 /// 2. 在解压后的目录中，按文件名暴力搜索封面图片。
 /// 3. 找到并解析 container.xml，以定位 OPF 文件的路径。
@@ -157,6 +157,7 @@ class EpubParser {
               final int end = (j + 1 < startIndices.length) ? startIndices[j + 1] : contentElements.length;
               
               currentChapter = ChapterStructure(
+                id: const Uuid().v4(),
                 title: titles[j],
                 sourceFile: p.relative(chapterFile.path, from: unzippedDir.path),
                 lines: [],
@@ -182,6 +183,7 @@ class EpubParser {
               }
               if (lines.isNotEmpty) {
                 chapters.add(ChapterStructure(
+                  id: const Uuid().v4(),
                   title: '无标题章节',
                   sourceFile: p.relative(chapterFile.path, from: unzippedDir.path),
                   lines: lines,
@@ -343,6 +345,7 @@ class EpubParser {
       if (lines.isNotEmpty) {
         print('  [Fallback] 创建章节: "$title"');
         chapters.add(ChapterStructure(
+          id: const Uuid().v4(),
           title: title,
           sourceFile: p.relative(chapterFile.path, from: unzippedDir.path),
           lines: lines,

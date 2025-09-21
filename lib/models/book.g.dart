@@ -40,6 +40,7 @@ Map<String, dynamic> _$LineStructureToJson(LineStructure instance) =>
 
 ChapterStructure _$ChapterStructureFromJson(Map<String, dynamic> json) =>
     ChapterStructure(
+      id: json['id'] as String,
       title: json['title'] as String,
       sourceFile: json['sourceFile'] as String,
       lines: (json['lines'] as List<dynamic>)
@@ -49,6 +50,7 @@ ChapterStructure _$ChapterStructureFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$ChapterStructureToJson(ChapterStructure instance) =>
     <String, dynamic>{
+      'id': instance.id,
       'title': instance.title,
       'sourceFile': instance.sourceFile,
       'lines': instance.lines.map((e) => e.toJson()).toList(),

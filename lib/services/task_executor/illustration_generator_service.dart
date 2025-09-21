@@ -71,7 +71,8 @@ class IllustrationGeneratorService {
     for (final chunk in allChunks) {
       // 只处理待处理或失败的任务，实现断点续传
       if (chunk.status == ChunkStatus.pending || chunk.status == ChunkStatus.failed) {
-        final chapter = book.chapters.firstWhere((c) => c.title == chunk.chapterTitle);
+        final chapter = book.chapters.firstWhere((c) => c.id == chunk.chapterId, // <--- 使用ID进行匹配
+            orElse: () => throw Exception('找不到章节ID: ${chunk.chapterId}')); // 添加一个错误处理以防万一
         // 根据区块的起止行ID，筛选出对应的文本行
         final lines = chapter.lines.where((l) => l.id >= chunk.startLineId && l.id <= chunk.endLineId).toList();
         executionTasks.add(_ExecutionSubTask(

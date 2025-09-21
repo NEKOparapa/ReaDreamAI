@@ -1,5 +1,3 @@
-// lib/services/epub_exporter/epub_source_exporter.dart
-
 part of 'epub_exporter.dart';
 
 /// 处理 EPUB 源文件，解包修改后重新打包。
@@ -20,17 +18,17 @@ class _EpubSourceExporter {
     final newMediaPaths = _MediaHelper.collectAllMediaPaths(book);
     print('需要添加的媒体文件数量: ${newMediaPaths.length}');
 
-    // 4. 构建需要修改的文件映射
-    final oebpsDir = p.dirname(opfPath);
-    final filesToModify = _buildFilesToModifyMap(book, oebpsDir);
+    // 4. 构建需要修改的文件映射 (按文件名分组)
+    final filesToModify = _buildFilesToModifyMap(book);
     
     print('需要修改的文件数量: ${filesToModify.length}');
-    filesToModify.forEach((path, lines) {
-      print('  $path: ${lines.length} 行需要修改');
+    filesToModify.forEach((fileName, lines) {
+      print('  $fileName: ${lines.length} 行需要修改');
     });
 
     // 5. 创建一个新的 Archive 来存储修改后的文件
     final newArchive = Archive();
+    final oebpsDir = p.dirname(opfPath);
 
     // 6. 复制所有原始文件到新 Archive，同时处理需要修改的文件
     for (final file in archive.files) {
@@ -40,18 +38,23 @@ class _EpubSourceExporter {
           continue;
         }
         
-        // 检查是否是需要修改的 HTML 文件
-        final normalizedFileName = file.name.replaceAll('\\', '/');
-        if (filesToModify.containsKey(normalizedFileName)) {
+        // 提取当前文件的文件名
+        final archiveEntryBasename = p.basename(file.name);
+        
+        // 检查该文件名是否在待修改列表中
+        if (filesToModify.containsKey(archiveEntryBasename)) {
           // 修改文件
-          final linesToModify = filesToModify[normalizedFileName]!;
+          final linesToModify = filesToModify[archiveEntryBasename]!;
           final originalHtml = utf8.decode(file.content as List<int>);
-          final modifiedHtml = _modifyHtmlContentWithLines(originalHtml, linesToModify, oebpsDir, normalizedFileName);
+          // 传入的最后一个参数仍然是 archive 中的完整路径，用于计算相对路径
+          final fullArchivePath = file.name.replaceAll('\\', '/');
+          final modifiedHtml = _modifyHtmlContentWithLines(originalHtml, linesToModify, oebpsDir, fullArchivePath);
           
           if (modifiedHtml != originalHtml) {
             print('已修改: ${file.name}');
             newArchive.addFile(ArchiveFile(file.name, utf8.encode(modifiedHtml).length, utf8.encode(modifiedHtml)));
           } else {
+            // 如果内容没有实际变化（例如，所有 originalContent 都没找到），则保持原样
             newArchive.addFile(ArchiveFile.noCompress(file.name, file.size, file.content));
           }
         } else {
@@ -78,8 +81,8 @@ class _EpubSourceExporter {
     }
   }
 
-  /// 构建文件路径到需要修改的行的映射
-  Map<String, List<LineStructure>> _buildFilesToModifyMap(Book book, String oebpsDir) {
+  /// 构建文件到需要修改的行的映射，Key 为文件名。
+  Map<String, List<LineStructure>> _buildFilesToModifyMap(Book book) {
     final filesToModify = <String, List<LineStructure>>{};
     
     for (final chapter in book.chapters) {
@@ -90,14 +93,12 @@ class _EpubSourceExporter {
             line.videoPaths.isNotEmpty;
         
         if (hasModifications) {
-          // 规范化 sourceInfo 路径
-          final normalizedSourceInfo = line.sourceInfo.replaceAll('\\', '/');
+          // 从 sourceInfo 中提取文件名
+          // p.basename 可以正确处理 '\' 和 '/' 两种路径分隔符
+          final fileName = p.basename(line.sourceInfo);
           
-          // 计算在 archive 中的实际路径
-          final archivePath = p.posix.normalize(p.posix.join(oebpsDir, normalizedSourceInfo));
-          
-          // 添加到映射中
-          filesToModify.putIfAbsent(archivePath, () => []).add(line);
+          // 使用文件名作为 key 添加到映射中
+          filesToModify.putIfAbsent(fileName, () => []).add(line);
         }
       }
     }

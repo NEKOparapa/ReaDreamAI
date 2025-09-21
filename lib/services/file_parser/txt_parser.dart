@@ -1,132 +1,271 @@
 // lib/services/file_parser/txt_parser.dart
 
 import 'dart:io';
+import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 import '../../models/book.dart';
 
 class TxtParser {
-  // 一个强大的正则表达式，用于匹配多种常见的章节标题格式
-  // 涵盖 "第一章", "第1章", "章一", "楔子", "序章", "一.", "第一集 ... 第三回" 等格式
+  // 优化后的章节标题正则表达式 - 更精确和高效
   static final _chapterRegex = RegExp(
-    r'^\s*(?:' // Start with a non-capturing group for the whole pattern
-    r'第\s*[零〇一二三四五六七八九十百千万\d]+\s*[章节回集卷部篇]' // e.g., 第一章, 第10回, 第一集
+    r'^\s*(?:'
+    r'第\s*[零〇一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟\d]+\s*[章节回集卷部篇]'
     r'|'
-    r'章\s*[一二三四五六七八九十百千万]+' // e.g., 章一, 章二十三
+    r'[第]*\s*[一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]+\s*[章节回集卷部篇]'
     r'|'
-    r'[一二三四五六七八九十百千万]+[．、.]' // e.g., 一. 二、
+    r'[一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟\d]+[．、.]'
     r'|'
-    r'序章|楔子|前言|序言|序|引子|后记|尾声|番外|锲子' // Special chapter titles
-    r')\s*.*$', // Match the rest of the line as part of the title
+    r'序章|楔子|前言|序言|序|引子|后记|尾声|番外|锲子|终章|结语|附录'
+    r')\s*.*?$',
     caseSensitive: false,
     multiLine: false,
   );
-  // 并将其移出循环以提高性能，只编译一次
-  static final _separatorRegex = RegExp(r'^-{5,}$|={5,}$|\*{5,}$');
 
+  // 分隔符正则表达式
+  static final _separatorRegex = RegExp(r'^[\-=*~]{3,}$');
 
   /// 解析 TXT，返回章节列表
   static Future<List<ChapterStructure>> parse(String cachedPath) async {
     final file = File(cachedPath);
-    final rawLines = await file.readAsLines();
-    // NEW: 在循环外获取一次文件名
+    final content = await file.readAsString();
+    
+    // 统一换行符并分割行
+    final normalizedContent = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final rawLines = normalizedContent.split('\n');
+    
     final sourceFilename = p.basename(cachedPath);
+    
+    return _parseLines(rawLines, sourceFilename);
+  }
 
+  /// 核心解析逻辑 - 分离出来便于测试和维护
+  static List<ChapterStructure> _parseLines(List<String> rawLines, String sourceFilename) {
     final List<ChapterStructure> chapters = [];
-    List<LineStructure> currentChapterLines = [];
-    // 为第一章之前的内容（如序言）设置一个默认标题
-    String currentChapterTitle = "前言";
+    final List<_ChapterCandidate> candidates = _findChapterCandidates(rawLines);
+    
+    if (candidates.isEmpty) {
+      // 没有找到章节，将整个文件作为一个章节
+      return _createSingleChapter(rawLines, sourceFilename);
+    }
+    
+    return _buildChaptersFromCandidates(rawLines, candidates, sourceFilename);
+  }
+
+  /// 查找所有可能的章节标题候选
+  static List<_ChapterCandidate> _findChapterCandidates(List<String> lines) {
+    final List<_ChapterCandidate> candidates = [];
+    
+    for (int i = 0; i < lines.length; i++) {
+      final lineText = lines[i].trim();
+      
+      if (lineText.isEmpty) continue;
+      
+      // 检查分隔符包围的标题格式
+      final separatorCandidate = _checkSeparatorTitle(lines, i);
+      if (separatorCandidate != null) {
+        candidates.add(separatorCandidate);
+        i = separatorCandidate.endIndex; // 跳过已处理的行
+        continue;
+      }
+      
+      // 检查标准章节标题格式
+      if (_isValidChapterTitle(lineText)) {
+        candidates.add(_ChapterCandidate(
+          title: lineText,
+          startIndex: i,
+          endIndex: i,
+        ));
+      }
+    }
+    
+    return _filterValidCandidates(candidates, lines);
+  }
+
+  /// 检查分隔符包围的标题
+  static _ChapterCandidate? _checkSeparatorTitle(List<String> lines, int index) {
+    if (index + 2 >= lines.length) return null;
+    
+    final line1 = lines[index].trim();
+    final line2 = lines[index + 1].trim();
+    final line3 = lines[index + 2].trim();
+    
+    // 检查 --- 标题 --- 格式
+    if (_separatorRegex.hasMatch(line1) && 
+        _separatorRegex.hasMatch(line3) &&
+        line2.isNotEmpty && 
+        line2.length < 50) {
+      return _ChapterCandidate(
+        title: line2,
+        startIndex: index,
+        endIndex: index + 2,
+      );
+    }
+    
+    return null;
+  }
+
+  /// 验证是否为有效的章节标题
+  static bool _isValidChapterTitle(String text) {
+    if (text.length > 100) return false; // 太长的不太可能是标题
+    if (text.length < 2) return false;   // 太短的也不太可能
+    
+    return _chapterRegex.hasMatch(text);
+  }
+
+  /// 过滤有效的章节候选
+  static List<_ChapterCandidate> _filterValidCandidates(
+    List<_ChapterCandidate> candidates, 
+    List<String> lines
+  ) {
+    if (candidates.length <= 1) return candidates;
+    
+    final List<_ChapterCandidate> filtered = [];
+    
+    for (int i = 0; i < candidates.length; i++) {
+      final candidate = candidates[i];
+      
+      // 检查章节之间是否有足够的内容
+      final nextIndex = i + 1 < candidates.length 
+        ? candidates[i + 1].startIndex 
+        : lines.length;
+      
+      final contentLines = _countContentLines(
+        lines, 
+        candidate.endIndex + 1, 
+        nextIndex
+      );
+      
+      // 如果章节间内容太少，可能是误判
+      if (contentLines >= 3 || i == candidates.length - 1) {
+        filtered.add(candidate);
+      }
+    }
+    
+    return filtered;
+  }
+
+  /// 统计有效内容行数
+  static int _countContentLines(List<String> lines, int start, int end) {
+    int count = 0;
+    for (int i = start; i < end && i < lines.length; i++) {
+      if (lines[i].trim().isNotEmpty) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /// 从候选列表构建章节
+  static List<ChapterStructure> _buildChaptersFromCandidates(
+    List<String> lines, 
+    List<_ChapterCandidate> candidates, 
+    String sourceFilename
+  ) {
+    final List<ChapterStructure> chapters = [];
     int globalLineIdCounter = 0;
-
-    for (int i = 0; i < rawLines.length; i++) {
-      final lineText = rawLines[i].trim();
-      bool isChapterTitle = false;
-      String newTitle = '';
-
-      // 检查是否是章节标题
-      if (lineText.isNotEmpty) {
-        // 规则1: 检查由分隔符包围的标题, e.g., --- 锲子 ---
-        if (_separatorRegex.hasMatch(lineText)) {
-           if (i + 2 < rawLines.length && rawLines[i+2].trim() == lineText) {
-             final potentialTitle = rawLines[i+1].trim();
-             // 避免误判，标题通常较短
-             if (potentialTitle.isNotEmpty && potentialTitle.length < 30) {
-                isChapterTitle = true;
-                newTitle = potentialTitle;
-                i += 2; // 跳过标题行和下一个分隔符行
-             }
-           }
-        }
-
-        // 规则2: 如果不是分隔符格式，则使用正则表达式检查
-        if (!isChapterTitle && _chapterRegex.hasMatch(lineText)) {
-          // 避免将过长的段落误判为章节标题
-          if (lineText.length < 50) {
-             isChapterTitle = true;
-             newTitle = lineText;
-          }
-        }
-      }
-
-      if (isChapterTitle) {
-        // 保存上一章节的内容（如果存在）
-        if (currentChapterLines.isNotEmpty) {
-          chapters.add(ChapterStructure(
-            title: currentChapterTitle,
-            sourceFile: sourceFilename,
-            lines: List.from(currentChapterLines),
-          ));
-        }
-        // 开始新章节
-        currentChapterLines.clear();
-        currentChapterTitle = newTitle;
-      } else {
-        // 如果不是章节标题，则作为正文行添加
-        if (lineText.isNotEmpty) {
-          currentChapterLines.add(LineStructure(
-            id: globalLineIdCounter++,
-            text: lineText,
-            // CHANGED: 使用 sourceInfo 字段记录文件名
-            sourceInfo: sourceFilename,
-            originalContent: rawLines[i],
-          ));
-        }
+    
+    // 处理第一章之前的内容
+    if (candidates.first.startIndex > 0) {
+      final preChapterLines = _extractLinesFromRange(
+        lines, 0, candidates.first.startIndex, sourceFilename, globalLineIdCounter
+      );
+      if (preChapterLines.isNotEmpty) {
+        chapters.add(ChapterStructure(
+          id: const Uuid().v4(),
+          title: "前言",
+          sourceFile: sourceFilename,
+          lines: preChapterLines,
+        ));
+        globalLineIdCounter += preChapterLines.length;
       }
     }
-
-    // 添加最后一个章节
-    if (currentChapterLines.isNotEmpty) {
-      chapters.add(ChapterStructure(
-        title: currentChapterTitle,
-        sourceFile: sourceFilename,
-        lines: currentChapterLines,
-      ));
+    
+    // 处理各个章节
+    for (int i = 0; i < candidates.length; i++) {
+      final candidate = candidates[i];
+      final nextStart = i + 1 < candidates.length 
+        ? candidates[i + 1].startIndex 
+        : lines.length;
+      
+      final chapterLines = _extractLinesFromRange(
+        lines, 
+        candidate.endIndex + 1, 
+        nextStart, 
+        sourceFilename, 
+        globalLineIdCounter
+      );
+      
+      if (chapterLines.isNotEmpty) {
+        chapters.add(ChapterStructure(
+          id: const Uuid().v4(),
+          title: candidate.title,
+          sourceFile: sourceFilename,
+          lines: chapterLines,
+        ));
+        globalLineIdCounter += chapterLines.length;
+      }
     }
-
-    // 如果没有识别到任何章节（例如纯文本文件），则将所有内容视为一个章节
-    if (chapters.isEmpty) {
-        final List<LineStructure> lines = [];
-        globalLineIdCounter = 0;
-        for (int i = 0; i < rawLines.length; i++) {
-          final lineText = rawLines[i].trim();
-          if (lineText.isNotEmpty) {
-            lines.add(LineStructure(
-              id: globalLineIdCounter++,
-              text: lineText,
-              // CHANGED: 使用 sourceInfo 字段记录文件名
-              sourceInfo: sourceFilename,
-              originalContent: rawLines[i],
-            ));
-          }
-        }
-        if (lines.isNotEmpty) {
-           chapters.add(ChapterStructure(
-            title: "全文",
-            sourceFile: sourceFilename,
-            lines: lines,
-          ));
-        }
-    }
-
+    
     return chapters;
   }
+
+  /// 从指定范围提取行内容
+  static List<LineStructure> _extractLinesFromRange(
+    List<String> lines, 
+    int start, 
+    int end, 
+    String sourceFilename, 
+    int startLineId
+  ) {
+    final List<LineStructure> result = [];
+    int lineId = startLineId;
+    
+    for (int i = start; i < end && i < lines.length; i++) {
+      final lineText = lines[i].trim();
+      if (lineText.isNotEmpty) {
+        result.add(LineStructure(
+          id: lineId++,
+          text: lineText,
+          sourceInfo: sourceFilename,
+          originalContent: lines[i],
+        ));
+      }
+    }
+    
+    return result;
+  }
+
+  /// 创建单一章节（当没有检测到章节分割时）
+  static List<ChapterStructure> _createSingleChapter(
+    List<String> lines, 
+    String sourceFilename
+  ) {
+    final chapterLines = _extractLinesFromRange(
+      lines, 0, lines.length, sourceFilename, 0
+    );
+    
+    if (chapterLines.isEmpty) return [];
+    
+    return [
+      ChapterStructure(
+        id: const Uuid().v4(),
+        title: "全文",
+        sourceFile: sourceFilename,
+        lines: chapterLines,
+      )
+    ];
+  }
+}
+
+/// 章节候选数据结构
+class _ChapterCandidate {
+  final String title;
+  final int startIndex;
+  final int endIndex;
+  
+  _ChapterCandidate({
+    required this.title,
+    required this.startIndex,
+    required this.endIndex,
+  });
 }
