@@ -13,7 +13,7 @@ jobs:
     # 指定运行此任务的虚拟机环境
     runs-on: windows-latest
 
-    # 授予写入仓库内容的权限，以便创建 Release
+    # 授予写入仓库内容的权限，以便创建和删除 Release
     permissions:
       contents: write
 
@@ -58,7 +58,20 @@ jobs:
           # 使用正确的构建输出路径
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
-      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
+      # 步骤7：删除旧的预览版
+      # 这个步骤会删除所有现有的预发布版本，只保留最新的0个（即全部删除）
+      - name: Delete old pre-releases
+        uses: dev-drprasad/delete-older-releases@v0.2.1
+        with:
+          # 要保留的最新预发布版本数量。我们设置为0，因为马上就要创建一个新的
+          keep_latest: 0
+          # 只删除标记为 "prerelease" 的版本，不会误删正式版
+          delete_prerelease_only: true
+          # GitHub Actions 自动提供的 token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
