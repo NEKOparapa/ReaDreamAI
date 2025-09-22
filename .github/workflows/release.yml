@@ -42,21 +42,21 @@ jobs:
         id: prepare_info
         shell: pwsh
         run: |
-          echo "PROJECT_NAME=AiMoee" >> $env:GITHUB_ENV
+          echo "PROJECT_NAME=ReaDreamAI" >> $env:GITHUB_ENV
           $date = Get-Date -Format "yyyyMMdd-HHmmss"
           $shortSha = "${{ github.sha }}".Substring(0, 7)
           $tagName = "nightly-$date-$shortSha"
           echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
           
           echo "Generated tag name: $tagName"
-          echo "Project name: AiMoee"
+          echo "Project name: ReaDreamAI"
 
       # 步骤6：将构建产物打包成 ZIP
       - name: Package release assets
         shell: pwsh
         run: |
           # 使用正确的构建输出路径
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "Aimoee-beta-windows.zip" -Force
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
       # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
       - name: Create GitHub Pre-release
@@ -71,6 +71,6 @@ jobs:
           # 自动生成此版本与上一个版本之间的变更日志
           generate_release_notes: true
           # 指向我们要上传的文件路径
-          files: Aimoee-beta-windows.zip
+          files: ReaDreamAI-beta-windows.zip
           # GitHub Actions 自动提供的 token
           token: ${{ secrets.GITHUB_TOKEN }}

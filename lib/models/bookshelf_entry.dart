@@ -66,7 +66,7 @@ class TranslationTaskChunk {
   Map<String, dynamic> toJson() => _$TranslationTaskChunkToJson(this);
 }
 
-// 书架缓存文件中的单个条目 (现在包含了任务状态)
+// 书架缓存文件中的单个条目
 @JsonSerializable(explicitToJson: true)
 class BookshelfEntry {
   final String id; // 书籍ID，与Book模型中的id一致
@@ -74,7 +74,7 @@ class BookshelfEntry {
   final String originalPath;
   final String fileType;
   final String subCachePath;
-  final String? coverImagePath; // 新增封面图片路径字段
+  final String? coverImagePath; 
 
   // --- 插图任务字段 ---
   TaskStatus status;

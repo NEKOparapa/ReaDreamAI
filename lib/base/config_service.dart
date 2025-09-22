@@ -10,6 +10,7 @@ import '../models/api_model.dart';
 import '../models/prompt_card_model.dart';
 import '../models/tag_card_model.dart'; 
 import 'rate_limiter.dart';
+import 'log/log_service.dart';
 
 // 自定义的HttpOverrides类，用于设置全局代理
 class _MyHttpOverrides extends HttpOverrides {
@@ -47,9 +48,9 @@ class ConfigService {
     if (!await directory.exists()) {
       await directory.create(recursive: true);
     }
-    
-    print('应用数据基础存储路径: $_appDirectoryPath');
-    
+
+    LogService().info('应用数据及配置的基础存储路径: $_appDirectoryPath');
+
     _configDirectoryPath = p.join(_appDirectoryPath, 'Config');
     _configPath = p.join(_configDirectoryPath, 'config.json');
 
@@ -125,10 +126,10 @@ class ConfigService {
 
     if (isProxyEnabled && proxyPort.isNotEmpty) {
       HttpOverrides.global = _MyHttpOverrides(proxyPort);
-      print('HTTP网络代理已启用，端口: $proxyPort');
+      LogService().info('HTTP网络代理已启用，端口: $proxyPort');
     } else {
       HttpOverrides.global = null;
-      print('HTTP网络代理已关闭');
+      LogService().info('HTTP网络代理已关闭');
     }
   }
   
@@ -160,7 +161,7 @@ class ConfigService {
           _config = {};
         }
       } catch (e) {
-        print('Error loading config file: $e');
+        LogService().info('Error loading config file: $e');
         _config = {};
       }
     } else {
@@ -196,7 +197,7 @@ class ConfigService {
     if (_rateLimiters.containsKey(api.id)) {
       return _rateLimiters[api.id]!;
     } else {
-      print("为 API '${api.name}' (ID: ${api.id}) 创建新的速率限制器 (RPM: ${api.rpm})");
+      LogService().info("为 API '${api.name}' (ID: ${api.id}) 创建新的速率限制器 (RPM: ${api.rpm})");
       final newLimiter = RateLimiter(rpm: api.rpm);
       _rateLimiters[api.id] = newLimiter;
       return newLimiter;

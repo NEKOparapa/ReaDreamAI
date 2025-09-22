@@ -7,6 +7,7 @@ import 'image_gen_settings_page.dart'; // 引入生图设置页
 import 'translation_settings_page.dart'; // 引入翻译设置页
 import 'prompt_settings/prompt_settings_page.dart'; // 引入提示词设置页
 import 'video_settings_page.dart'; // 引入视频设置页
+import 'log_history_page.dart'; // 引入日志历史页
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -95,6 +96,17 @@ class SettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const AppSettingsPage()),
+              );
+            },
+          ),
+          // 日志历史卡片
+          SettingEntryCard(
+            icon: Icons.history_outlined,
+            title: '日志历史',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LogHistoryPage()),
               );
             },
           ),

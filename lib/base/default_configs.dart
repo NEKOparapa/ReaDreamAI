@@ -8,41 +8,41 @@ const Map<String, dynamic> appDefaultConfigs = {
   'proxy_port': '7890',  // 代理端口，通用默认值
   
   // --- 生图设置 ---
-  'image_gen_tokens': 5000,
-  'image_gen_scenes_per_chapter': 3,
-  'image_gen_images_per_scene': 2,
-  'image_gen_max_workers': 1,
-  'image_gen_size': '1024*1024', 
+  'image_gen_tokens': 8000, // 生图使用的最大Token数
+  'image_gen_scenes_per_chapter': 3, // 每章生成的场景数
+  'image_gen_images_per_scene': 2, // 每个场景生成的图片数
+  'image_gen_max_workers': 1, // 最大并发数
+  'image_gen_size': '1024*1024',  // 图片尺寸
 
   // --- 视频设置 ---
-  'video_gen_duration': 5,
-  'video_gen_resolution': '720p',
+  'video_gen_duration': 5, // 视频时长，单位秒
+  'video_gen_resolution': '720p', // 视频分辨率
 
   // --- 翻译设置 --- 
-  'translation_tokens': 4000,
-  'translation_source_lang': 'English',
-  'translation_target_lang': '中文',
+  'translation_tokens': 4000, // 翻译使用的最大Token数
+  'translation_source_lang': 'English', // 源语言
+  'translation_target_lang': '中文', // 目标语言
 
   // --- ComfyUI节点设置 ---
   'comfyui_workflow_type': 'wai_illustrious', // 默认工作流类型代号
   'comfyui_system_workflow_path': 'assets/comfyui/WAI_NSFW-illustrious-SDXL工作流.json', // 系统预设工作流路径
   'comfyui_custom_workflow_path': '', // 自定义工作流路径
-  'comfyui_positive_prompt_node_id': '6',
-  'comfyui_positive_prompt_field': 'text',
-  'comfyui_negative_prompt_node_id': '7',
-  'comfyui_negative_prompt_field': 'text',
-  'comfyui_batch_size_node_id': '5',
-  'comfyui_batch_size_field': 'batch_size',
+  'comfyui_positive_prompt_node_id': '6', // 正面提示词节点ID
+  'comfyui_positive_prompt_field': 'text', // 正面提示词字段
+  'comfyui_negative_prompt_node_id': '7', // 负面提示词节点ID
+  'comfyui_negative_prompt_field': 'text', // 负面提示词字段
+  'comfyui_batch_size_node_id': '5', // 批处理大小节点ID
+  'comfyui_batch_size_field': 'batch_size', // 批处理大小字段
   'comfyui_latent_width_field': 'width',   // 宽度
   'comfyui_latent_height_field': 'height', // 高度
 
   // --- 接口管理设置 ---
-  'languageApis': [],
-  'drawingApis': [],
-  'videoApis': [],
-  'activeLanguageApiId': null,
-  'activeDrawingApiId': null,
-  'activeVideoApiId': null,
+  'languageApis': [], // 语言接口列表
+  'drawingApis': [], // 绘图接口列表
+  'videoApis': [], // 视频接口列表
+  'activeLanguageApiId': null, // 当前激活的语言接口ID
+  'activeDrawingApiId': null, // 当前激活的绘图接口ID
+  'activeVideoApiId': null, // 当前激活的视频接口ID
   
   // --- 绘图标签设置 ---
   // 绘图质量
@@ -61,7 +61,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_artist',
       'name': '预设-艺术家',
-      'content': 'artist:DoReMi, artist:Hwansang, artist:Mx2j', // 艺术家标签通常是可选的
+      'content': 'artist:DoReMi, artist:Hwansang, artist:Mx2j', 
       'isSystemPreset': true,
     }
   ],

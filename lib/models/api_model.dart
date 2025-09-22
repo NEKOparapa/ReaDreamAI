@@ -17,7 +17,7 @@ enum ApiProvider {
   dashscope, 
   comfyui,
   // 视频模型
-  bailian, // 新增：百炼
+  bailian, 
   // 通用
   custom,
 }
@@ -27,6 +27,7 @@ enum ApiFormat {
   openai,
   google,
   anthropic,
+  none,
 }
 
 // =================================================================
@@ -61,34 +62,34 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
   const ApiPlatformPreset(
     provider: ApiProvider.openai, name: 'OpenAI', icon: Icons.cloud_outlined, 
     defaultUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 10, defaultRpm: 300
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.volcengine, name: 'VolcEngine', icon: Icons.filter_hdr_outlined, 
     // 这是火山的语言模型预设
-    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'Doubao-pro-32k', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'doubao-seed-1-6-250615', 
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 30, defaultRpm: 3000
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.deepseek, name: 'DeepSeek', icon: Icons.search, 
     defaultUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-chat', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 30, defaultRpm: 3000
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
     // 这是谷歌的语言模型预设
-    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-1.5-flash-latest', 
-    defaultFormat: ApiFormat.google, defaultConcurrency: 2, defaultRpm: 60
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-2.5-flash', 
+    defaultFormat: ApiFormat.google, defaultConcurrency: 3, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.anthropic, name: 'Anthropic', icon: Icons.hub_outlined, 
-    defaultUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-3-haiku-20240307', 
-    defaultFormat: ApiFormat.anthropic, defaultConcurrency: 2, defaultRpm: 60
+    defaultUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-4-haiku', 
+    defaultFormat: ApiFormat.anthropic, defaultConcurrency: 3, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
     defaultUrl: '', defaultModel: '', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 2, defaultRpm: 60
+    defaultFormat: ApiFormat.openai, defaultConcurrency: 10, defaultRpm: 60
   ),
 ];
 
@@ -99,34 +100,34 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
   const ApiPlatformPreset(
     provider: ApiProvider.volcengine, name: 'Volcengine', icon: Icons.filter_hdr_outlined,
     // 这是火山的绘画模型预设
-    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'sdxl-lightning', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+    defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'doubao-seedream-4-0-250828', 
+    defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
     // 这是谷歌的绘画模型预设
-    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-1.5-pro-latest', 
-    defaultFormat: ApiFormat.google, defaultConcurrency: 1, defaultRpm: 30
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'imagen-4.0-generate-001', 
+    defaultFormat: ApiFormat.none, defaultConcurrency: 3, defaultRpm: 30
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.dashscope, name: '千问', icon: Icons.bolt_outlined, 
-    defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', defaultModel: 'wanx-v1', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+    defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', defaultModel: 'qwen-image', 
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.kling, name: 'Kling', icon: Icons.movie_filter_outlined, 
-    defaultUrl: 'https://api-beijing.klingai.com', defaultModel: 'kling-v1', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+    defaultUrl: 'https://api-beijing.klingai.com', defaultModel: 'kling-v2.0', 
+    defaultFormat: ApiFormat.none, defaultConcurrency: 6, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined, 
-    defaultUrl: 'http://127.0.0.1:8188', defaultModel: '', // ComfyUI模型在工作流中定义
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+    defaultUrl: 'http://127.0.0.1:8188', defaultModel: 'none',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
     defaultUrl: '', defaultModel: '', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 30
+    defaultFormat: ApiFormat.none, defaultConcurrency: 5, defaultRpm: 60
   ),
 ];
 
@@ -138,18 +139,18 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
     provider: ApiProvider.bailian, name: '百炼(通义)', icon: Icons.whatshot_outlined, 
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', 
     defaultModel: 'wan2.2-t2v-plus', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.volcengine, name: '火山', icon: Icons.filter_hdr_outlined,
     defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', 
-    defaultModel: 'doubao-seedance-1-0-pro-250528', // 使用文档中的示例模型
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+    defaultModel: 'doubao-seedance-1-0-pro-250528',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
     defaultUrl: '', defaultModel: '', 
-    defaultFormat: ApiFormat.openai, defaultConcurrency: 1, defaultRpm: 5
+    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 5
   ),
 ];
 
@@ -183,7 +184,7 @@ class ApiModel {
   });
 
   factory ApiModel.create(String name) {
-    // 直接从独立的语言列表中查找默认预设 (OpenAI)
+    // 直接从独立的语言列表中查找默认预设
     final preset = languagePlatformPresets.firstWhere((p) => p.provider == ApiProvider.openai);
     return ApiModel(
       id: const Uuid().v4(),
@@ -198,7 +199,7 @@ class ApiModel {
   }
 
   factory ApiModel.createDrawing(String name) {
-    // 直接从独立的绘画列表中查找默认预设 (Volcengine)
+    // 直接从独立的绘画列表中查找默认预设
     final preset = drawingPlatformPresets.firstWhere((p) => p.provider == ApiProvider.volcengine);
     return ApiModel(
       id: const Uuid().v4(),
@@ -212,9 +213,9 @@ class ApiModel {
     );
   }
 
-  // 新增：创建视频接口的工厂方法
+  // 创建视频接口的工厂方法
   factory ApiModel.createVideo(String name) {
-    // 从视频列表中查找默认预设 (百炼)
+    // 从视频列表中查找默认预设
     final preset = videoPlatformPresets.firstWhere((p) => p.provider == ApiProvider.bailian);
     return ApiModel(
       id: const Uuid().v4(),

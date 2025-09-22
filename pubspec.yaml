@@ -1,4 +1,4 @@
-name: AiReaa
+name: rea_dream_ai
 description: "A new Flutter project."
 
 
@@ -38,7 +38,7 @@ dependencies:
   video_player: ^2.8.6  # 用于视频播放
   video_player_win: ^3.2.0
   collection: ^1.18.0 # 提供额外的集合类和实用工具
-
+  intl: ^0.18.1         # 用于格式化日期和时间
 
 dev_dependencies:
   flutter_test:

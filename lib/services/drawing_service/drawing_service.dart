@@ -3,6 +3,7 @@
 import 'package:http/http.dart' as http;
 
 import '../../models/api_model.dart';
+import '../../base/log/log_service.dart'; 
 import 'drawing_platform.dart';
 import 'platforms/comfyui_platform.dart';
 import 'platforms/dashscope_platform.dart'; 
@@ -36,7 +37,6 @@ class DrawingService {
     try {
       final DrawingPlatform platform;
       // 根据 API 配置中的 provider 类型，选择并实例化对应的平台实现。
-      // 注意：实例化时不再传入 apiConfig
       switch (apiConfig.provider) {
         case ApiProvider.custom: // 自定义 平台
           platform = OpenAiPlatform(client: _client);
@@ -61,7 +61,6 @@ class DrawingService {
       }
 
       // 调用所选平台的 generate 方法来生成图像。
-      // 注意：在这里将 apiConfig 作为参数传入
       return await platform.generate(
         positivePrompt: positivePrompt,
         negativePrompt: negativePrompt,
@@ -69,12 +68,12 @@ class DrawingService {
         count: count,
         width: width,
         height: height,
-        apiConfig: apiConfig, // <--- 将 apiConfig 作为参数传递
+        apiConfig: apiConfig,
         referenceImagePath: referenceImagePath,
       );
     } catch (e, st) {
       // 捕获并打印任何在生成过程中发生的错误。
-      print('[DrawingService] ❌ 生成图像时发生错误 "${apiConfig.provider.name}": $e\n$st');
+      LogService.instance.error('[DrawingService] ❌ 生成图像时发生错误 "${apiConfig.provider.name}": $e\n$st');
       return null;
     }
   }
