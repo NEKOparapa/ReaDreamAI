@@ -49,7 +49,16 @@ ReaDreamAI旨在让你的创作过程尽可能简单流畅。只需以下三步�
 
 ### 第一步：配置接口
 内容略
-1.本地模型搭建教程
+
+
+1.在线绘画模型接入教程
+略
+
+
+2.本地绘画模型接入教程
+https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI
+
+
 
 ### 第二步：拖入文件
 内容略
