@@ -58,3 +58,12 @@ flutter:
   assets:
     # 这样会包含 assets/comfyui/ 文件夹下的所有文件
     - assets/comfyui/
+
+  # 添加字体声明
+  fonts:
+    - family: NotoSansSC  # 这是你给字体起的名字，在代码中会用到
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.ttf
+        # 如果你有不同字重的字体文件，可以继续在这里添加
+        # - asset: assets/fonts/NotoSansSC-Bold.ttf
+        #   weight: 700

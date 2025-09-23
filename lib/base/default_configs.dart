@@ -8,7 +8,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'proxy_port': '7890',  // 代理端口，通用默认值
   
   // --- 生图设置 ---
-  'image_gen_tokens': 8000, // 生图使用的最大Token数
+  'image_gen_tokens': 7000, // 生图使用的最大Token数
   'image_gen_scenes_per_chapter': 3, // 每章生成的场景数
   'image_gen_images_per_scene': 2, // 每个场景生成的图片数
   'image_gen_max_workers': 1, // 最大并发数
@@ -20,8 +20,8 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   // --- 翻译设置 --- 
   'translation_tokens': 4000, // 翻译使用的最大Token数
-  'translation_source_lang': 'English', // 源语言
-  'translation_target_lang': '中文', // 目标语言
+  'translation_source_lang': 'ja', // 源语言
+  'translation_target_lang': 'zh-CN', // 目标语言
 
   // --- ComfyUI节点设置 ---
   'comfyui_workflow_type': 'wai_illustrious', // 默认工作流类型代号

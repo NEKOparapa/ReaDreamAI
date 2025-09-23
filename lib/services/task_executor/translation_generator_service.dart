@@ -103,7 +103,8 @@ class TranslationGeneratorService {
   /// 处理单个翻译任务块（Chunk）
   Future<bool> _processChunk(Book book, TranslationTaskChunk chunk, CancellationToken cancellationToken) async {
     // 根据任务块中的章节ID和行ID范围，找到对应的文本行
-    final chapter = book.chapters.firstWhere((c) => c.title == chunk.chapterId, orElse: () => throw Exception('Chapter not found'));
+    // 将 c.title 修改为 c.id
+    final chapter = book.chapters.firstWhere((c) => c.id == chunk.chapterId, orElse: () => throw Exception('Chapter not found')); 
     final lines = chapter.lines.where((l) => l.id >= chunk.startLineId && l.id <= chunk.endLineId).toList();
 
     // 如果没有需要翻译的行，直接视为成功
@@ -154,10 +155,25 @@ class TranslationGeneratorService {
   /// 向 LLM 请求翻译并解析结果
   Future<List<Map<String, dynamic>>> _requestTranslation(List<LineStructure> lines, CancellationToken cancellationToken) async {
     // 从配置中获取源语言和目标语言
-    final sourceLang = _configService.getSetting<String>('translation_source_lang', '日语');
-    final targetLang = _configService.getSetting<String>('translation_target_lang', '中文');
+    final sourceLangCode = _configService.getSetting<String>('translation_source_lang', 'ja');
+    final targetLangCode = _configService.getSetting<String>('translation_target_lang', 'zh-CN');
+
+    // 直接在此处定义转换映射
+    const Map<String, String> languageMap = {
+      'zh-CN': '简体中文',
+      'zh-TW': '繁體中文',
+      'ko': '韩语',
+      'ja': '日语',
+      'en': '英语',
+      'ru': '俄语',
+    };
+
+    // 使用 Map 将代号转换为显示名称，用于构建 Prompt
+    final sourceLangName = languageMap[sourceLangCode] ?? sourceLangCode;
+    final targetLangName = languageMap[targetLangCode] ?? targetLangCode;
+
     // 构建发送给LLM的提示词
-    final (systemPrompt, messages) = _buildLlmPrompt(lines, sourceLang, targetLang);
+    final (systemPrompt, messages) = _buildLlmPrompt(lines, sourceLangName, targetLangName);
     final activeApi = _configService.getActiveLanguageApi();
     // 获取该API的速率限制器，以避免请求过于频繁
     final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);

@@ -20,7 +20,7 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
   late TextEditingController _proxyPortController;
 
   // GitHub 项目主页的 URL
-  final Uri _githubUrl = Uri.parse('https://github.com/NEKOparapa/AiNiee');
+  final Uri _githubUrl = Uri.parse('https://github.com/NEKOparapa/ReaDreamAI');
 
   @override
   void initState() {

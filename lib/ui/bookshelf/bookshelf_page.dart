@@ -1,25 +1,22 @@
 // lib/ui/bookshelf/bookshelf_page.dart
 
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:tiktoken/tiktoken.dart';
 import 'package:uuid/uuid.dart';
 
 // 导入项目内部的文件
-import '../../models/book.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/file_parser/file_parser.dart';
-import '../../base/config_service.dart';
 import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
+import '../../services/task_splitter/task_splitter_service.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -135,7 +132,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
     // 创建两个文本控制器，用于获取输入框内容
     final titleController = TextEditingController();
     final contentController = TextEditingController();
-    
     final screenSize = MediaQuery.of(context).size;
 
     showDialog(
@@ -214,20 +210,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
           title = title.substring(0, 40);
         }
       }
-      
+
       // 清理文件名中的非法字符
       final sanitizedTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final uniqueId = const Uuid().v4().substring(0, 8); // 添加唯一ID防止重名
       final fileName = '$sanitizedTitle-$uniqueId.txt';
       final filePath = p.join(tempDir.path, fileName);
-      
+
       // 将内容写入临时文件
       final file = File(filePath);
       await file.writeAsString(content);
 
       // 调用标准的文件处理流程
       await _processFiles([filePath]);
-
     } catch (e, s) {
       LogService.instance.error('粘贴导入失败', e, s);
       if (mounted) {
@@ -235,7 +230,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
       }
     }
   }
-  
+
   /// 为指定书籍生成插图任务
   Future<void> _generateIllustrations(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
@@ -243,8 +238,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
       _showTopMessage('错误：找不到书籍数据', isError: true);
       return;
     }
-    // 将书籍内容拆分为任务块
-    final chunks = _splitBookIntoTaskChunks(book);
+
+    // 调用新的服务来切分任务块
+    final chunks = TaskSplitterService.instance.splitBookForIllustrations(book);
+
     if (chunks.isEmpty) {
       _showTopMessage('书籍内容太少或不符合要求，无法创建插图任务');
       return;
@@ -272,87 +269,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
     );
   }
 
-  /// 将书籍内容拆分为适合生成插图的任务块
-  List<IllustrationTaskChunk> _splitBookIntoTaskChunks(Book book) {
-    final config = ConfigService();
-    final scenesPerChapter = config.getSetting<int>('image_gen_scenes_per_chapter', 3);
-    final maxChunkTokens = config.getSetting<int>('image_gen_tokens', 5000);
-    final List<IllustrationTaskChunk> allChunks = [];
-    final encoding = encodingForModel("gpt-4"); // 获取分词器
-
-    for (final chapter in book.chapters) {
-      if (chapter.lines.isEmpty) continue;
-
-      // 统计章节总字符数
-      int totalChapterChars = chapter.lines.map((line) => line.text.length).reduce((a, b) => a + b);
-
-      // 如果章节字符数太少，则跳过
-      if (totalChapterChars < 500) {
-        LogService.instance.info('跳过插图任务章节《${chapter.title}》，因字符数 ($totalChapterChars) 过少。');
-        continue;
-      }
-
-      final List<List<LineStructure>> lineChunks = [];
-      List<LineStructure> currentChunkLines = [];
-      int currentTokens = 0;
-
-      // 按maxChunkTokens切分章节内容
-      for (final line in chapter.lines) {
-        final lineTokens = encoding.encode(line.text).length;
-        if (currentTokens + lineTokens > maxChunkTokens && currentChunkLines.isNotEmpty) {
-          lineChunks.add(List.from(currentChunkLines));
-          currentChunkLines.clear();
-          currentTokens = 0;
-        }
-        currentChunkLines.add(line);
-        currentTokens += lineTokens;
-      }
-
-      if (currentChunkLines.isNotEmpty) {
-        lineChunks.add(List.from(currentChunkLines));
-      }
-
-      if (lineChunks.isEmpty) continue;
-
-      // 计算每个块的token数
-      final chunkTokens = lineChunks
-          .map((chunk) => encoding.encode(chunk.map((l) => l.text).join('\n')).length)
-          .toList();
-      final totalChunkTokens = chunkTokens.fold<int>(0, (sum, item) => sum + item);
-
-      // 按token比例分配每个块应生成的场景数
-      final List<int> scenesPerChunk = [];
-      if (totalChunkTokens > 0) {
-        int distributedScenes = 0;
-        for (int i = 0; i < chunkTokens.length - 1; i++) {
-          final numScenes = (chunkTokens[i] / totalChunkTokens * scenesPerChapter).round();
-          scenesPerChunk.add(numScenes);
-          distributedScenes += numScenes;
-        }
-        scenesPerChunk.add(max(0, scenesPerChapter - distributedScenes));
-      } else if (lineChunks.isNotEmpty) {
-        scenesPerChunk.addAll(List.filled(lineChunks.length, 0));
-        scenesPerChunk[0] = scenesPerChapter;
-      }
-
-      // 创建任务块
-      for (int i = 0; i < lineChunks.length; i++) {
-        if (scenesPerChunk[i] > 0) {
-          final chunkLines = lineChunks[i];
-          allChunks.add(IllustrationTaskChunk(
-            id: const Uuid().v4(),
-            chapterId: chapter.id,
-            startLineId: chunkLines.first.id,
-            endLineId: chunkLines.last.id,
-            scenesToGenerate: scenesPerChunk[i],
-          ));
-        }
-      }
-    }
-
-    return allChunks;
-  }
-
   /// 为指定书籍生成翻译任务
   Future<void> _generateTranslations(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
@@ -360,8 +276,10 @@ class _BookshelfPageState extends State<BookshelfPage> {
       _showTopMessage('错误：找不到书籍数据', isError: true);
       return;
     }
-    // 将书籍内容拆分为翻译任务块
-    final chunks = _splitBookIntoTranslationChunks(book);
+
+    // 调用新的服务来切分任务块
+    final chunks = TaskSplitterService.instance.splitBookForTranslations(book);
+
     if (chunks.isEmpty) {
       _showTopMessage('书籍内容太少或不符合要求，无法创建翻译任务');
       return;
@@ -386,59 +304,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
         content: Text('已为《${entry.title}》创建 ${chunks.length} 个翻译子任务'),
       ),
     );
-  }
-
-  /// 将书籍内容拆分为适合翻译的任务块
-  List<TranslationTaskChunk> _splitBookIntoTranslationChunks(Book book) {
-    final config = ConfigService();
-    final maxChunkTokens = config.getSetting<int>('translation_tokens', 4000);
-    final List<TranslationTaskChunk> allChunks = [];
-    final encoding = encodingForModel("gpt-4"); // 获取分词器
-
-    for (final chapter in book.chapters) {
-      if (chapter.lines.isEmpty) continue;
-
-      // 统计章节总字符数
-      int totalChapterChars = chapter.lines.map((line) => line.text.length).reduce((a, b) => a + b);
-
-      // 如果章节字符数太少，则跳过
-      if (totalChapterChars < 500) {
-        LogService.instance.info('跳过翻译任务章节《${chapter.title}》，因字符数 ($totalChapterChars) 过少。');
-        continue;
-      }
-
-      List<LineStructure> currentChunkLines = [];
-      int currentTokens = 0;
-
-      // 按maxChunkTokens切分章节内容
-      for (final line in chapter.lines) {
-        final lineTokens = encoding.encode(line.text).length;
-        if (currentTokens + lineTokens > maxChunkTokens && currentChunkLines.isNotEmpty) {
-          allChunks.add(TranslationTaskChunk(
-            id: const Uuid().v4(),
-            chapterId: chapter.id,
-            startLineId: currentChunkLines.first.id,
-            endLineId: currentChunkLines.last.id,
-          ));
-          currentChunkLines.clear();
-          currentTokens = 0;
-        }
-        currentChunkLines.add(line);
-        currentTokens += lineTokens;
-      }
-
-      // 添加最后一个块
-      if (currentChunkLines.isNotEmpty) {
-        allChunks.add(TranslationTaskChunk(
-          id: const Uuid().v4(),
-          chapterId: chapter.id,
-          startLineId: currentChunkLines.first.id,
-          endLineId: currentChunkLines.last.id,
-        ));
-      }
-    }
-
-    return allChunks;
   }
 
   /// 删除书籍
@@ -573,7 +438,6 @@ class _BookshelfPageState extends State<BookshelfPage> {
       ),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
