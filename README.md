@@ -47,10 +47,10 @@
 
 * **第一步：配置接口**
 
-[在线语言模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
-[在线绘画模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
-[在线视频模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
-[本地绘画模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
+  - 在线语言接口：需付费但性价比很高，无显卡要求，[配置教程‐Deepseek](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%AF%AD%E8%A8%80%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90Deepseek)
+  - 在线绘画接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E7%BB%98%E7%94%BB%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
+  - 在线视频接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%A7%86%E9%A2%91%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
+  - 本地绘画接口：生成无限制，生成速度和显卡挂钩，[配置教程‐ComfyUI](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
 
 
 * **第二步：拖入文件**
