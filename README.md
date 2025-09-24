@@ -6,7 +6,7 @@
 ## 🌟 核心功能 (Core Features)
 
 *   🎨 **极高的人物一致性 (High Character Consistency)**：
-    通过先进的角色锁定技术，确保在不同场景、不同动作、不同画风下，你的主角始终是同一个“人”。告别AI绘画的“换张图换张脸”问题。
+    不同场景、不同动作、不同画风下，你的主角始终是同一个“人”。告别AI绘画的“换张图换张脸”问题。
 
 *   🎭 **多变的艺术风格 (Versatile Art Styles)**：
     无论是日系赛璐璐、现实写实、水墨丹青还是美漫风格，只需简单设定，即可让你的故事视觉化，并保证全篇风格统一。
@@ -45,26 +45,21 @@
 ---
 ## 🚀 三步上手 (Get Started in 3 Steps)
 
-ReaDreamAI旨在让你的创作过程尽可能简单流畅。只需以下三步，即可为你的故事注入视觉活力：
+* **第一步：配置接口**
 
-### 第一步：配置接口
-内容略
-
-
-1.在线绘画模型接入教程
-略
+[在线语言模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
+[在线绘画模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
+[在线视频模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
+[本地绘画模型接入教程](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
 
 
-2.本地绘画模型接入教程
-https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI
+* **第二步：拖入文件**
 
+打开书架页面，将txt或者epub文件拖入，软件会自动读取。也可以通过右下角手动选择文件导入或者粘贴文本导入
 
+* **第三步：开始生成**
 
-### 第二步：拖入文件
-内容略
-
-### 第三步：右键书籍，生成插图
-内容略
+右键书籍上的书籍，在弹出的右键菜单中，选择生成插图。进度会显示在任务界面中。
 
 ---
 
