@@ -125,7 +125,6 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     );
   }
 
-  // _buildSectionTitle, _buildTextField, _buildNumberField, _buildRateLimitSection, _buildAuthFields, _buildUrlField 方法保持不变
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
@@ -209,6 +208,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
       case ApiProvider.volcengine:
       case ApiProvider.google:
       case ApiProvider.dashscope:
+      case ApiProvider.novelai:
       case ApiProvider.custom:
         return [_buildTextField(_apiKeyController, 'API Key', '请输入平台的 API Key', isRequired: true)];
       case ApiProvider.kling:

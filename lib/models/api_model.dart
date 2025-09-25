@@ -16,6 +16,7 @@ enum ApiProvider {
   kling,
   dashscope, 
   comfyui,
+  novelai,
   // 视频模型
   bailian, 
   // 通用
@@ -118,6 +119,11 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
     provider: ApiProvider.kling, name: 'Kling', icon: Icons.movie_filter_outlined, 
     defaultUrl: 'https://api-beijing.klingai.com', defaultModel: 'kling-v2.0', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 6, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.novelai, name: 'NovelAI', icon: Icons.palette_outlined, 
+    defaultUrl: 'https://api.novelai.net', defaultModel: 'nai-diffusion-4-5-full', 
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined, 

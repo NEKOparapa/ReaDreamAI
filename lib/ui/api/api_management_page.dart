@@ -355,6 +355,8 @@ class _ApiCard extends StatelessWidget {
         return Icons.bolt_outlined;
       case ApiProvider.comfyui:
         return Icons.account_tree_outlined;
+      case ApiProvider.novelai:
+        return Icons.palette_outlined;
       // 视频模型
       case ApiProvider.bailian:
         return Icons.whatshot_outlined;
