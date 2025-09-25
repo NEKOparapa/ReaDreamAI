@@ -46,7 +46,7 @@
 ## 🚀 三步上手 (Get Started in 3 Steps)
 
 * **第一步：配置接口**
-
+  > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第一步.png">
   - 在线语言接口：需付费但性价比很高，无显卡要求，[配置教程‐Deepseek](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%AF%AD%E8%A8%80%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90Deepseek)
   - 在线绘画接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E7%BB%98%E7%94%BB%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
   - 在线视频接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%A7%86%E9%A2%91%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
@@ -54,12 +54,13 @@
 
 
 * **第二步：拖入文件**
-
-打开书架页面，将txt或者epub文件拖入，软件会自动读取。也可以通过右下角手动选择文件导入或者粘贴文本导入
+  > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第二步.png">
+  - 打开书架页面，将txt或者epub文件拖入，软件会自动读取。也可以通过右下角手动选择文件导入或者粘贴文本导入
 
 * **第三步：开始生成**
-
-右键书籍上的书籍，在弹出的右键菜单中，选择生成插图。进度会显示在任务界面中。
+  > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第三步.png">
+  - 右键书籍上的书籍，在弹出的右键菜单中，选择生成插图。进度会显示在任务界面中。
+  - 生成完成后，可点击书籍预览生成效果，并支持重新生成插图，生成视频，导出书籍等操作
 
 ---
 
