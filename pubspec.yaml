@@ -15,30 +15,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  desktop_drop: ^0.4.4 # 用于处理桌面文件拖放
+  desktop_drop: ^0.6.1 # 用于处理桌面文件拖放
   path: ^1.8.3       # 用于方便地处理文件路径和扩展名# 用于解析 EPUB 文件的元数据和内容结构
-  epubx: any  # 用于在 Flutter 中渲染和显示 EPUB 文件
-  epub_view: ^3.1.0  # (可选但推荐) 用于轻松实现单例模式
-  get_it: ^7.6.4
+  get_it: ^7.6.4    # 用于依赖注入和服务定位
   path_provider: any # 用于获取应用缓存目录
   archive: any       # 用于解压EPUB (zip) 文件
   xml: ^6.6.1        # 用于解析EPUB内的XML文件 (.opf, toc.ncx)
   html: ^0.15.2 # 用于解析和处理HTML内容
   uuid: any        # 用于为缓存文件夹生成唯一ID
-  json_annotation: ^4.9.0 # 帮助处理JSON序列化 (可选但推荐)
-  file_picker: ^8.0.0+1 # 用于文件和目录选择器
+  json_annotation: ^4.9.0 # 帮助处理JSON序列化
+  file_picker: ^10.3.3 # 用于文件和目录选择器
   http: any #  用于网络请求
   tiktoken: ^1.0.3        # 用于计算token数
   pool: ^1.5.1 # 用于处理并发任务池
   web_socket_channel: ^3.0.3  # 用于ComfyUI的WebSocket通信
   dart_jsonwebtoken: ^2.11.0  # 用于Kling的JWT Token生成
-  crypto: ^3.0.3            # 用于LiblibAI的HMAC-SHA1签名
   cupertino_icons: ^1.0.8 # iOS风格的图标
   url_launcher: ^6.1.14 # 用于打开外部链接
   video_player: ^2.8.6  # 用于视频播放
   video_player_win: ^3.2.0
   collection: ^1.18.0 # 提供额外的集合类和实用工具
   intl: ^0.18.1         # 用于格式化日期和时间
+  image: ^4.5.4       # 用于图像处理和转换
 
 dev_dependencies:
   flutter_test:
@@ -47,7 +45,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   
   # 开发依赖
-  build_runner: any # 配合 json_serializable 使用
+  build_runner: ^2.8.0  # 配合 json_serializable 使用
   json_serializable: ^6.7.1 # 用于生成 JSON 序列化代码
   rename: ^3.1.0
 

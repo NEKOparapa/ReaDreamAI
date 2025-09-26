@@ -37,53 +37,30 @@ jobs:
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：准备发布所需的信息
-      - name: Prepare release info
-        id: prepare_info
-        shell: pwsh
-        run: |
-          echo "PROJECT_NAME=ReaDreamAI" >> $env:GITHUB_ENV
-          $date = Get-Date -Format "yyyyMMdd-HHmmss"
-          $shortSha = "${{ github.sha }}".Substring(0, 7)
-          $tagName = "nightly-$date-$shortSha"
-          echo "TAG_NAME=$tagName" >> $env:GITHUB_ENV
-          
-          echo "Generated tag name: $tagName"
-          echo "Project name: ReaDreamAI"
-
-      # 步骤6：将构建产物打包成 ZIP
+      # 步骤5：将构建产物打包成 ZIP
       - name: Package release assets
         shell: pwsh
         run: |
           # 使用正确的构建输出路径
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
-      # 步骤7：删除旧的预览版
-      # 这个步骤会删除所有现有的预发布版本，只保留最新的0个（即全部删除）
+      # 步骤6：删除旧的预览版
       - name: Delete old pre-releases
-        uses: dev-drprasad/delete-older-releases@v0.2.1
+        uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
-          # 要保留的最新预发布版本数量。我们设置为0，因为马上就要创建一个新的
-          keep_latest: 0
-          # 只删除标记为 "prerelease" 的版本，不会误删正式版
-          delete_prerelease_only: true
-          # GitHub Actions 自动提供的 token
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: Beta
+          delete_release: true
+          github_token: ${{ secrets.AI_TOKEN }}
+        continue-on-error: true
           
-      # 步骤8：创建 GitHub Pre-release 并上传 ZIP 包
+      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
-          # 标记为预发布版本
+          tag_name: Beta
+          name: ReaDreamAI 开发测试版本，由最新源码自动打包 
+          draft: false
           prerelease: true
-          # 使用我们之前动态生成的唯一标签名
-          tag_name: ${{ env.TAG_NAME }}
-          # Release 的标题
-          name: 测试版-自动同步源码
-          # 自动生成此版本与上一个版本之间的变更日志
-          generate_release_notes: true
-          # 指向我们要上传的文件路径
+          generate_release_notes: true 
           files: ReaDreamAI-beta-windows.zip
-          # GitHub Actions 自动提供的 token
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.AI_TOKEN }}

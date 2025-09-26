@@ -75,6 +75,7 @@ class NovelaiPlatform implements DrawingPlatform {
       width: width,
       height: height,
       count: count,
+      apiConfig: apiConfig,
       referenceImageBase64: null, // 文生图没有参考图
     );
     return _executeGenerationRequest(payload: payload, saveDir: saveDir, apiConfig: apiConfig);
@@ -104,6 +105,7 @@ class NovelaiPlatform implements DrawingPlatform {
         width: width,
         height: height,
         count: count,
+        apiConfig: apiConfig,
         referenceImageBase64: processedBase64,
       );
       return _executeGenerationRequest(payload: payload, saveDir: saveDir, apiConfig: apiConfig);
@@ -120,25 +122,15 @@ class NovelaiPlatform implements DrawingPlatform {
     required int width,
     required int height,
     required int count,
+    required ApiModel apiConfig, 
     String? referenceImageBase64,
   }) {
-    final seed = Random().nextInt(4294967295); // 生成一个 32-bit 的随机种子
     
     // 基础参数，参考Python代码并精简
     final parameters = {
-      "params_version": 3,
       "width": width,
       "height": height,
-      "scale": 10,
-      "sampler": "k_euler_ancestral",
-      "steps": 28,
       "n_samples": count,
-      "ucPreset": 0,
-      "qualityToggle": true,
-      "dynamic_thresholding": true,
-      "cfg_rescale": 0.7,
-      "noise_schedule": "karras",
-      "seed": seed,
       "negative_prompt": negativePrompt, // V3/旧版负向提示词也保留一下
       // V4 提示词结构
       "v4_prompt": {
@@ -167,7 +159,7 @@ class NovelaiPlatform implements DrawingPlatform {
     }
 
     return {
-      "model": "nai-diffusion-4-5-full", // 使用默认的优质模型
+      "model": apiConfig.model.isNotEmpty ? apiConfig.model : "nai-diffusion-4-5-full", // 优先使用配置的模型，否则使用默认模型
       "action": "generate",
       "parameters": parameters,
     };
@@ -229,7 +221,6 @@ class NovelaiPlatform implements DrawingPlatform {
     return savedImagePaths;
   }
   
-  /// Dart 实现的 `重新编码图片` 功能
   /// 预处理参考图：读取、调整尺寸、重新编码为Base64
   Future<String?> _preprocessReferenceImage(String imagePath) async {
     LogService.instance.info('[NovelAI] 🖼️  正在预处理参考图: $imagePath');
@@ -274,7 +265,6 @@ class NovelaiPlatform implements DrawingPlatform {
     }
   }
 
-  /// Dart 实现的 `calculate_novelai_reference_dimensions` 功能
   /// 根据原始宽高计算 NovelAI 推荐的参考图尺寸
   (int, int) _calculateNovelaiReferenceDimensions(int width, int height) {
     const double aspectRatioThreshold = 1.1;
