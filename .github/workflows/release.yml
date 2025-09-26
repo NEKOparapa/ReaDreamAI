@@ -1,10 +1,15 @@
 name: Build and Deploy Pre-release
 
 on:
+  workflow_dispatch: # 允许你从 Actions 选项卡手动运行此工作流
   push:
     # 只有当推送到 main 分支时才触发
     branches:
       - main # 如果你的主分支是 master，请修改为 master
+
+# 授予写入仓库内容的权限，以便创建和删除 Release
+permissions:
+  contents: write
 
 jobs:
   build-and-release:
@@ -12,10 +17,6 @@ jobs:
     name: Build and Release Pre-release
     # 指定运行此任务的虚拟机环境
     runs-on: windows-latest
-
-    # 授予写入仓库内容的权限，以便创建和删除 Release
-    permissions:
-      contents: write
 
     # 任务的执行步骤
     steps:
