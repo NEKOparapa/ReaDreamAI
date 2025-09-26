@@ -18,9 +18,8 @@ class ComfyUiSettingsPage extends StatefulWidget {
 class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
   final ConfigService _configService = ConfigService();
 
-  late String _selectedWorkflowType; // 现在存储的是代号，如 'wai_nsfw_sdxl'
+  late String _selectedWorkflowType;
 
-  // 定义工作流预设，包含代号、显示名称和资源路径
   final Map<String, Map<String, String>> _workflowPresets = {
     'wai_illustrious': {
       'name': 'WAI_NSFW-illustrious-SDXL工作流',
@@ -32,10 +31,10 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
     },
     'custom': {
       'name': '自定义工作流',
-      'path': '', // 自定义类型没有预设路径
+      'path': '',
     },
   };
-  
+
   late final Map<String, TextEditingController> _controllers;
 
   @override
@@ -46,7 +45,10 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
     final keys = [
       'comfyui_custom_workflow_path', 'comfyui_positive_prompt_node_id',
       'comfyui_positive_prompt_field', 'comfyui_negative_prompt_node_id',
-      'comfyui_negative_prompt_field', 'comfyui_batch_size_node_id', 'comfyui_batch_size_field'
+      'comfyui_negative_prompt_field', 'comfyui_batch_size_node_id',
+      'comfyui_latent_image_node_id',
+      'comfyui_batch_size_field', 'comfyui_latent_width_field',
+      'comfyui_latent_height_field'
     ];
 
     _controllers = {
@@ -71,7 +73,7 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
     }
     super.dispose();
   }
-  
+
   Future<void> _pickCustomWorkflow() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -98,7 +100,6 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
     }
   }
 
-  //当工作流类型改变时调用的核心方法
   Future<void> _onWorkflowTypeChanged(String? newTypeCode) async {
     if (newTypeCode == null || newTypeCode == _selectedWorkflowType) return;
 
@@ -106,10 +107,8 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
       _selectedWorkflowType = newTypeCode;
     });
 
-    // 1. 保存新的工作流类型代号
     await _configService.modifySetting<String>('comfyui_workflow_type', newTypeCode);
 
-    // 2. 如果选择的是系统预设，则更新系统预设路径
     if (newTypeCode != 'custom') {
       final newPath = _workflowPresets[newTypeCode]!['path']!;
       await _configService.modifySetting<String>('comfyui_system_workflow_path', newPath);
@@ -149,17 +148,15 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
                 value: _selectedWorkflowType,
                 underline: const SizedBox.shrink(),
                 borderRadius: BorderRadius.circular(12),
-                //使用 _workflowPresets 构建下拉菜单项
                 items: _workflowPresets.entries.map((entry) {
                   return DropdownMenuItem<String>(
-                    value: entry.key, // 值是代号
-                    child: Text(entry.value['name']!), // 显示的是名称
+                    value: entry.key,
+                    child: Text(entry.value['name']!),
                   );
                 }).toList(),
-                onChanged: _onWorkflowTypeChanged, // 调用新的处理函数
+                onChanged: _onWorkflowTypeChanged,
               ),
             ),
-            // 判断条件改为代号 'custom'
             if (_selectedWorkflowType == 'custom')
               SettingsCard(
                 title: '自定义工作流文件(API版)',
@@ -173,10 +170,10 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
           ],
         ),
         SettingsGroup(
-          title: '提示词节点',
+          title: '正面提示词节点',
           children: [
             SettingsCard(
-              title: '正面提示词节点 ID',
+              title: '节点 ID',
               subtitle: 'Positive Prompt Node ID',
               control: _buildTextFieldControl('comfyui_positive_prompt_node_id'),
             ),
@@ -185,8 +182,13 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
               subtitle: 'Field name for positive prompt',
               control: _buildTextFieldControl('comfyui_positive_prompt_field'),
             ),
+          ],
+        ),
+        SettingsGroup(
+          title: '负面提示词节点',
+          children: [
             SettingsCard(
-              title: '负面提示词节点 ID',
+              title: '节点 ID',
               subtitle: 'Negative Prompt Node ID',
               control: _buildTextFieldControl('comfyui_negative_prompt_node_id'),
             ),
@@ -198,17 +200,37 @@ class _ComfyUiSettingsPageState extends State<ComfyUiSettingsPage> {
           ],
         ),
         SettingsGroup(
-          title: '控制节点',
+          title: '生图数量节点',
           children: [
             SettingsCard(
-              title: '生图数量/尺寸节点 ID',
-              subtitle: 'Batch Size/Latent Node ID',
+              title: '节点 ID',
+              subtitle: 'Batch Size Node ID',
               control: _buildTextFieldControl('comfyui_batch_size_node_id'),
             ),
             SettingsCard(
-              title: '生图数量输入字段',
+              title: '输入字段',
               subtitle: 'Field name for batch size',
               control: _buildTextFieldControl('comfyui_batch_size_field'),
+            ),
+          ],
+        ),
+        SettingsGroup(
+          title: '生图尺寸节点',
+          children: [
+            SettingsCard(
+              title: '节点 ID',
+              subtitle: 'Latent Image Node ID',
+              control: _buildTextFieldControl('comfyui_latent_image_node_id'),
+            ),
+            SettingsCard(
+              title: '宽度输入字段',
+              subtitle: 'Field name for latent width',
+              control: _buildTextFieldControl('comfyui_latent_width_field'),
+            ),
+            SettingsCard(
+              title: '高度输入字段',
+              subtitle: 'Field name for latent height',
+              control: _buildTextFieldControl('comfyui_latent_height_field'),
             ),
           ],
         ),

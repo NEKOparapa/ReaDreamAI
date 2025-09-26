@@ -17,8 +17,8 @@ import '../../../base/log/log_service.dart';
 
 /// ComfyUI 平台的具体实现。
 class ComfyUiPlatform implements DrawingPlatform {
-  final http.Client client; // HTTP客户端，用于发送网络请求
-  final ConfigService _configService = ConfigService(); // 配置服务实例，用于读取用户设置
+  final http.Client client; 
+  final ConfigService _configService = ConfigService(); 
 
   ComfyUiPlatform({required this.client});
 
@@ -99,7 +99,12 @@ class ComfyUiPlatform implements DrawingPlatform {
       final positiveField = _configService.getSetting<String>('comfyui_positive_prompt_field', appDefaultConfigs['comfyui_positive_prompt_field']);
       final negativeNodeId = _configService.getSetting<String>('comfyui_negative_prompt_node_id', appDefaultConfigs['comfyui_negative_prompt_node_id']);
       final negativeField = _configService.getSetting<String>('comfyui_negative_prompt_field', appDefaultConfigs['comfyui_negative_prompt_field']);
-      final latentNodeId = _configService.getSetting<String>('comfyui_batch_size_node_id', appDefaultConfigs['comfyui_batch_size_node_id']);
+      
+      // 获取图片数量
+      final batchSizeNodeId = _configService.getSetting<String>('comfyui_batch_size_node_id', appDefaultConfigs['comfyui_batch_size_node_id']);
+      final latentImageNodeId = _configService.getSetting<String>('comfyui_latent_image_node_id', appDefaultConfigs['comfyui_latent_image_node_id']);
+      
+      // 获取图片大小
       final batchSizeField = _configService.getSetting<String>('comfyui_batch_size_field', appDefaultConfigs['comfyui_batch_size_field']);
       final widthField = _configService.getSetting<String>('comfyui_latent_width_field', appDefaultConfigs['comfyui_latent_width_field']);
       final heightField = _configService.getSetting<String>('comfyui_latent_height_field', appDefaultConfigs['comfyui_latent_height_field']);
@@ -107,16 +112,17 @@ class ComfyUiPlatform implements DrawingPlatform {
       // 在工作流Map中找到对应的节点，并更新其输入(inputs)值
       workflow[positiveNodeId]['inputs'][positiveField] = positive;
       workflow[negativeNodeId]['inputs'][negativeField] = negative;
-      workflow[latentNodeId]['inputs'][batchSizeField] = count;
-      workflow[latentNodeId]['inputs'][widthField] = width;
-      workflow[latentNodeId]['inputs'][heightField] = height;
+      
+      // 修改批处理数量
+      workflow[batchSizeNodeId]['inputs'][batchSizeField] = count;
 
-      // 返回修改后、准备好提交的工作流
+      // 修改图像尺寸
+      workflow[latentImageNodeId]['inputs'][widthField] = width;
+      workflow[latentImageNodeId]['inputs'][heightField] = height;
+
       return workflow;
     } catch (e, s) {
-      // 记录加载或解析过程中的错误
       LogService.instance.error('加载或解析工作流文件时出错: $workflowPath', e, s);
-      // 向上层抛出异常，中断执行流程
       throw Exception('ComfyUI 工作流文件加载或解析失败于 $workflowPath: $e');
     }
   }

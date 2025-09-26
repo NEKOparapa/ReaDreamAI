@@ -31,8 +31,9 @@ const Map<String, dynamic> appDefaultConfigs = {
   'comfyui_positive_prompt_field': 'text', // 正面提示词字段
   'comfyui_negative_prompt_node_id': '7', // 负面提示词节点ID
   'comfyui_negative_prompt_field': 'text', // 负面提示词字段
-  'comfyui_batch_size_node_id': '5', // 批处理大小节点ID
+  'comfyui_batch_size_node_id': '5',      // 批处理大小（生图数量）节点ID
   'comfyui_batch_size_field': 'batch_size', // 批处理大小字段
+  'comfyui_latent_image_node_id': '5',    // 图像尺寸（高宽）节点ID
   'comfyui_latent_width_field': 'width',   // 宽度
   'comfyui_latent_height_field': 'height', // 高度
 
