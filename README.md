@@ -3,26 +3,26 @@
 
 ---
 
-## 🌟 核心功能 (Core Features)
+## 🌟 核心功能
 
-*   🎨 **极高的人物一致性 (High Character Consistency)**：
-    不同场景、不同动作、不同画风下，你的主角始终是同一个“人”。告别AI绘画的“换张图换张脸”问题。
+*   🎨 **极高的人物一致性**：
+    - 不同场景、不同动作、不同画风下，你的主角始终是同一个“人”。告别AI绘画的“换张图换张脸”问题。
 
-*   🎭 **多变的艺术风格 (Versatile Art Styles)**：
-    无论是日系赛璐璐、现实写实、水墨丹青还是美漫风格，只需简单设定，即可让你的故事视觉化，并保证全篇风格统一。
+*   🎭 **多变的艺术风格**：
+    - 无论是日系赛璐璐、现实写实、水墨丹青还是美漫风格，只需简单设定，即可让你的故事视觉化，并保证全篇风格统一。
 
-*   ⚡️ **闪电般的生成速度 (Lightning-Fast Generation)**：
-    深度优化的任务管线与并发处理，让灵感无需等待。即使是长篇章节，也能在短时间内完成插图和视频的制作。
+*   ⚡️ **闪电般的生成速度**：
+    - 深度优化的任务管线与并发处理，让灵感无需等待。即使是长篇章节，也能在短时间内完成插图和视频的制作。
 
-*   🔌 **开放的模型接口 (Open Model Integration)**：
-    我们不绑定任何单一模型。ReaDreamAI支持多家主流AI平台，你可以自由选择和切换最适合你需求的模型服务。
+*   🔌 **开放的模型接口**：
+    - ReaDreamAI支持多家主流AI平台，你可以自由选择和切换最适合你需求的模型服务。
 
-*   🎬 **从插图到视频 (From Illustrations to Videos)**：
-    不仅能生成静态插图，更能将关键帧、高潮场景一键转化为灵动的视频片段，为你的故事增添动态魅力。
+*   🎬 **从插图到视频**：
+    - 不仅能生成静态插图，更能将关键帧、高潮场景一键转化为灵动的视频片段，为你的故事增添动态魅力。
 
 ---
 
-## 🎨 效果展示 (Showcase)
+## 🎨 效果展示
 
 以下是使用 ReaDreamAI 为《BanG Dream! It's MyGO!!!!!》的同人小说《千早爱音的一日大冒险》生成的插图与视频片段示例。
 
@@ -262,7 +262,7 @@
 
 ---
 
-## 🚀 三步上手 (Get Started in 3 Steps)
+## 🚀 ReaDreamAI 三步走
 
 * **第一步：配置接口**
   > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第一步.png">
@@ -283,17 +283,17 @@
 
 ---
 
-## 📚 进阶教程 (Advanced Tutorials)
+## 📚 进阶教程
 
 如果你想更深入地了解ReaDreamAI的各项功能，发挥其全部潜力，可以查阅我们在Wiki上提供的详细教程：
 
-*   [**人物与风格一致性教程**：如何通过角色描述与参考图，实现完美的人物一致性](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E7%BB%98%E7%94%BB%E6%A0%87%E7%AD%BE%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
-*   [**ComfyUI进阶教程**：高级Prompt技巧，精准控制画面内容](https://github.com/NEKOparapa/ReaDreamAI/wiki/ComfyUI-%E5%B7%A5%E4%BD%9C%E6%B5%81%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
+*   [**人物与风格一致性教程**：通过角色描述与参考图，实现完美的人物一致性](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E7%BB%98%E7%94%BB%E6%A0%87%E7%AD%BE%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
+*   [**ComfyUI 自定义工作流教程**：编写 生成完全无限制、高度个性化、功能强大的 ComfyUI工作流。](https://github.com/NEKOparapa/ReaDreamAI/wiki/ComfyUI-%E5%B7%A5%E4%BD%9C%E6%B5%81%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
 
 
 ---
 
-## ⬇️ 下载地址 (Download)
+## ⬇️ 下载地址
 
 点击下方链接，前往GitHub Releases页面下载最新版本的ReaDreamAI：
 
