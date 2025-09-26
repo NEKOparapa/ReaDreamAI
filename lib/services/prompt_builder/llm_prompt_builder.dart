@@ -155,8 +155,11 @@ class LlmPromptBuilder {
     const String systemPrompt = """你是一位专业的动态视频脚本家。根据提供的静态场景描述，你需要创作一个生动、富有动感的英文视频生成提示词。
 提示词应侧重于描绘场景中的动态元素、镜头运动和时间流逝感。
 - 描述物体的移动、角色的动作、表情的细微变化。
+- 进一步描绘下一步可能发生的动作或事件。
 - 使用 'camera zoom in/out', 'panning shot', 'tilting up/down' 等运镜术语。
-- 描绘光影、天气或环境的动态变化，例如 'sunlight filtering through leaves and swaying', 'clouds drifting across the sky'。""";
+- 描绘光影、天气或环境的动态变化，例如 'sunlight filtering through leaves and swaying', 'clouds drifting across the sky'。
+- 确保提示词适合用于生成短视频内容，通常时长在5到15秒之间。
+- 描述应具体且视觉化，避免使用模糊或抽象的语言。""";
 
     // 用户指令
     final userPrompt = """

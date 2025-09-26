@@ -81,14 +81,18 @@ class DashscopePlatform implements DrawingPlatform {
     required int height,
     required ApiModel apiConfig,
   }) async {
-    LogService.instance.info('[通义千问] 🚀 正在执行文生图 (Text-to-Image) 任务...');
+    // 根据任务类型自动适配模型名称
+    final adaptedModel = _getAdaptedModel(apiConfig.model, isImageToImage: false);
+    
+    // 更新日志，使用适配后的模型名称
+    LogService.instance.info('[通义千问] 🚀 正在执行文生图 (Text-to-Image) 任务，使用模型: $adaptedModel');
     
     final content = [{"text": positivePrompt}];
     final adaptedSize = _getClosestSupportedSize(width, height);
 
     // 构建API请求负载 (payload)
     final payload = {
-      "model": apiConfig.model, // 直接使用配置的模型
+      "model": adaptedModel,
       "input": {
         "messages": [
           {"role": "user", "content": content}
@@ -136,11 +140,12 @@ class DashscopePlatform implements DrawingPlatform {
         apiConfig: apiConfig,
       );
     }
-
-    // 当使用参考图时，模型需要切换到支持编辑的 'qwen-image-edit'
-    String model = (apiConfig.model == 'qwen-image') ? 'qwen-image-edit' : apiConfig.model;
     
-    LogService.instance.info('[通义千问] 🚀 正在执行文+图生图 (Image-to-Image) 任务，使用模型: $model');
+    // 根据任务类型自动适配模型名称
+    final adaptedModel = _getAdaptedModel(apiConfig.model, isImageToImage: true);
+
+    // 更新日志，使用适配后的模型名称
+    LogService.instance.info('[通义千问] 🚀 正在执行文+图生图 (Image-to-Image) 任务，使用模型: $adaptedModel');
 
     final content = [
       {"image": imageParam},
@@ -150,7 +155,7 @@ class DashscopePlatform implements DrawingPlatform {
     
     // 构建API请求负载 (payload)
     final payload = {
-      "model": model,
+      "model": adaptedModel,
       "input": {
         "messages": [
           {"role": "user", "content": content}
@@ -174,6 +179,41 @@ class DashscopePlatform implements DrawingPlatform {
   // =======================================================================
   // == 公用方法 (Common/Shared Methods)
   // =======================================================================
+
+  // 自动转换模型的名字
+  String _getAdaptedModel(String originalModel, {required bool isImageToImage}) {
+    // 定义模型转换规则
+    // Key: 文生图模型, Value: 对应的图生图模型
+    const t2iToI2iMap = {
+      'wan2.5-t2i-preview': 'wan2.5-i2i-preview',
+      'qwen-image': 'qwen-image-edit',
+    };
+    // Key: 图生图模型, Value: 对应的文生图模型
+    const i2iToT2iMap = {
+      'wan2.5-i2i-preview': 'wan2.5-t2i-preview',
+      'qwen-image-edit': 'qwen-image',
+    };
+
+    String adaptedModel;
+    if (isImageToImage) {
+      // 当前是图生图任务，检查原始模型是否在 t2i 映射中
+      // 如果是，则转换为对应的 i2i 模型；否则，保持原样
+      adaptedModel = t2iToI2iMap[originalModel] ?? originalModel;
+    } else {
+      // 当前是文生图任务，检查原始模型是否在 i2i 映射中
+      // 如果是，则转换为对应的 t2i 模型；否则，保持原样
+      adaptedModel = i2iToT2iMap[originalModel] ?? originalModel;
+    }
+
+    // 如果模型名称发生了变化，打印一条日志以供调试
+    if (adaptedModel != originalModel) {
+      LogService.instance.info(
+        '[通义千问] ℹ️  模型自动转换: 从 "$originalModel" 切换到 "$adaptedModel" 以匹配任务类型 (${isImageToImage ? "文+图生图" : "文生图"})。'
+      );
+    }
+
+    return adaptedModel;
+  }
   
   /// 执行API调用、处理响应并下载图片的核心公共逻辑。
   Future<List<String>?> _executeApiCallAndDownloadImages({
