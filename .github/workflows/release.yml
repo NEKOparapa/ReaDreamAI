@@ -51,7 +51,7 @@ jobs:
         with:
           tag_name: Beta
           delete_release: true
-          github_token: ${{ secrets.AI_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
           
       # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
@@ -64,4 +64,4 @@ jobs:
           prerelease: true
           generate_release_notes: true 
           files: ReaDreamAI-beta-windows.zip
-          token: ${{ secrets.AI_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
