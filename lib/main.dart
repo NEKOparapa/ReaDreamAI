@@ -1,15 +1,47 @@
 /// lib/main.dart
 
+import 'dart:io'; // 导入 'dart:io' 库来检查操作系统平台
 import 'package:flutter/material.dart';
+import 'package:window_manager/window_manager.dart'; // 导入 window_manager 插件
+import 'package:screen_retriever/screen_retriever.dart'; // 导入 screen_retriever 插件
+
 import 'ui/main/main_screen.dart'; // 导入ui/main/ 目录下的文件
 import 'base/config_service.dart'; // 导入配置服务
 import 'services/task_manager/task_manager_service.dart'; // 导入任务管理器服务
 import 'base/log/log_service.dart'; // 导入日志服务
 
-void main() async { 
+void main() async {
   // 确保 Flutter 绑定已初始化，这在 main 成为 async 时是必需的
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // 仅在 Windows 平台上执行窗口初始化操作
+  if (Platform.isWindows) {
+    // 必须先调用此方法，以初始化 window_manager
+    await windowManager.ensureInitialized();
+
+    // 获取主显示器的信息
+    Display primaryDisplay = await screenRetriever.getPrimaryDisplay();
+    // 获取屏幕的原始尺寸
+    Size screenSize = primaryDisplay.size;
+    // 计算新的窗口尺寸，为屏幕尺寸的 80%
+    Size newSize = Size(screenSize.width * 0.8, screenSize.height * 0.8);
+
+    // 设置窗口选项
+    WindowOptions windowOptions = WindowOptions(
+      size: newSize, // 设置窗口大小
+      center: true, // 设置窗口居中
+      backgroundColor: Colors.transparent, // 设置背景透明，防止窗口闪烁
+      skipTaskbar: false, // 在任务栏中显示
+      titleBarStyle: TitleBarStyle.normal, // 正常的标题栏
+    );
+
+    // 等待窗口准备好后显示，并应用上面的设置
+    // 这可以防止用户看到窗口从默认大小调整到目标大小的闪烁过程
+    windowManager.waitUntilReadyToShow(windowOptions, () async {
+      await windowManager.show();
+      await windowManager.focus();
+    });
+  }
   // 初始化配置服务,处理配置文件夹和文件的检查与创建
   await ConfigService().init();
 
@@ -21,12 +53,11 @@ void main() async {
 
   // 根据配置文件，在应用启动时就设置好代理
   ConfigService().applyHttpProxy();
-  
-  LogService.instance.info("应用正在启动中...");
-  // 运行应用程序
-  runApp(const MyApp()); 
-}
 
+  LogService.instance.info("ReaDreamAI 正在启动中...");
+  // 运行应用程序
+  runApp(const MyApp());
+}
 
 // 主题颜色定义
 class AppColors {

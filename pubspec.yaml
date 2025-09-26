@@ -37,6 +37,8 @@ dependencies:
   collection: ^1.18.0 # 提供额外的集合类和实用工具
   intl: ^0.18.1         # 用于格式化日期和时间
   image: ^4.5.4       # 用于图像处理和转换
+  window_manager: ^0.5.1 # 用于管理桌面窗口
+  screen_retriever: ^0.2.0 # 用于获取屏幕信息
 
 dev_dependencies:
   flutter_test:

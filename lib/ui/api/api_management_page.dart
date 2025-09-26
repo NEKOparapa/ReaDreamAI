@@ -21,22 +21,46 @@ class ApiManagementPage extends StatefulWidget {
 class _ApiManagementPageState extends State<ApiManagementPage> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         body: SafeArea(
           child: Column(
             children: [
-              const TabBar(
-                tabs: [
-                  Tab(text: '语言'),
-                  Tab(text: '绘画'),
-                  Tab(text: '视频'),
-                ],
+              // 使用 Padding 和 Container 来创建带有圆角背景的 TabBar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Container(
+                  padding: const EdgeInsets.all(4.0), // TabBar 周围的内边距
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  child: TabBar(
+                    tabs: const [
+                      Tab(text: '语言'),
+                      Tab(text: '绘画'),
+                      Tab(text: '视频'),
+                    ],
+                    // 移除 TabBar 默认的底部下划线
+                    dividerColor: Colors.transparent,
+                    // 设置指示器为圆角矩形（胶囊样式）
+                    indicator: BoxDecoration(
+                      color: theme.colorScheme.primary,
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    // 设置选中和未选中标签的文字颜色
+                    labelColor: theme.colorScheme.onPrimary,
+                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ),
 
-              Expanded(
-                child: const TabBarView(
+              const Expanded(
+                child: TabBarView(
                   children: [
                     _ApiInterfaceView(apiType: ApiType.language),
                     _ApiInterfaceView(apiType: ApiType.drawing),
