@@ -2,7 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:url_launcher/url_launcher.dart'; 
+import 'package:url_launcher/url_launcher.dart';
+import '../../base/version/version.dart';
 import '../../base/config_service.dart';
 import 'widgets/settings_widgets.dart';
 
@@ -18,6 +19,11 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
   late bool _isDarkMode;
   late bool _proxyEnabled;
   late TextEditingController _proxyPortController;
+  
+  // 版本信息
+  String _appName = '';
+  String _version = '';
+  String _buildNumber = '';
 
   // GitHub 项目主页的 URL
   final Uri _githubUrl = Uri.parse('https://github.com/NEKOparapa/ReaDreamAI');
@@ -27,7 +33,8 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     super.initState();
     _proxyPortController = TextEditingController();
     _loadSettings();
-
+    _loadAppInfo();
+    
     _proxyPortController.addListener(() {
       _onProxyPortChanged(_proxyPortController.text);
     });
@@ -44,6 +51,15 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
       _isDarkMode = _configService.getSetting<bool>('isDarkMode', false);
       _proxyEnabled = _configService.getSetting<bool>('proxy_enabled', false);
       _proxyPortController.text = _configService.getSetting<String>('proxy_port', '7890');
+    });
+  }
+
+  // 加载应用信息
+  void _loadAppInfo() {
+    setState(() {
+      _appName = AppVersion.appName;
+      _version = AppVersion.version;
+      _buildNumber = AppVersion.buildNumber;
     });
   }
 
@@ -118,8 +134,8 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                               Text(
                                 '为应用的所有网络请求设置HTTP代理',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                    ),
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
                               ),
                             ],
                           ),
@@ -156,15 +172,47 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
             ),
           ],
         ),
-
         SettingsGroup(
           title: '关于',
           children: [
+            // 版本信息卡片
+            SettingsCard(
+              title: _appName.isEmpty ? 'ReaDreamAI' : _appName,
+              subtitle: '版本 $_version (Build $_buildNumber)',
+              control: const Icon(Icons.info_outline),
+              onTap: () {
+                // 可选：点击显示更多版本信息
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: Text(_appName),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('版本：$_version'),
+                          Text('Build：$_buildNumber'),
+                          const SizedBox(height: 8),
+                          const Text('基于AI的阅读助手应用'),
+                        ],
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text('确定'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
             SettingsCard(
               title: '项目主页',
               subtitle: '在 GitHub 上查看本项目',
-              control: const Icon(Icons.open_in_new), // 使用一个表示“打开新页面”的图标
-              onTap: () => _launchUrl(_githubUrl),   // 点击时调用跳转方法
+              control: const Icon(Icons.open_in_new),
+              onTap: () => _launchUrl(_githubUrl),
             ),
           ],
         ),
