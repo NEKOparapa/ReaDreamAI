@@ -28,38 +28,6 @@ class DrawingTagsSettingsPage extends StatelessWidget {
             },
           ),
           SettingEntryCard(
-            icon: Icons.high_quality_outlined,
-            title: '绘图质量',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TagCategoryPage(
-                    title: '绘图质量',
-                    cardsConfigKey: 'drawing_quality_tags',
-                    activeIdConfigKey: 'active_drawing_quality_tag_id',
-                  ),
-                ),
-              );
-            },
-          ),
-          SettingEntryCard(
-            icon: Icons.brush_outlined,
-            title: '艺术家',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TagCategoryPage(
-                    title: '艺术家',
-                    cardsConfigKey: 'drawing_artist_tags',
-                    activeIdConfigKey: 'active_drawing_artist_tag_id',
-                  ),
-                ),
-              );
-            },
-          ),
-          SettingEntryCard(
             icon: Icons.style_outlined,
             title: '绘画风格',
             onTap: () {
@@ -91,22 +59,7 @@ class DrawingTagsSettingsPage extends StatelessWidget {
               );
             },
           ),
-          SettingEntryCard(
-            icon: Icons.mood_bad_outlined,
-            title: '负面标签',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TagCategoryPage(
-                    title: '负面标签',
-                    cardsConfigKey: 'drawing_negative_tags',
-                    activeIdConfigKey: 'active_drawing_negative_tag_id',
-                  ),
-                ),
-              );
-            },
-          ),
+          // SettingEntryCard for '负面标签' has been removed.
         ],
       ),
     );

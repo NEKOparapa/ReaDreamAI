@@ -37,7 +37,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'comfyui_latent_width_field': 'width',   // 宽度
   'comfyui_latent_height_field': 'height', // 高度
 
-// --- ComfyUI视频节点设置 ---
+  // --- ComfyUI视频节点设置 ---
   'comfyui_video_workflow_type': 'video_wan2_2_14B_i2v', // 默认视频工作流类型
   'comfyui_video_workflow_path': 'assets/comfyui/video/video_wan2_2_14B_i2v.json', // 系统预设视频工作流路径
   'comfyui_video_custom_workflow_path': '', // 自定义视频工作流路径
@@ -60,28 +60,6 @@ const Map<String, dynamic> appDefaultConfigs = {
   'activeVideoApiId': null, // 当前激活的视频接口ID
   
   // --- 绘图标签设置 ---
-  // 绘图质量
-  'drawing_quality_tags': [
-    {
-      'id': 'system_quality',
-      'name': '预设-高品质',
-      'content': 'masterpiece, best quality, absurdres, ultra detailed, intricate details',
-      'isSystemPreset': true,
-    }
-  ],
-  'active_drawing_quality_tag_id': 'system_quality', // 默认激活预设标签
-
-  // 艺术家
-  'drawing_artist_tags': [
-    {
-      'id': 'system_artist',
-      'name': '预设-艺术家',
-      'content': 'artist:DoReMi, artist:Hwansang, artist:Mx2j', 
-      'isSystemPreset': true,
-    }
-  ],
-  'active_drawing_artist_tag_id': null,
-
   // 绘画风格
   'drawing_style_tags': [
     {
@@ -108,7 +86,6 @@ const Map<String, dynamic> appDefaultConfigs = {
       'content': 'Studio Ghibli style, Hayao Miyazaki style, Ghibli anime',
       'isSystemPreset': true,
     },
-
   ],
   'active_drawing_style_tag_id': 'system_anime_style', 
 
@@ -122,17 +99,6 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
   'active_drawing_other_tag_id': null,
-
-  // 负面标签
-  'drawing_negative_tags': [
-    {
-      'id': 'system_negative',
-      'name': '预设-通用负面',
-      'content': 'lowres, bad anatomy, bad hands, extra digits, multiple views, fewer, extra, missing, text, error, worst quality, jpeg artifacts, low quality, watermark, unfinished, displeasing, oldest, early, chromatic aberration, signature, artistic error, username, scan',
-      'isSystemPreset': true,
-    }
-  ],
-  'active_drawing_negative_tag_id': 'system_negative', // 负面标签通常默认激活
 
   // 角色设定
   'drawing_character_cards': [
