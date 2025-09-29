@@ -205,21 +205,12 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
 
   List<Widget> _buildAuthFields() {
     switch (_selectedProvider) {
-      case ApiProvider.volcengine:
-      case ApiProvider.google:
-      case ApiProvider.dashscope:
-      case ApiProvider.novelai:
-      case ApiProvider.custom:
-        return [_buildTextField(_apiKeyController, 'API Key', '请输入平台的 API Key', isRequired: true)];
-      case ApiProvider.kling:
-        return [
-          _buildTextField(_accessKeyController, 'Access Key', '请输入平台的 Access Key', isRequired: true),
-          _buildTextField(_secretKeyController, 'Secret Key', '请输入平台的 Secret Key', isRequired: true),
-        ];
       case ApiProvider.comfyui:
+        // ComfyUI 的 API Key 是可选的
         return [_buildTextField(_apiKeyController, 'API Key (可选)', '如果ComfyUI启动时设置了--api-key，请在此输入')];
+      // 其他所有平台都显示必填的 API Key 输入框
       default:
-        return [];
+        return [_buildTextField(_apiKeyController, 'API Key', '请输入平台的 API Key', isRequired: true)];
     }
   }
 

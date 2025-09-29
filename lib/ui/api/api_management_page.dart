@@ -373,10 +373,8 @@ class _ApiCard extends StatelessWidget {
       case ApiProvider.volcengine:
         return Icons.filter_hdr_outlined;
       // 绘画模型
-      case ApiProvider.kling:
-        return Icons.movie_filter_outlined;
       case ApiProvider.dashscope:
-        return Icons.bolt_outlined;
+        return Icons.whatshot_outlined;
       case ApiProvider.comfyui:
         return Icons.account_tree_outlined;
       case ApiProvider.novelai:

@@ -8,7 +8,6 @@ import 'drawing_platform.dart';
 import 'platforms/comfyui_platform.dart';
 import 'platforms/dashscope_platform.dart'; 
 import 'platforms/google_drawing_platform.dart'; 
-import 'platforms/kling_platform.dart';
 import 'platforms/openai_platform.dart';
 import 'platforms/volcengine_platform.dart';
 import 'platforms/novelai_platform.dart';
@@ -52,9 +51,6 @@ class DrawingService {
           break;
         case ApiProvider.dashscope: // 阿里通义千问平台
           platform = DashscopePlatform(client: _client);
-          break;
-        case ApiProvider.kling: // Kling 平台
-          platform = KlingPlatform(client: _client);
           break;
         case ApiProvider.novelai: // NovelAI 平台
           platform = NovelaiPlatform(client: _client);
