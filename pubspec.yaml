@@ -58,6 +58,8 @@ flutter:
   assets:
     # 这样会包含 assets/comfyui/ 文件夹下的所有文件
     - assets/comfyui/
+    - assets/comfyui/video/
+    - assets/reference_images/
 
   # 添加字体声明
   fonts:

@@ -5,6 +5,8 @@ import '../../base/log/log_service.dart';
 import '../../models/api_model.dart';
 import 'platforms/bailian_platform.dart';
 import 'platforms/volcengine_platform.dart';
+import 'platforms/google_platform.dart';
+import 'platforms/comfyui_video_platform.dart';
 import 'video_platform.dart';
 
 /// 视频服务
@@ -16,7 +18,7 @@ class VideoService {
   late final http.Client _client;
   // 存储所有已实现的视频平台实例
   late final Map<ApiProvider, VideoPlatform> _platforms;
-  
+
   // 私有构造函数，初始化客户端和平台列表
   VideoService._() {
     _client = http.Client();
@@ -25,10 +27,13 @@ class VideoService {
       ApiProvider.bailian: BailianPlatform(client: _client),
       // 注册火山方舟平台
       ApiProvider.volcengine: VolcenginePlatform(client: _client),
-      // 未来可以在这里添加更多平台
+      // 注册谷歌平台
+      ApiProvider.google: GooglePlatform(client: _client),
+      // 注册ComfyUI平台
+      ApiProvider.comfyui: ComfyUiVideoPlatform(client: _client),
     };
   }
-  
+
   /// 根据传入的 API 配置，选择合适的平台并生成视频。
   Future<List<String>?> generateVideo({
     required String positivePrompt,    // 正向提示词

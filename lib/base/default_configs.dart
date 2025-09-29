@@ -37,6 +37,20 @@ const Map<String, dynamic> appDefaultConfigs = {
   'comfyui_latent_width_field': 'width',   // 宽度
   'comfyui_latent_height_field': 'height', // 高度
 
+// --- ComfyUI视频节点设置 ---
+  'comfyui_video_workflow_type': 'video_wan2_2_14B_i2v', // 默认视频工作流类型
+  'comfyui_video_workflow_path': 'assets/comfyui/video/video_wan2_2_14B_i2v.json', // 系统预设视频工作流路径
+  'comfyui_video_custom_workflow_path': '', // 自定义视频工作流路径
+  'comfyui_video_positive_prompt_node_id': '93', // 视频正面提示词节点ID
+  'comfyui_video_positive_prompt_field': 'text', // 视频正面提示词字段
+  'comfyui_video_size_node_id': '98', // 视频尺寸（宽和高）节点ID
+  'comfyui_video_width_field': 'width', // 视频宽度字段
+  'comfyui_video_height_field': 'height', // 视频高度字段
+  'comfyui_video_count_node_id': '98', // 视频数量节点ID 
+  'comfyui_video_count_field': 'batch_size', // 视频数量字段
+  'comfyui_video_image_node_id': '97', // 参考图片节点ID 
+  'comfyui_video_image_field': 'image', // 参考图片字段
+
   // --- 接口管理设置 ---
   'languageApis': [], // 语言接口列表
   'drawingApis': [], // 绘图接口列表

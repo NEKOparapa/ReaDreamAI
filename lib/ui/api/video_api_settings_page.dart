@@ -21,8 +21,6 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
 
   late TextEditingController _nameController;
   late TextEditingController _apiKeyController;
-  late TextEditingController _accessKeyController;
-  late TextEditingController _secretKeyController;
   late TextEditingController _modelController;
   late TextEditingController _urlController;
   late TextEditingController _concurrencyController;
@@ -38,13 +36,11 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
     super.initState();
     _nameController = TextEditingController(text: widget.apiModel.name);
     _apiKeyController = TextEditingController(text: widget.apiModel.apiKey);
-    _accessKeyController = TextEditingController(text: widget.apiModel.accessKey);
-    _secretKeyController = TextEditingController(text: widget.apiModel.secretKey);
     _modelController = TextEditingController(text: widget.apiModel.model);
     _urlController = TextEditingController(text: widget.apiModel.url);
     _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
     _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
-
+    
     _selectedProvider = widget.apiModel.provider;
   }
 
@@ -52,8 +48,6 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
   void dispose() {
     _nameController.dispose();
     _apiKeyController.dispose();
-    _accessKeyController.dispose();
-    _secretKeyController.dispose();
     _modelController.dispose();
     _urlController.dispose();
     _concurrencyController.dispose();
@@ -67,13 +61,13 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
         id: widget.apiModel.id,
         name: _nameController.text,
         apiKey: _apiKeyController.text,
-        accessKey: _accessKeyController.text,
-        secretKey: _secretKeyController.text,
+        accessKey: '', // 视频接口不需要这些字段
+        secretKey: '',
         model: _modelController.text,
         provider: _selectedProvider,
         url: _urlController.text,
         // 视频接口没有格式选项，使用一个默认值
-        format: ApiFormat.openai, 
+        format: ApiFormat.openai,
         concurrencyLimit: int.tryParse(_concurrencyController.text),
         rpm: int.tryParse(_rpmController.text),
       );
@@ -98,16 +92,19 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
               _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
               _buildTextField(_modelController, '模型选择', '例如：bailian-v1, V-D-plus', isRequired: true),
               const SizedBox(height: 24),
-
+              
               _buildSectionTitle('接口平台'),
               _buildPlatformSelector(),
               const SizedBox(height: 16),
               
               _buildUrlField(),
-              ..._buildAuthFields(),
+              // 统一的 API Key 输入框
+              _buildTextField(_apiKeyController, 'API Key', '请输入 API Key', isRequired: _selectedProvider != ApiProvider.custom),
 
               const SizedBox(height: 24),
-              _buildRateLimitSection(),
+              _buildSectionTitle('接口速率'),
+              _buildNumberField(_concurrencyController, '并发数限制', '同时进行的最大请求数 (可选)'),
+              _buildNumberField(_rpmController, 'RPM (每分钟请求数)', '每分钟允许的最大请求数 (可选)'),
 
               const SizedBox(height: 32),
               ElevatedButton.icon(
@@ -125,16 +122,16 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, top: 8.0),
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -162,7 +159,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildNumberField(TextEditingController controller, String label, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -185,44 +182,9 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
     );
   }
 
-  Widget _buildRateLimitSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSectionTitle('接口速率'),
-        _buildNumberField(
-          _concurrencyController,
-          '并发数限制',
-          '同时进行的最大请求数 (可选)',
-        ),
-        _buildNumberField(
-          _rpmController,
-          'RPM (每分钟请求数)',
-          '每分钟允许的最大请求数 (可选)',
-        ),
-      ],
-    );
-  }
-
-  // 根据选择的平台显示不同的认证输入框
-  List<Widget> _buildAuthFields() {
-    switch (_selectedProvider) {
-      case ApiProvider.volcengine: // 火山
-        return [_buildTextField(_apiKeyController, 'API Key', '请输入火山平台的 API Key', isRequired: true)];
-
-      case ApiProvider.bailian: // 百炼 (通义)
-        return [_buildTextField(_apiKeyController, 'API Key', '请输入通义平台的 API Key', isRequired: true)];
-
-      case ApiProvider.custom:
-        return [_buildTextField(_apiKeyController, 'API Key (可选)', '如果需要，请输入 API Key')];
-      default:
-        return [];
-    }
-  }
-
   Widget _buildUrlField() {
     final bool isUrlEditable = _selectedProvider == ApiProvider.custom;
-
+    
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -251,7 +213,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildPlatformSelector() {
     return GridView.builder(
       shrinkWrap: true,
@@ -266,7 +228,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       itemBuilder: (context, index) {
         final option = _platformOptions[index];
         final isSelected = _selectedProvider == option.provider;
-
+        
         return InkWell(
           onTap: () {
             setState(() {

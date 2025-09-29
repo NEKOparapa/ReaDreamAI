@@ -295,6 +295,6 @@
 
 ## ⬇️ 下载地址
 
-点击下方链接，前往GitHub Releases页面下载最新版本的ReaDreamAI：
+* 最新版本的ReaDreamAI :  [**👉 前往GitHub Releases页面下载 👈**](https://github.com/NEKOparapa/ReaDreamAI/releases)
 
-[**👉 前往GitHub Releases页面下载 👈**](https://github.com/NEKOparapa/ReaDreamAI/releases)
+* **`交♂交流群`**:  QQ交流群(主要活跃，答案：github)：8216248九零，备用TG群：https://t.me/+JVHbDSGo8SI2Njhl 

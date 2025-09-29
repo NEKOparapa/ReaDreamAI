@@ -67,7 +67,6 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.volcengine, name: 'VolcEngine', icon: Icons.filter_hdr_outlined, 
-    // 这是火山的语言模型预设
     defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'doubao-seed-1-6-250615', 
     defaultFormat: ApiFormat.openai, defaultConcurrency: 30, defaultRpm: 3000
   ),
@@ -78,7 +77,6 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
-    // 这是谷歌的语言模型预设
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-2.5-flash', 
     defaultFormat: ApiFormat.google, defaultConcurrency: 3, defaultRpm: 60
   ),
@@ -99,24 +97,24 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
 // =================================================================
 final List<ApiPlatformPreset> drawingPlatformPresets = [
   const ApiPlatformPreset(
-    provider: ApiProvider.volcengine, name: 'Volcengine', icon: Icons.filter_hdr_outlined,
+    provider: ApiProvider.volcengine, name: '火山', icon: Icons.filter_hdr_outlined,
     // 这是火山的绘画模型预设
     defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', defaultModel: 'doubao-seedream-4-0-250828', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
+    provider: ApiProvider.google, name: '谷歌', icon: Icons.bubble_chart_outlined, 
     // 这是谷歌的绘画模型预设
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'imagen-4.0-generate-001', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 3, defaultRpm: 30
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.dashscope, name: '千问', icon: Icons.bolt_outlined, 
+    provider: ApiProvider.dashscope, name: '百炼', icon: Icons.bolt_outlined, 
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', defaultModel: 'qwen-image', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.kling, name: 'Kling', icon: Icons.movie_filter_outlined, 
+    provider: ApiProvider.kling, name: '可灵', icon: Icons.movie_filter_outlined, 
     defaultUrl: 'https://api-beijing.klingai.com', defaultModel: 'kling-v2.0', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 6, defaultRpm: 60
   ),
@@ -142,7 +140,7 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
 // =================================================================
 final List<ApiPlatformPreset> videoPlatformPresets = [
   const ApiPlatformPreset(
-    provider: ApiProvider.bailian, name: '百炼(通义)', icon: Icons.whatshot_outlined, 
+    provider: ApiProvider.bailian, name: '百炼', icon: Icons.whatshot_outlined, 
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', 
     defaultModel: 'wan2.2-t2v-plus', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
@@ -154,9 +152,16 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
     defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet, 
-    defaultUrl: '', defaultModel: '', 
-    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 5
+    provider: ApiProvider.google, name: '谷歌', icon: Icons.bubble_chart_outlined,
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    defaultModel: 'veo-3.0-generate-001',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined,
+    defaultUrl: 'http://127.0.0.1:6006',
+    defaultModel: 'none',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
   ),
 ];
 
