@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart';
 import 'drawing_tags/tag_category_page.dart';
 import 'drawing_tags/character_settings_page.dart';
+import 'prompt_settings/prompt_settings_page.dart';
 
 class DrawingTagsSettingsPage extends StatelessWidget {
   const DrawingTagsSettingsPage({super.key});
@@ -12,7 +13,7 @@ class DrawingTagsSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('绘图标签设置'),
+        title: const Text('绘图预设'),
       ),
       body: ListView(
         padding: const EdgeInsets.only(top: 8.0),
@@ -45,13 +46,13 @@ class DrawingTagsSettingsPage extends StatelessWidget {
           ),
           SettingEntryCard(
             icon: Icons.label_outline,
-            title: '其他标签',
+            title: '追加固定标签',
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => const TagCategoryPage(
-                    title: '其他标签',
+                    title: '追加固定的绘画标签',
                     cardsConfigKey: 'drawing_other_tags',
                     activeIdConfigKey: 'active_drawing_other_tag_id',
                   ),
@@ -59,7 +60,17 @@ class DrawingTagsSettingsPage extends StatelessWidget {
               );
             },
           ),
-          // SettingEntryCard for '负面标签' has been removed.
+          // 提示设置卡片
+          SettingEntryCard(
+            icon: Icons.text_fields_outlined,
+            title: '生图提示词设置',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PromptSettingsPage()),
+              );
+            },
+          ),
         ],
       ),
     );

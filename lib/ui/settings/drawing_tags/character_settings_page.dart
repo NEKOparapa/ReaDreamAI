@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../base/config_service.dart';
 import '../../../models/character_card_model.dart';
 import 'edit_character_card_page.dart';
+import 'character_extraction_dialog.dart';
 
 class CharacterSettingsPage extends StatefulWidget {
   const CharacterSettingsPage({super.key});
@@ -100,6 +101,31 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
     }
   }
 
+  Future<void> _showExtractionDialog() async {
+    final extractedCards = await showDialog<List<CharacterCard>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const CharacterExtractionDialog(),
+    );
+
+    if (extractedCards != null && extractedCards.isNotEmpty) {
+      setState(() {
+        _cards.addAll(extractedCards);
+      });
+      await _saveCards();
+      
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('成功添加了 ${extractedCards.length} 个角色卡片'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildImageAvatar(CharacterCard card) {
     ImageProvider? imageProvider;
     if (card.referenceImagePath != null && card.referenceImagePath!.isNotEmpty) {
@@ -188,9 +214,25 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _navigateToEditPage(),
-        child: const Icon(Icons.add),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: () => _navigateToEditPage(),
+            child: const Icon(Icons.add),
+          ),
+
+          const SizedBox(width: 16),
+
+          FloatingActionButton(
+            heroTag: 'extract',
+            onPressed: _showExtractionDialog,
+            child: const Icon(Icons.search),
+          )
+
+        ],
       ),
     );
   }

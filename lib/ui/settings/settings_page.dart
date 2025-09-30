@@ -1,3 +1,5 @@
+// lib/ui/settings/settings_page.dart
+
 import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart'; // 引入一级入口卡片
 import 'app_settings_page.dart'; // 引入应用设置页
@@ -5,7 +7,6 @@ import 'comfyui_settings_page.dart'; // 引入ComfyUI设置页
 import 'drawing_tags_settings_page.dart'; // 引入绘图标签设置页
 import 'image_gen_settings_page.dart'; // 引入生图设置页
 import 'translation_settings_page.dart'; // 引入翻译设置页
-import 'prompt_settings/prompt_settings_page.dart'; // 引入提示词设置页
 import 'video_settings_page.dart'; // 引入视频设置页
 import 'log_history_page.dart'; // 引入日志历史页
 
@@ -30,17 +31,6 @@ class SettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const DrawingTagsSettingsPage()),
-              );
-            },
-          ),
-          // 提示词设置卡片
-          SettingEntryCard(
-            icon: Icons.text_fields_outlined,
-            title: '提示设置',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const PromptSettingsPage()),
               );
             },
           ),

@@ -147,6 +147,7 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
+ 
   /// 为图生视频生成提示词
   (String, List<Map<String, String>>) buildForVideoPrompt({
     required String sceneDescription,
@@ -183,4 +184,5 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
+
 }

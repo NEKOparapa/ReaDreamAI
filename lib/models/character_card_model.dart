@@ -5,25 +5,25 @@
 class CharacterCard {
   final String id;
   final String name;
-  final String characterName; // 新增：角色的实际名字
+  final String characterName; 
   final String identity;
   final String appearance;
   final String clothing;
   final String other;
-  final String? referenceImageUrl; // 新增：参考图 URL
-  final String? referenceImagePath; // 新增：参考图本地路径
+  final String? referenceImageUrl; // 参考图 URL
+  final String? referenceImagePath; // 参考图本地路径
   final bool isSystemPreset;
 
   CharacterCard({
     required this.id,
     required this.name,
-    this.characterName = '', // 新增
+    this.characterName = '', 
     this.identity = '',
     this.appearance = '',
     this.clothing = '',
     this.other = '',
-    this.referenceImageUrl, // 新增
-    this.referenceImagePath, // 新增
+    this.referenceImageUrl, 
+    this.referenceImagePath, 
     this.isSystemPreset = false,
   });
 
@@ -32,13 +32,13 @@ class CharacterCard {
     return CharacterCard(
       id: json['id'],
       name: json['name'],
-      characterName: json['characterName'] ?? '', // 新增
+      characterName: json['characterName'] ?? '', 
       identity: json['identity'] ?? '',
       appearance: json['appearance'] ?? '',
       clothing: json['clothing'] ?? '',
       other: json['other'] ?? '',
-      referenceImageUrl: json['referenceImageUrl'], // 新增
-      referenceImagePath: json['referenceImagePath'], // 新增
+      referenceImageUrl: json['referenceImageUrl'], 
+      referenceImagePath: json['referenceImagePath'], 
       isSystemPreset: json['isSystemPreset'] ?? false,
     );
   }
@@ -48,13 +48,13 @@ class CharacterCard {
     return {
       'id': id,
       'name': name,
-      'characterName': characterName, // 新增
+      'characterName': characterName, 
       'identity': identity,
       'appearance': appearance,
       'clothing': clothing,
       'other': other,
-      'referenceImageUrl': referenceImageUrl, // 新增
-      'referenceImagePath': referenceImagePath, // 新增
+      'referenceImageUrl': referenceImageUrl, 
+      'referenceImagePath': referenceImagePath, 
       'isSystemPreset': isSystemPreset,
     };
   }
