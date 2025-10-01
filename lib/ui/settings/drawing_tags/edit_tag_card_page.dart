@@ -49,13 +49,6 @@ class _EditTagCardPageState extends State<EditTagCardPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.card == null ? '创建标签卡片' : '编辑标签卡片'),
-        // --- REMOVED ---
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.save),
-        //     onPressed: _save,
-        //   ),
-        // ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
@@ -94,7 +87,6 @@ class _EditTagCardPageState extends State<EditTagCardPage> {
           ),
         ),
       ),
-      // --- ADDED SECTION ---
       // 将保存按钮放在底部，方便操作
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -110,7 +102,6 @@ class _EditTagCardPageState extends State<EditTagCardPage> {
           ),
         ),
       ),
-      // --- END OF ADDED SECTION ---
     );
   }
 }

@@ -16,7 +16,8 @@ import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
-import '../../services/task_splitter/task_splitter_service.dart';
+import 'generate_illustration_dialog.dart';
+import 'generate_translation_dialog.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -233,77 +234,60 @@ class _BookshelfPageState extends State<BookshelfPage> {
 
   /// 为指定书籍生成插图任务
   Future<void> _generateIllustrations(BookshelfEntry entry) async {
-    final book = await CacheManager().loadBookDetail(entry.id);
-    if (book == null) {
-      _showTopMessage('错误：找不到书籍数据', isError: true);
-      return;
-    }
-
-    // 调用新的服务来切分任务块
-    final chunks = TaskSplitterService.instance.splitBookForIllustrations(book);
-
-    if (chunks.isEmpty) {
-      _showTopMessage('书籍内容太少或不符合要求，无法创建插图任务');
-      return;
-    }
-    // 更新书籍条目的状态为“排队中”
-    setState(() {
-      final index = _entries.indexWhere((e) => e.id == entry.id);
-      if (index != -1) {
-        _entries[index].taskChunks = chunks;
-        _entries[index].status = TaskStatus.queued;
-        _entries[index].createdAt = DateTime.now();
-        _entries[index].updatedAt = DateTime.now();
-        _entries[index].errorMessage = null;
-      }
-    });
-    // 保存更新后的书架信息，并通知任务管理器处理新任务
-    await _saveBookshelf();
-    await TaskManagerService.instance.reloadData();
-    TaskManagerService.instance.processQueue();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('已为《${entry.title}》创建 ${chunks.length} 个生成子任务'),
-      ),
+    // 显示配置对话框，并等待其返回结果
+    final bool? taskCreated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => GenerateIllustrationDialog(entry: entry),
     );
+
+    // 如果对话框返回true，说明任务已成功创建
+    if (taskCreated == true && mounted) {
+      // 重新从缓存加载书架数据，以更新UI状态（例如显示"排队中"）
+      await _loadBookshelf();
+      
+      // 找到更新后的条目，以获取正确的任务信息用于提示
+      final updatedEntry = _entries.firstWhere(
+        (e) => e.id == entry.id,
+        orElse: () => entry, // 如果找不到，使用旧条目作为备用
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已为《${updatedEntry.title}》创建 ${updatedEntry.taskChunks.length} 个生成子任务'),
+        ),
+      );
+    }
   }
 
   /// 为指定书籍生成翻译任务
   Future<void> _generateTranslations(BookshelfEntry entry) async {
-    final book = await CacheManager().loadBookDetail(entry.id);
-    if (book == null) {
-      _showTopMessage('错误：找不到书籍数据', isError: true);
-      return;
-    }
-
-    // 调用新的服务来切分任务块
-    final chunks = TaskSplitterService.instance.splitBookForTranslations(book);
-
-    if (chunks.isEmpty) {
-      _showTopMessage('书籍内容太少或不符合要求，无法创建翻译任务');
-      return;
-    }
-    // 更新书籍条目的翻译状态
-    setState(() {
-      final index = _entries.indexWhere((e) => e.id == entry.id);
-      if (index != -1) {
-        _entries[index].translationTaskChunks = chunks;
-        _entries[index].translationStatus = TaskStatus.queued;
-        _entries[index].translationCreatedAt = DateTime.now();
-        _entries[index].translationUpdatedAt = DateTime.now();
-        _entries[index].translationErrorMessage = null;
-      }
-    });
-    await _saveBookshelf();
-    await TaskManagerService.instance.reloadData();
-    TaskManagerService.instance.processQueue();
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('已为《${entry.title}》创建 ${chunks.length} 个翻译子任务'),
-      ),
+    // 显示配置对话框，并等待其返回结果
+    final bool? taskCreated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false, // 阻止点击外部关闭
+      builder: (context) => GenerateTranslationDialog(entry: entry),
     );
+
+    // 如果对话框返回true，说明任务已成功创建
+    if (taskCreated == true && mounted) {
+      // 重新从缓存加载书架数据，以更新UI状态（例如显示"排队中"）
+      await _loadBookshelf();
+
+      // 找到更新后的条目，以获取正确的任务信息用于提示
+      final updatedEntry = _entries.firstWhere(
+        (e) => e.id == entry.id,
+        orElse: () => entry, // 如果找不到，使用旧条目作为备用
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已为《${updatedEntry.title}》创建 ${updatedEntry.translationTaskChunks.length} 个翻译子任务'),
+        ),
+      );
+    }
   }
 
   /// 删除书籍

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart';
 import 'drawing_tags/tag_category_page.dart';
 import 'drawing_tags/character_settings_page.dart';
+import 'drawing_tags/drawing_style_page.dart'; // 新增导入
 import 'prompt_settings/prompt_settings_page.dart';
 
 class DrawingTagsSettingsPage extends StatelessWidget {
@@ -35,11 +36,7 @@ class DrawingTagsSettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const TagCategoryPage(
-                    title: '绘画风格',
-                    cardsConfigKey: 'drawing_style_tags',
-                    activeIdConfigKey: 'active_drawing_style_tag_id',
-                  ),
+                  builder: (context) => const DrawingStylePage(), // 使用新页面
                 ),
               );
             },

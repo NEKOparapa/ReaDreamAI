@@ -60,6 +60,8 @@ flutter:
     - assets/comfyui/
     - assets/comfyui/video/
     - assets/reference_images/
+    - assets/drawing_style_example/
+    - assets/character_example/
 
   # 添加字体声明
   fonts:
