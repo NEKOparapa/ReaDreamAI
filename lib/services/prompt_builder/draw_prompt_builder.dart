@@ -1,3 +1,5 @@
+// lib/services/prompt_builder/draw_prompt_builder.dart
+
 import '../../base/config_service.dart';
 
 class DrawPromptBuilder {

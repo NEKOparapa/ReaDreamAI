@@ -209,13 +209,19 @@ class IllustrationGeneratorService {
       }
       LogService.instance.info("    [LLM] ✅ 成功解析，找到 ${illustrationsData.length} 个绘图项。现在提交到绘图队列...");
 
-      // 2. 查找文本中是否提及带参考图的角色
+      // 2. 查找文本中是否提及【已激活的】带参考图的角色
       final plainTextContent = task.lineChunk.map((l) => l.text).join('\n'); // 不带行号的纯文本
       String? referenceImageForTask; // 用于本次任务的参考图路径/URL
-      final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
-      final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
       
-      for (final card in allCards) {
+      // 加载并筛选出已激活的角色卡片
+      final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
+      final activeCardIdsJson = _configService.getSetting<List<dynamic>>('active_drawing_character_card_ids', []);
+      final activeCardIds = activeCardIdsJson.map((id) => id.toString()).toSet();
+      final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
+      final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
+      
+      // 遍历已激活的角色卡片进行匹配
+      for (final card in activeCards) {
         // 优先使用明确指定的 characterName，否则使用卡片 name
         final characterNameToMatch = card.characterName.isNotEmpty ? card.characterName : card.name;
         // 如果角色名不为空，并且在当前文本块中出现
@@ -226,7 +232,7 @@ class IllustrationGeneratorService {
           if ((imagePath != null && imagePath.isNotEmpty) || (imageUrl != null && imageUrl.isNotEmpty)) {
             // 优先使用本地路径，如果不存在则使用URL
             referenceImageForTask = imagePath ?? imageUrl;
-            LogService.instance.info("    [角色匹配] ✅ 在文本中找到角色 '$characterNameToMatch'，将使用参考图进行生成: $referenceImageForTask");
+            LogService.instance.info("    [角色匹配] ✅ 在文本中找到激活角色 '$characterNameToMatch'，将使用参考图进行生成: $referenceImageForTask");
             break; // 找到第一个匹配的角色就停止，不再继续查找
           }
         }
