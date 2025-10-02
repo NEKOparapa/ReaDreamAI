@@ -124,7 +124,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'custom_character1',
       'name': '黑长直少女',
-      'characterName': '少女',
+      'characterName': '女生',
       'identity': '1girl, solo, student',
       'appearance': 'long hair, straight hair, black hair, bangs, black eyes, fair skin, beautiful face',
       'clothing': 'school uniform, sailor uniform, blue sailor collar, red necktie, white shirt, blue pleated skirt, black stockings, school shoes',
@@ -136,7 +136,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'custom_character2',
       'name': '可爱萝莉',
-      'characterName': '萝莉',
+      'characterName': '萝莉, loli',
       'identity': '1girl, solo, loli',
       'appearance': 'blonde hair, golden hair, twintails, long twintails, big eyes, round eyes, blue eyes, sparkly eyes, blush, cute face, small stature, childlike',
       'clothing': 'frilly dress, white dress, pink ribbons, bow, knee-high socks, mary janes, hair ribbons',
@@ -148,7 +148,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'custom_character3',
       'name': '猫娘女仆',
-      'characterName': '猫娘',
+      'characterName': '猫娘, 女仆',
       'identity': '1girl, solo, catgirl, maid',
       'appearance': 'medium hair, fluffy hair, silver hair, cat ears, cat tail, yellow eyes, slit pupils, cute face',
       'clothing': 'maid outfit, frilly apron, maid headdress, puffy sleeves, black dress, white apron, bell collar, paw gloves',

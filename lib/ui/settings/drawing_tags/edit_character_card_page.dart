@@ -186,7 +186,7 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
               TextFormField(
                 controller: _characterNameController,
                 decoration: const InputDecoration(
-                  labelText: '角色名字 (用于在小说文本中匹配)',
+                  labelText: '角色名字 (用于在小说文本中匹配,英文逗号区隔多触发词)',
                   border: OutlineInputBorder(),
                 ),
               ),

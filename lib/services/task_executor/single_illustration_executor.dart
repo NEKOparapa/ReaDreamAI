@@ -8,7 +8,6 @@ import '../../base/config_service.dart';
 import '../../services/llm_service/llm_service.dart';
 import '../../services/drawing_service/drawing_service.dart';
 import '../../services/video_service/video_service.dart';
-import '../../models/character_card_model.dart';
 import '../../base/default_configs.dart';
 import '../prompt_builder/draw_prompt_builder.dart';
 import '../prompt_builder/llm_prompt_builder.dart';
@@ -41,17 +40,21 @@ class SingleIllustrationExecutor {
     required LineStructure line,
     required String imageSaveDir,
   }) async {
-    // 从 line.sceneDescription 读取已保存的绘画提示词
-    final String? positivePrompt = line.sceneDescription;
-    if (positivePrompt == null || positivePrompt.isEmpty) {
+    // 解析 sceneDescription，兼容新旧格式
+    final (prompt, characters) = _parseSceneDescription(line.sceneDescription);
+
+    if (prompt.isEmpty) {
       throw Exception("该行没有可用于重新生成的绘画提示词。请先'此处生成插图'。");
     }
 
-    // 从配置中获取负面提示词
-    final negativePrompt = _configService.getActiveTagContent('drawing_negative_tags', 'active_drawing_negative_tag_id');
+    // 从配置中获取负面提示词，并与原始绘画提示词组合
+    final (positivePrompt, negativePrompt) = _drawPromptBuilder.build(llmGeneratedPrompt: prompt);
     
-    // 提取上下文文本，用于后续的角色参考图匹配
-    final contextText = _extractContextAroundLine(line, chapter, 4000);
+    // 根据解析出的角色名查找参考图
+    final referenceImagePath = _drawPromptBuilder.findReferenceImageForCharacters(characters);
+     if (referenceImagePath != null) {
+      _logger.info("[角色匹配] ✅ 重新生成将使用角色 ${characters.join(',')} 的参考图: $referenceImagePath");
+    }
 
     // 直接调用统一的绘图和保存方法
     await _drawAndSaveImages(
@@ -60,9 +63,9 @@ class SingleIllustrationExecutor {
       chapter: chapter,
       lineId: line.id,
       saveDir: imageSaveDir,
-      contextText: contextText, // 传递上下文用于角色匹配
-      // 保留原有的 sceneDescription 不变
-      sceneDescriptionToSave: positivePrompt,
+      promptToSave: prompt, // 保存原始的LLM prompt
+      charactersToSave: characters, // 保存登场角色列表
+      referenceImagePath: referenceImagePath,
     );
   }
 
@@ -83,7 +86,7 @@ class SingleIllustrationExecutor {
       contextText: contextText,
       selectedText: selectedText,
     );
-    
+
     // 3. 调用 LLM 服务获取场景描述，并解析返回的JSON
     final activeApi = _configService.getActiveLanguageApi();
     final llmResponse = await _llmService.requestCompletion(systemPrompt: systemPrompt, messages: messages, apiConfig: activeApi);
@@ -115,9 +118,17 @@ class SingleIllustrationExecutor {
     if (llmPrompt == null) {
       throw Exception("LLM未能生成有效的prompt。");
     }
+    // 提取登场角色
+    final appearingCharacters = (itemData['appearing_characters'] as List<dynamic>? ?? []).cast<String>();
 
     // 4. 构建最终的绘画正/负面提示词
     final (positivePrompt, negativePrompt) = _drawPromptBuilder.build(llmGeneratedPrompt: llmPrompt);
+    
+    // 根据登场角色查找参考图
+    final referenceImagePath = _drawPromptBuilder.findReferenceImageForCharacters(appearingCharacters);
+    if (referenceImagePath != null) {
+      _logger.info("[角色匹配] ✅ 场景将使用角色 ${appearingCharacters.join(',')} 的参考图: $referenceImagePath");
+    }
 
     // 5. 调用统一的绘图和保存方法
     await _drawAndSaveImages(
@@ -126,8 +137,9 @@ class SingleIllustrationExecutor {
       chapter: chapter,
       lineId: targetLine.id, // 插图将附加到用户划选文本的最后一行
       saveDir: imageSaveDir,
-      contextText: contextText, // 传递上下文用于角色匹配
-      sceneDescriptionToSave: positivePrompt, // 将生成的绘画提示词保存下来，用于后续的重新生成或视频生成
+      promptToSave: llmPrompt, // 保存从LLM获取的原始prompt
+      charactersToSave: appearingCharacters, // 保存登场角色列表
+      referenceImagePath: referenceImagePath,
     );
   }
 
@@ -139,8 +151,9 @@ class SingleIllustrationExecutor {
     required ChapterStructure chapter,
     required int lineId,
     required String saveDir,
-    required String sceneDescriptionToSave,
-    required String contextText, 
+    required String promptToSave,
+    required List<String> charactersToSave,
+    String? referenceImagePath,
   }) async {
     // 从配置中读取生成参数
     final imagesPerScene = _configService.getSetting<int>('image_gen_images_per_scene', 2);
@@ -148,29 +161,6 @@ class SingleIllustrationExecutor {
     final sizeParts = sizeString.split('*').map((e) => int.tryParse(e) ?? 1024).toList();
     final width = sizeParts[0];
     final height = sizeParts[1];
-    
-    // 自动匹配角色参考图
-    String? referenceImageForTask;
-    final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
-    final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
-    
-    for (final card in allCards) {
-      // 优先使用 characterName 进行匹配，如果没有则使用卡片名 name
-      final characterNameToMatch = card.characterName.isNotEmpty ? card.characterName : card.name;
-      // 移除上下文中的行号信息，只在纯文本内容中进行匹配，提高准确性
-      final plainTextContent = contextText.split('\n').map((e) => e.split(':').sublist(1).join(':').trim()).join('\n');
-      
-      // 如果上下文中包含角色名，并且该角色卡片有关联的参考图
-      if (characterNameToMatch.isNotEmpty && plainTextContent.contains(characterNameToMatch)) {
-        final imagePath = card.referenceImagePath;
-        final imageUrl = card.referenceImageUrl;
-        if ((imagePath != null && imagePath.isNotEmpty) || (imageUrl != null && imageUrl.isNotEmpty)) {
-          referenceImageForTask = imagePath ?? imageUrl;
-          _logger.success("[角色匹配] 在文本中找到角色 '$characterNameToMatch'，将使用参考图: $referenceImageForTask");
-          break; // 找到第一个匹配的角色后就停止搜索
-        }
-      }
-    }
 
     // 获取当前激活的绘画API配置
     final activeApi = _configService.getActiveDrawingApi();
@@ -184,16 +174,38 @@ class SingleIllustrationExecutor {
       width: width,
       height: height,
       apiConfig: activeApi,
-      referenceImagePath: referenceImageForTask, // 传递找到的参考图路径（可能为null）
+      referenceImagePath: referenceImagePath, // 传递找到的参考图路径（可能为null）
     );
 
     // 如果成功生成图片，将其路径添加到数据模型中
     if (imagePaths != null && imagePaths.isNotEmpty) {
-      chapter.addIllustrationsToLine(lineId, imagePaths, sceneDescriptionToSave);
+      // 保存prompt和角色列表
+      chapter.addIllustrationsToLine(lineId, imagePaths, promptToSave, charactersToSave);
     } else {
       throw Exception("绘图服务未能生成图片。");
     }
   }
+
+  /// 解析sceneDescription，兼容旧的纯文本格式和新的JSON格式
+  (String, List<String>) _parseSceneDescription(String? description) {
+    if (description == null || description.isEmpty) {
+      return ('', []);
+    }
+    try {
+      final data = jsonDecode(description);
+      if (data is Map<String, dynamic>) {
+        final prompt = data['prompt'] as String? ?? '';
+        final characters = (data['characters'] as List<dynamic>? ?? []).cast<String>().toList();
+        return (prompt, characters);
+      }
+      // 如果不是Map，但能被解析，当作旧数据处理
+      return (description, []);
+    } catch (e) {
+      // 无法解析JSON，说明是旧格式的纯文本prompt
+      return (description, []);
+    }
+  }
+
 
   /// 以目标行为中心，提取指定token数量的上下文
   String _extractContextAroundLine(LineStructure targetLine, ChapterStructure chapter, int maxTokens) {
@@ -241,7 +253,6 @@ class SingleIllustrationExecutor {
     // 将所有行拼接成一个字符串并返回
     return contextLines.join('\n');
   }
-
 }
 
 // ==================================================================
@@ -272,9 +283,9 @@ class SingleVideoExecutor {
     required String saveDir,
   }) async {
     _logger.info('[视频生成] 开始任务...');
-    // 1. 检查是否存在用于生成视频的场景描述（即绘画提示词）
-    final String? sceneDescription = line.sceneDescription;
-    if (sceneDescription == null || sceneDescription.isEmpty) {
+    // 兼容解析 sceneDescription
+    final (sceneDescription, _) = _parseSceneDescription(line.sceneDescription);
+    if (sceneDescription.isEmpty) {
       throw Exception("该插图没有场景描述，无法生成视频。");
     }
 
@@ -342,6 +353,24 @@ class SingleVideoExecutor {
       chapter.addVideosToLine(line.id, videoPaths);
     } else {
       throw Exception("视频服务未能生成视频。");
+    }
+  }
+
+    /// 解析sceneDescription，兼容新旧格式 (与 SingleIllustrationExecutor 中的方法重复，但为了模块独立性而保留)
+  (String, List<String>) _parseSceneDescription(String? description) {
+    if (description == null || description.isEmpty) {
+      return ('', []);
+    }
+    try {
+      final data = jsonDecode(description);
+      if (data is Map<String, dynamic>) {
+        final prompt = data['prompt'] as String? ?? '';
+        final characters = (data['characters'] as List<dynamic>? ?? []).cast<String>().toList();
+        return (prompt, characters);
+      }
+      return (description, []);
+    } catch (e) {
+      return (description, []);
     }
   }
 }

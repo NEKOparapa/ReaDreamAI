@@ -28,12 +28,15 @@ class LlmPromptBuilder {
       buffer.writeln('### 参考角色信息:');
       buffer.writeln('---');
       for (final card in activeCards) {
-        final characterNameToUse = card.characterName.isNotEmpty ? card.characterName : card.name;
-        buffer.writeln('- 角色名字: $characterNameToUse');
-        if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
-        if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
-        if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
-        if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
+        // 使用逗号分隔的第一个名字作为主要参考名
+        final mainCharacterName = card.characterName.split(',').first.trim();
+        if (mainCharacterName.isNotEmpty) {
+          buffer.writeln('- 角色名字: $mainCharacterName (在文本中可能以 ${card.characterName} 中任一名字出现)');
+          if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
+          if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
+          if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
+          if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
+        }
       }
       buffer.writeln('---');
       characterInfoBlock = buffer.toString();
@@ -43,12 +46,12 @@ class LlmPromptBuilder {
     final systemPrompt = _configService.getActivePromptCardContent();
 
     // 用户指令
-    final userPrompt =  """
+    final userPrompt = """
     请从小说文本中提取并生成一个包含 $numScenes 个场景的JSON数组。 每个场景应包含:
     - scene_description: 对该场景的中文简要描述
-    - prompt: AI绘画提示词
+    - prompt: 用于AI绘画的详细英文提示词
     - insertion_line_number: 该场景插图应插入的具体行号
-
+    - appearing_characters: 该场景中出现的角色名字数组（与原文一致），如果没有角色则返回空数组[]
     ### 小说文本:
     ---
     $textContent
@@ -61,8 +64,15 @@ class LlmPromptBuilder {
     [
       {
         "scene_description": "对该场景的中文简要描述...",
-        "prompt": "1man, rugged face, a scar on his left cheek... ",
-        "insertion_line_number": 12
+        "prompt": "1boy, rugged face, a scar on his left cheek... ",
+        "insertion_line_number": 12,
+        "appearing_characters": ["角色名1", "角色名2"]
+      },
+      {
+        "scene_description": "一个空旷的街道场景...",
+        "prompt": "empty street, cobblestone, medieval town...",
+        "insertion_line_number": 25,
+        "appearing_characters": []
       }
     ]
     ```
@@ -74,7 +84,7 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
-  
+
   /// 为此处生成插图的提示词
   (String, List<Map<String, String>>) buildForSelectedScene({
     required String contextText,
@@ -95,12 +105,14 @@ class LlmPromptBuilder {
       buffer.writeln('### 参考角色信息:');
       buffer.writeln('---');
       for (final card in activeCards) {
-        final characterNameToUse = card.characterName.isNotEmpty ? card.characterName : card.name;
-        buffer.writeln('- 角色名字: $characterNameToUse');
-        if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
-        if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
-        if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
-        if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
+         final mainCharacterName = card.characterName.split(',').first.trim();
+         if (mainCharacterName.isNotEmpty) {
+            buffer.writeln('- 角色名字: $mainCharacterName (在文本中可能以 ${card.characterName} 中任一名字出现)');
+            if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
+            if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
+            if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
+            if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
+         }
       }
       buffer.writeln('---');
       characterInfoBlock = buffer.toString();
@@ -116,9 +128,10 @@ class LlmPromptBuilder {
 
     // 用户指令
     final userPrompt = """
-    请仔细分析下面提供的这段小说上下文，重点关注【高亮指定的场景】,并为该场景生成:
-    - scene_description: 对该场景的简短中文描述。
-    - prompt: 用于AI绘画的英文提示词。
+    请仔细分析下面提供的这段小说上下文，重点关注【高亮指定的场景】,并为该场景生成一个JSON对象，包含:
+    - scene_description: 对该场景的简短中文描述
+    - prompt: 用于AI绘画的英文提示词
+    - appearing_characters: 该场景中出现的角色名字数组（与原文一致），如果没有角色则返回空数组[]
 
     ### 小说上下文:
     ---
@@ -136,7 +149,8 @@ class LlmPromptBuilder {
     ```json
     {
       "scene_description": "对该场景的简短中文描述。",
-      "prompt": "1man, rugged face, a scar on his left cheek..."
+      "prompt": "1boy, rugged face, a scar on his left cheek...",
+      "appearing_characters": ["男孩"]
     }
     ```
     """;
@@ -147,7 +161,7 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
- 
+
   /// 为图生视频生成提示词
   (String, List<Map<String, String>>) buildForVideoPrompt({
     required String sceneDescription,
@@ -184,5 +198,4 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
-
 }

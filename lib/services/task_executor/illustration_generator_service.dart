@@ -9,14 +9,13 @@ import '../../models/book.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../base/config_service.dart';
 import '../../base/default_configs.dart';
-import '../../models/character_card_model.dart';
 import '../cache_manager/cache_manager.dart';
 import '../drawing_service/drawing_service.dart';
 import '../llm_service/llm_service.dart';
 import '../task_manager/task_manager_service.dart';
 import '../prompt_builder/draw_prompt_builder.dart';
 import '../prompt_builder/llm_prompt_builder.dart';
-import '../../base/log/log_service.dart'; 
+import '../../base/log/log_service.dart';
 
 /// 内部子任务的数据结构，封装了执行单个任务块所需的所有信息。
 class _ExecutionSubTask {
@@ -37,12 +36,12 @@ class _ExecutionSubTask {
 class IllustrationGeneratorService {
   final LlmPromptBuilder _llmPromptBuilder;
   final DrawPromptBuilder _drawPromptBuilder;
-  
+
   // 私有构造函数，用于实现单例模式
-  IllustrationGeneratorService._() 
-    : _configService = ConfigService(),
-      _llmPromptBuilder = LlmPromptBuilder(ConfigService()),
-      _drawPromptBuilder = DrawPromptBuilder(ConfigService());
+  IllustrationGeneratorService._()
+      : _configService = ConfigService(),
+        _llmPromptBuilder = LlmPromptBuilder(ConfigService()),
+        _drawPromptBuilder = DrawPromptBuilder(ConfigService());
 
   // 提供全局唯一的服务实例
   static final IllustrationGeneratorService instance = IllustrationGeneratorService._();
@@ -59,7 +58,6 @@ class IllustrationGeneratorService {
     required Future<void> Function(double, IllustrationTaskChunk) onProgressUpdate, // 进度更新回调
     required bool Function() isPaused, // 检查任务是否暂停的回调
   }) async {
-
     LogService.instance.info("🚀 开始为书籍《${book.title}》生成插图...");
 
     // 1. 从缓存重新加载最新的书架条目，以获取最新的任务区块状态
@@ -70,7 +68,7 @@ class IllustrationGeneratorService {
     // 2. 准备执行任务，筛选出需要处理的任务块
     final illustrationsDir = await CacheManager().getOrCreateBookSubDir(book.id, 'illustrations');
     final List<_ExecutionSubTask> executionTasks = []; // 待执行的任务列表
-    
+
     // 遍历所有任务区块
     for (final chunk in allChunks) {
       // 只处理待处理或失败的任务，实现断点续传
@@ -82,11 +80,10 @@ class IllustrationGeneratorService {
         final lines = chapter.lines.where((l) => l.id >= chunk.startLineId && l.id <= chunk.endLineId).toList();
         // 创建一个内部执行任务对象
         executionTasks.add(_ExecutionSubTask(
-          chunk: chunk,
-          chapter: chapter,
-          lineChunk: lines,
-          saveDir: illustrationsDir.path
-        ));
+            chunk: chunk,
+            chapter: chapter,
+            lineChunk: lines,
+            saveDir: illustrationsDir.path));
       }
     }
 
@@ -94,9 +91,8 @@ class IllustrationGeneratorService {
 
     // 3. 并发执行所有待处理的任务
     await _executeTasksConcurrently(
-      executionTasks, allChunks.length,
-      cancellationToken, onProgressUpdate, isPaused
-    );
+        executionTasks, allChunks.length,
+        cancellationToken, onProgressUpdate, isPaused);
 
     // 检查任务是否在执行过程中被取消
     if (cancellationToken.isCanceled) throw Exception('任务已取消');
@@ -154,17 +150,16 @@ class IllustrationGeneratorService {
           if (cancellationToken.isCanceled) return;
           await Future.delayed(const Duration(seconds: 1)); // 每秒检查一次
         }
-        
+
         // 更新区块状态为 "运行中" 并通过回调通知UI
         task.chunk.status = ChunkStatus.running;
         await onProgressUpdate(completedTasks / totalChunks, task.chunk);
-        
+
         // 核心处理逻辑：处理单个任务区块，将绘图池传入，供内部调度绘图任务
         final success = await _processChunkForImages(task, cancellationToken, isPaused, drawingPool);
 
         // 根据处理结果更新区块状态
         task.chunk.status = success ? ChunkStatus.completed : ChunkStatus.failed;
-
       }).then((_) async {
         // 当一个子任务（包括其所有内部的绘图任务）完成后，执行此回调
         if (!cancellationToken.isCanceled) {
@@ -179,7 +174,7 @@ class IllustrationGeneratorService {
       });
       llmFutures.add(future);
     }
-    
+
     // 等待所有通过 llmPool 调度的任务全部完成
     await Future.wait(llmFutures);
     // 再次检查取消状态
@@ -188,10 +183,10 @@ class IllustrationGeneratorService {
 
   /// 处理单个任务区块的完整流程：调用LLM分析 -> 并发执行绘图。
   Future<bool> _processChunkForImages(
-    _ExecutionSubTask task, 
-    CancellationToken cancellationToken, 
+    _ExecutionSubTask task,
+    CancellationToken cancellationToken,
     bool Function() isPaused,
-    Pool drawingPool // 接收外部传入的绘图池，用于并发控制绘图任务
+    Pool drawingPool, // 接收外部传入的绘图池，用于并发控制绘图任务
   ) async {
     LogService.instance.info("  ⚡️ [子任务启动] ${task.chunk.id} 需要AI挑选 ${task.chunk.scenesToGenerate} 个场景...");
     // 将区块内的文本行拼接成一个字符串，供LLM分析
@@ -208,61 +203,41 @@ class IllustrationGeneratorService {
         return false; // 标记此区块处理失败
       }
       LogService.instance.info("    [LLM] ✅ 成功解析，找到 ${illustrationsData.length} 个绘图项。现在提交到绘图队列...");
-
-      // 2. 查找文本中是否提及【已激活的】带参考图的角色
-      final plainTextContent = task.lineChunk.map((l) => l.text).join('\n'); // 不带行号的纯文本
-      String? referenceImageForTask; // 用于本次任务的参考图路径/URL
       
-      // 加载并筛选出已激活的角色卡片
-      final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
-      final activeCardIdsJson = _configService.getSetting<List<dynamic>>('active_drawing_character_card_ids', []);
-      final activeCardIds = activeCardIdsJson.map((id) => id.toString()).toSet();
-      final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
-      final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
-      
-      // 遍历已激活的角色卡片进行匹配
-      for (final card in activeCards) {
-        // 优先使用明确指定的 characterName，否则使用卡片 name
-        final characterNameToMatch = card.characterName.isNotEmpty ? card.characterName : card.name;
-        // 如果角色名不为空，并且在当前文本块中出现
-        if (characterNameToMatch.isNotEmpty && plainTextContent.contains(characterNameToMatch)) {
-          final imagePath = card.referenceImagePath;
-          final imageUrl = card.referenceImageUrl;
-          // 只要本地路径或URL有一个不为空，就采纳
-          if ((imagePath != null && imagePath.isNotEmpty) || (imageUrl != null && imageUrl.isNotEmpty)) {
-            // 优先使用本地路径，如果不存在则使用URL
-            referenceImageForTask = imagePath ?? imageUrl;
-            LogService.instance.info("    [角色匹配] ✅ 在文本中找到激活角色 '$characterNameToMatch'，将使用参考图进行生成: $referenceImageForTask");
-            break; // 找到第一个匹配的角色就停止，不再继续查找
-          }
-        }
-      }
-
-      // 3. 将每个绘图任务提交到 drawingPool，实现绘图的并发执行
+      // 2. 将每个绘图任务提交到 drawingPool，实现绘图的并发执行
       final List<Future> drawingFutures = [];
       for (final itemData in illustrationsData) {
         // 使用绘图池来并发执行每一个绘图任务
         final future = drawingPool.withResource(() async {
           if (cancellationToken.isCanceled) return;
-          
+
           // 在每个绘图任务开始前也检查暂停状态
           while (isPaused()) {
-             await Future.delayed(const Duration(seconds: 1));
-             if (cancellationToken.isCanceled) return;
+            await Future.delayed(const Duration(seconds: 1));
+            if (cancellationToken.isCanceled) return;
+          }
+          
+          // 从LLM返回的数据中提取登场角色
+          final appearingCharacters = (itemData['appearing_characters'] as List<dynamic>? ?? []).cast<String>();
+          
+          // 根据登场角色查找参考图
+          final referenceImagePath = _drawPromptBuilder.findReferenceImageForCharacters(appearingCharacters);
+          if (referenceImagePath != null) {
+            LogService.instance.info("    [角色匹配] ✅ 场景将使用角色 ${appearingCharacters.join(',')} 的参考图: $referenceImagePath");
           }
 
           // 实际执行绘图和保存操作
           await _generateAndSaveImagesForScene(
-            itemData, 
-            task.chapter, 
-            task.saveDir, 
+            itemData,
+            task.chapter,
+            task.saveDir,
             cancellationToken,
-            referenceImagePath: referenceImageForTask, // 传入找到的参考图
+            referenceImagePath: referenceImagePath, // 传入为该特定场景找到的参考图
           );
         });
         drawingFutures.add(future);
       }
-      
+
       // 等待这个区块内的所有绘图任务完成
       await Future.wait(drawingFutures);
 
@@ -297,7 +272,7 @@ class IllustrationGeneratorService {
         // 在每次尝试前都等待获取一个“令牌”，以符合API的速率限制
         await llmRateLimiter.acquire();
         LogService.instance.info("    [LLM] 已获取到速率令牌，正在发送请求... (尝试 ${attempt + 1}/2)");
-        
+
         // 执行LLM请求
         final llmResponse = await _llmService.requestCompletion(
           systemPrompt: systemPrompt,
@@ -310,7 +285,7 @@ class IllustrationGeneratorService {
         final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
         // 如果正则匹配失败，则假定整个响应就是JSON字符串
         final jsonString = jsonMatch?.group(1) ?? llmResponse;
-        
+
         // 将JSON字符串解析为Dart对象
         final data = jsonDecode(jsonString);
 
@@ -335,19 +310,22 @@ class IllustrationGeneratorService {
   /// 调用绘图服务为单个场景生成并保存图片。
   Future<void> _generateAndSaveImagesForScene(
     Map<String, dynamic> illustrationData, // 从LLM获取的单个绘图任务数据
-    ChapterStructure chapter, 
-    String saveDir, 
-    CancellationToken cancellationToken,
-    { String? referenceImagePath } // 新增可选参数：角色参考图路径
-  ) async {
+    ChapterStructure chapter,
+    String saveDir,
+    CancellationToken cancellationToken, {
+    String? referenceImagePath,
+  }) async {
     // 从绘图数据中提取关键信息
     final llmPrompt = illustrationData['prompt'] as String?;
-    final lineId = illustrationData['insertion_line_number'] as int?; 
+    final lineId = illustrationData['insertion_line_number'] as int?;
     final sceneDescription = illustrationData['scene_description'] as String?;
+    // 提取登场角色
+    final appearingCharacters = (illustrationData['appearing_characters'] as List<dynamic>? ?? []).cast<String>();
+
 
     // 如果缺少必要的提示词或行号，则无法继续
     if (llmPrompt == null || lineId == null) return;
-    
+
     // 检查取消状态
     if (cancellationToken.isCanceled) throw Exception('任务已取消');
 
@@ -360,6 +338,9 @@ class IllustrationGeneratorService {
 
     LogService.instance.info("      [绘图] 开始为《${chapter.title}》ID为 $lineId 的行生成 $imagesPerScene 张插图 (尺寸: ${width}x${height})...");
     LogService.instance.info("      - 场景: ${sceneDescription ?? '无'}");
+    if (appearingCharacters.isNotEmpty) {
+       LogService.instance.info("      - 登场角色: ${appearingCharacters.join(', ')}");
+    }
 
     // 使用 DrawPromptBuilder 结合LLM生成的提示词和用户配置的固定提示词，构建最终的绘图提示
     final (positivePrompt, negativePrompt) = _drawPromptBuilder.build(llmGeneratedPrompt: llmPrompt);
@@ -367,7 +348,7 @@ class IllustrationGeneratorService {
     LogService.instance.info("      - 负面提示词: $negativePrompt");
 
     final activeApi = _configService.getActiveDrawingApi();
-    
+
     // Pool控制并发数，RateLimiter控制请求频率
     final drawingRateLimiter = _configService.getRateLimiterForApi(activeApi);
     LogService.instance.info("      [绘图] 等待速率限制器 (RPM: ${activeApi.rpm})...");
@@ -390,8 +371,8 @@ class IllustrationGeneratorService {
 
     // 如果成功生成图片，将其路径关联到对应的文本行
     if (imagePaths != null && imagePaths.isNotEmpty) {
-      // 将生成的图片路径添加到 book model 对应的行数据中
-      chapter.addIllustrationsToLine(lineId, imagePaths, positivePrompt);
+      // 将生成的图片路径、原始绘画提示词和登场角色列表添加到 book model 对应的行数据中
+      chapter.addIllustrationsToLine(lineId, imagePaths, llmPrompt, appearingCharacters);
       LogService.instance.success("      [绘图] ✅ 成功！${imagePaths.length} 张图片已保存并关联。");
       for (final path in imagePaths) {
         LogService.instance.info("        - $path");

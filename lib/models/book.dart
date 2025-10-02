@@ -1,5 +1,6 @@
 // lib/models/book.dart
 
+import 'dart:convert'; // 引入json编解码库
 import 'package:json_annotation/json_annotation.dart';
 part 'book.g.dart'; // 运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
 
@@ -12,7 +13,7 @@ class LineStructure {
   final String originalContent; // 原始内容 (例如: '<p>这是内容</p>')
   final List<String> illustrationPaths; // 插图路径列表
   final List<String> videoPaths; // 视频路径列表
-  final String? sceneDescription; // 场景描述(绘图标签prompt)
+  final String? sceneDescription; // 场景描述（存储包含prompt和登场角色的JSON字符串）
   final String? translatedText; // 翻译后的文本
 
   LineStructure({
@@ -64,14 +65,26 @@ class ChapterStructure {
     required this.lines,
   });
 
-  void addIllustrationsToLine(int lineId, List<String> paths, String? description) {
+  /// 为指定行添加插图，并保存包含提示词和登场角色的JSON
+  void addIllustrationsToLine(int lineId, List<String> paths, String? prompt, List<String>? characters) {
     try {
       final line = lines.firstWhere((l) => l.id == lineId);
       final lineIndex = lines.indexOf(line);
       if (lineIndex != -1) {
+        
+        // 将prompt和characters打包成JSON字符串
+        String? descriptionToSave;
+        if (prompt != null) {
+          final sceneData = {
+            'prompt': prompt,
+            'characters': characters ?? [],
+          };
+          descriptionToSave = jsonEncode(sceneData);
+        }
+
         lines[lineIndex] = line.copyWith(
           illustrationPaths: [...line.illustrationPaths, ...paths],
-          sceneDescription: description ?? line.sceneDescription,
+          sceneDescription: descriptionToSave ?? line.sceneDescription,
         );
       }
     } catch (e) {

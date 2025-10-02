@@ -1,6 +1,7 @@
 // lib/services/prompt_builder/draw_prompt_builder.dart
 
 import '../../base/config_service.dart';
+import '../../models/character_card_model.dart';
 
 class DrawPromptBuilder {
   final ConfigService _configService;
@@ -32,5 +33,48 @@ class DrawPromptBuilder {
       .join(', ');
 
     return (positivePrompt, negativePrompt);
+  }
+
+  /// 根据登场角色列表查找对应的参考图路径。
+  /// 返回找到的第一个匹配的激活角色的参考图。
+  String? findReferenceImageForCharacters(List<String> characterNames) {
+    if (characterNames.isEmpty) {
+      return null;
+    }
+
+    // 加载并筛选出已激活的角色卡片
+    final allCardsJson = _configService.getSetting<List<dynamic>>('drawing_character_cards', []);
+    final activeCardIdsJson = _configService.getSetting<List<dynamic>>('active_drawing_character_card_ids', []);
+    final activeCardIds = activeCardIdsJson.map((id) => id.toString()).toSet();
+    final allCards = allCardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
+    final activeCards = allCards.where((card) => activeCardIds.contains(card.id)).toList();
+
+    if (activeCards.isEmpty) {
+      return null;
+    }
+
+    // 遍历LLM返回的登场角色名
+    for (final name in characterNames) {
+      // 遍历所有激活的角色卡片
+      for (final card in activeCards) {
+        // 【新逻辑】将卡片的 characterName 按逗号分割成多个触发词
+        final triggerWords = card.characterName.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
+        
+        // 如果登场角色名匹配卡片的任何一个触发词
+        if (triggerWords.contains(name)) {
+          final imagePath = card.referenceImagePath;
+          final imageUrl = card.referenceImageUrl;
+
+          // 只要本地路径或URL有一个不为空，就采纳并返回
+          if ((imagePath != null && imagePath.isNotEmpty) || (imageUrl != null && imageUrl.isNotEmpty)) {
+            // 优先使用本地路径
+            return imagePath ?? imageUrl;
+          }
+        }
+      }
+    }
+    
+    // 如果遍历完所有登场角色都未找到匹配的参考图，则返回null
+    return null;
   }
 }
