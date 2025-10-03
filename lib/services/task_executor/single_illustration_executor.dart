@@ -273,26 +273,31 @@ class SingleVideoExecutor {
   final ConfigService _configService;
   final LlmService _llmService = LlmService.instance;
   final VideoService _videoService = VideoService.instance;
-  final LogService _logger = LogService.instance; // 获取日志服务实例
+  final LogService _logger = LogService.instance;
 
   /// "从插图生成视频"功能
   Future<void> generateVideoFromImage({
     required ChapterStructure chapter,
     required LineStructure line,
-    required String imagePath, // 作为视频生成的参考图
+    required String imagePath,
     required String saveDir,
   }) async {
     _logger.info('[视频生成] 开始任务...');
-    // 兼容解析 sceneDescription
+    // 1. 兼容解析 sceneDescription，获取静态场景描述
     final (sceneDescription, _) = _parseSceneDescription(line.sceneDescription);
     if (sceneDescription.isEmpty) {
       throw Exception("该插图没有场景描述，无法生成视频。");
     }
 
-    // 2. 调用 LLM 将绘画提示词转换为更适合视频生成的动态化提示词
+    // 2. 提取插图所在位置的上下文
+    _logger.info('[视频生成] 正在提取约4000 tokens的上下文...');
+    final contextText = _extractContextAroundLine(line, chapter, 4000);
+
+    // 3. 调用 LLM 将绘画提示词和上下文转换为更适合视频生成的动态化提示词
     _logger.info('[视频生成] 调用LLM生成视频专用提示词');
     final (systemPrompt, messages) = _llmPromptBuilder.buildForVideoPrompt(
       sceneDescription: sceneDescription,
+      contextText: contextText, // 传递上下文
     );
 
     final activeApi = _configService.getActiveLanguageApi();
@@ -303,10 +308,9 @@ class SingleVideoExecutor {
     );
     _logger.info('[视频生成] LLM响应: $llmResponse');
     
-    // 3. 解析 LLM 响应，提取视频提示词
+    // 4. 解析 LLM 响应，提取视频提示词
     String videoPrompt;
     try {
-      // 同样使用健壮的JSON解析逻辑
       String potentialJson = llmResponse;
       final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```', dotAll: true).firstMatch(llmResponse);
       if (jsonMatch != null) {
@@ -330,24 +334,24 @@ class SingleVideoExecutor {
       throw Exception("LLM 未能生成有效的视频提示词。");
     }
 
-    // 4. 从配置中获取视频生成参数
+    // 5. 从配置中获取视频生成参数
     final resolution = _configService.getSetting<String>('video_gen_resolution', '720p');
     final duration = _configService.getSetting<int>('video_gen_duration', 5);
     final activeVideoApi = _configService.getActiveVideoApi();
 
-    // 5. 调用视频服务生成视频
-    _logger.info('[视频生成] 调用视频服务，分辨率: $resolution, 时长: $duration 秒');
+    // 6. 调用视频服务生成视频
+    _logger.info('[视频生成] 正在调用视频服务......');
     final videoPaths = await _videoService.generateVideo(
       positivePrompt: videoPrompt,
       saveDir: saveDir,
-      count: 1, // 每次通常只生成一个视频
+      count: 1,
       resolution: resolution,
       duration: duration,
-      referenceImagePath: imagePath, // 关键：传入原插图作为参考
+      referenceImagePath: imagePath,
       apiConfig: activeVideoApi,
     );
     
-    // 6. 将生成的视频路径保存到 book model
+    // 7. 将生成的视频路径保存到 book model
     if (videoPaths != null && videoPaths.isNotEmpty) {
       _logger.success('[视频生成] 生成成功，路径: $videoPaths');
       chapter.addVideosToLine(line.id, videoPaths);
@@ -356,7 +360,48 @@ class SingleVideoExecutor {
     }
   }
 
-    /// 解析sceneDescription，兼容新旧格式 (与 SingleIllustrationExecutor 中的方法重复，但为了模块独立性而保留)
+  /// 以目标行为中心，提取指定token数量的上下文 (从SingleIllustrationExecutor复制而来)
+  String _extractContextAroundLine(LineStructure targetLine, ChapterStructure chapter, int maxTokens) {
+    final encoding = encodingForModel("gpt-4");
+    final lines = chapter.lines;
+    final targetIndex = lines.indexOf(targetLine);
+    if (targetIndex == -1) return targetLine.text;
+
+    List<String> contextLines = [targetLine.text]; // 初始只包含目标行文本
+    int currentTokens = encoding.encode(targetLine.text).length;
+
+    int before = targetIndex - 1;
+    int after = targetIndex + 1;
+
+    while (currentTokens < maxTokens && (before >= 0 || after < lines.length)) {
+      if (before >= 0) {
+        final line = lines[before];
+        final lineContent = line.text;
+        final lineTokens = encoding.encode(lineContent).length;
+        if (currentTokens + lineTokens <= maxTokens) {
+          contextLines.insert(0, lineContent);
+          currentTokens += lineTokens;
+        }
+        before--;
+      }
+      if (currentTokens >= maxTokens) break;
+
+      if (after < lines.length) {
+        final line = lines[after];
+        final lineContent = line.text;
+        final lineTokens = encoding.encode(lineContent).length;
+        if (currentTokens + lineTokens <= maxTokens) {
+          contextLines.add(lineContent);
+          currentTokens += lineTokens;
+        }
+        after++;
+      }
+    }
+    return contextLines.join('\n');
+  }
+
+
+  /// 解析sceneDescription，兼容新旧格式 (与 SingleIllustrationExecutor 中的方法重复，但为了模块独立性而保留)
   (String, List<String>) _parseSceneDescription(String? description) {
     if (description == null || description.isEmpty) {
       return ('', []);
