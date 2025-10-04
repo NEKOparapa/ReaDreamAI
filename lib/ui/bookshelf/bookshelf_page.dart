@@ -587,22 +587,15 @@ class _BookshelfPageState extends State<BookshelfPage> {
             ),
             // 标题区域
             Container(
-              height: 35,
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      entry.title,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.start,
-                    ),
-                  ),
-                ],
+              height: 40, // 可以适当增加一点高度，让两行文本显示更舒适
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              // 使用 Alignment.centerLeft 来让单行文本垂直居中且左对齐
+              alignment: Alignment.centerLeft, 
+              child: Text(
+                entry.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.2), // 增加行高，视觉效果更好
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

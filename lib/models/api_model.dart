@@ -143,7 +143,7 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
     provider: ApiProvider.volcengine, name: '火山', icon: Icons.filter_hdr_outlined,
     defaultUrl: 'https://ark.cn-beijing.volces.com/api/v3', 
     defaultModel: 'doubao-seedance-1-0-pro-250528',
-    defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
+    defaultFormat: ApiFormat.none, defaultConcurrency: 5, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.bailian, name: '百炼', icon: Icons.whatshot_outlined, 
