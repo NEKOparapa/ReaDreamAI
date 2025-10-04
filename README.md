@@ -287,9 +287,9 @@
 
 如果你想更深入地了解ReaDreamAI的各项功能，发挥其全部潜力，可以查阅我们在Wiki上提供的详细教程：
 
-*   [**人物与风格一致性教程**：通过角色描述与参考图，实现完美的人物一致性](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E7%BB%98%E7%94%BB%E6%A0%87%E7%AD%BE%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
+*   [**人物一致性教程**：通过角色描述与参考图，实现完美的人物一致性](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E7%BB%98%E7%94%BB%E6%A0%87%E7%AD%BE%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
 *   [**ComfyUI 自定义工作流教程**：编写 生成完全无限制、高度个性化、功能强大的 ComfyUI工作流。](https://github.com/NEKOparapa/ReaDreamAI/wiki/ComfyUI-%E5%B7%A5%E4%BD%9C%E6%B5%81%E8%BF%9B%E9%98%B6%E6%95%99%E7%A8%8B)
-
+*   [**ComfyUI 云端部署视频模型教程**：在算力平台部署wan2.2等等开源模型，进行无限制的个性化的AI视频生成。](https://github.com/NEKOparapa/ReaDreamAI/wiki/ComfyUI-%E4%BA%91%E7%AB%AF%E5%B9%B3%E5%8F%B0%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B)
 
 ---
 
