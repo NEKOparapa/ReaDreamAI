@@ -66,6 +66,29 @@ class TranslationTaskChunk {
   Map<String, dynamic> toJson() => _$TranslationTaskChunkToJson(this);
 }
 
+// 视频生成子任务区块
+@JsonSerializable()
+class VideoGenerationTaskChunk {
+  final String id;
+  final String chapterId;
+  final int lineId;
+  final String sourceImagePath; // 关键字段：源图片路径
+  ChunkStatus status;
+
+  VideoGenerationTaskChunk({
+    required this.id,
+    required this.chapterId,
+    required this.lineId,
+    required this.sourceImagePath,
+    this.status = ChunkStatus.pending,
+  });
+
+  factory VideoGenerationTaskChunk.fromJson(Map<String, dynamic> json) =>
+      _$VideoGenerationTaskChunkFromJson(json);
+  Map<String, dynamic> toJson() => _$VideoGenerationTaskChunkToJson(this);
+}
+
+
 // 书架缓存文件中的单个条目
 @JsonSerializable(explicitToJson: true)
 class BookshelfEntry {
@@ -92,6 +115,15 @@ class BookshelfEntry {
   DateTime? translationCreatedAt;
   DateTime? translationUpdatedAt;
 
+  // --- [新增] 图生视频任务字段 ---
+  @JsonKey(defaultValue: TaskStatus.notStarted)
+  TaskStatus videoGenerationStatus;
+  @JsonKey(defaultValue: [])
+  List<VideoGenerationTaskChunk> videoGenerationTaskChunks;
+  String? videoGenerationErrorMessage;
+  DateTime? videoGenerationCreatedAt;
+  DateTime? videoGenerationUpdatedAt;
+
   BookshelfEntry({
     required this.id,
     required this.title,
@@ -111,6 +143,12 @@ class BookshelfEntry {
     this.translationErrorMessage,
     this.translationCreatedAt,
     this.translationUpdatedAt,
+    // [新增] 视频任务
+    this.videoGenerationStatus = TaskStatus.notStarted,
+    this.videoGenerationTaskChunks = const [],
+    this.videoGenerationErrorMessage,
+    this.videoGenerationCreatedAt,
+    this.videoGenerationUpdatedAt,
   });
 
   //  插图进度
@@ -134,6 +172,18 @@ class BookshelfEntry {
     return completedCount / translationTaskChunks.length;
   }
 
+  // 视频生成进度
+  double get videoGenerationProgress {
+    if (videoGenerationTaskChunks.isEmpty) {
+      return videoGenerationStatus == TaskStatus.completed ? 1.0 : 0.0;
+    }
+    final completedCount = videoGenerationTaskChunks
+        .where((c) => c.status == ChunkStatus.completed)
+        .length;
+    if (videoGenerationTaskChunks.isEmpty) return 0.0;
+    return completedCount / videoGenerationTaskChunks.length;
+  }
+
   // copyWith 方法便于状态更新
   BookshelfEntry copyWith({
     String? coverImagePath,
@@ -143,12 +193,20 @@ class BookshelfEntry {
     bool clearErrorMessage = false,
     DateTime? createdAt,
     DateTime? updatedAt,
+
     TaskStatus? translationStatus,
     List<TranslationTaskChunk>? translationTaskChunks,
     String? translationErrorMessage,
     bool clearTranslationErrorMessage = false,
     DateTime? translationCreatedAt,
     DateTime? translationUpdatedAt,
+
+    TaskStatus? videoGenerationStatus,
+    List<VideoGenerationTaskChunk>? videoGenerationTaskChunks,
+    String? videoGenerationErrorMessage,
+    bool clearVideoGenerationErrorMessage = false,
+    DateTime? videoGenerationCreatedAt,
+    DateTime? videoGenerationUpdatedAt,
   }) {
     return BookshelfEntry(
       id: id,
@@ -169,6 +227,12 @@ class BookshelfEntry {
       translationErrorMessage: clearTranslationErrorMessage ? null : (translationErrorMessage ?? this.translationErrorMessage),
       translationCreatedAt: translationCreatedAt ?? this.translationCreatedAt,
       translationUpdatedAt: translationUpdatedAt ?? DateTime.now(),
+      // 视频
+      videoGenerationStatus: videoGenerationStatus ?? this.videoGenerationStatus,
+      videoGenerationTaskChunks: videoGenerationTaskChunks ?? this.videoGenerationTaskChunks,
+      videoGenerationErrorMessage: clearVideoGenerationErrorMessage ? null : (videoGenerationErrorMessage ?? this.videoGenerationErrorMessage),
+      videoGenerationCreatedAt: videoGenerationCreatedAt ?? this.videoGenerationCreatedAt,
+      videoGenerationUpdatedAt: videoGenerationUpdatedAt ?? DateTime.now(),
     );
   }
 

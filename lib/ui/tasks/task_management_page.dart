@@ -20,12 +20,11 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
       appBar: AppBar(
         title: const Text('任务管理'),
         actions: [
-          // [NEW] 新增一个“开始所有任务”的按钮
           ValueListenableBuilder<List<BookshelfEntry>>(
             valueListenable: _taskManager.tasksNotifier,
             builder: (context, entries, child) {
-              // 仅当存在可开始的（暂停的）任务时才显示按钮
-              final hasPausableTasks = entries.any((e) => e.status == TaskStatus.paused || e.translationStatus == TaskStatus.paused);
+              // 检查所有任务类型
+              final hasPausableTasks = entries.any((e) => e.status == TaskStatus.paused || e.translationStatus == TaskStatus.paused || e.videoGenerationStatus == TaskStatus.paused);
               if (hasPausableTasks) {
                 return IconButton(
                   icon: const Icon(Icons.play_arrow),
@@ -35,7 +34,7 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
                   },
                 );
               }
-              return const SizedBox.shrink(); // 如果没有可开始的任务，则不显示按钮
+              return const SizedBox.shrink();
             },
           ),
           IconButton(
@@ -51,7 +50,7 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
         valueListenable: _taskManager.tasksNotifier,
         builder: (context, entries, child) {
           // 筛选出任何有活动任务的书籍
-          final tasks = entries.where((e) => e.status != TaskStatus.notStarted || e.translationStatus != TaskStatus.notStarted).toList();
+          final tasks = entries.where((e) => e.status != TaskStatus.notStarted || e.translationStatus != TaskStatus.notStarted || e.videoGenerationStatus != TaskStatus.notStarted).toList();
 
           if (tasks.isEmpty) {
             return const Center(
@@ -64,8 +63,8 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
           // 按更新时间倒序排列
           final sortedTasks = List<BookshelfEntry>.from(tasks)
             ..sort((a, b) {
-                final aDate = a.updatedAt ?? a.translationUpdatedAt ?? a.createdAt ?? a.translationCreatedAt ?? DateTime(0);
-                final bDate = b.updatedAt ?? b.translationUpdatedAt ?? b.createdAt ?? b.translationCreatedAt ?? DateTime(0);
+                final aDate = a.updatedAt ?? a.translationUpdatedAt ?? a.videoGenerationUpdatedAt ?? a.createdAt ?? a.translationCreatedAt ?? a.videoGenerationCreatedAt ?? DateTime(0);
+                final bDate = b.updatedAt ?? b.translationUpdatedAt ?? b.videoGenerationUpdatedAt ?? b.createdAt ?? b.translationCreatedAt ?? b.videoGenerationCreatedAt ?? DateTime(0);
                 return bDate.compareTo(aDate);
             });
             
@@ -84,6 +83,7 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
   Widget _buildTaskItem(BookshelfEntry task) { 
     bool hasIllustrationTask = task.status != TaskStatus.notStarted;
     bool hasTranslationTask = task.translationStatus != TaskStatus.notStarted;
+    bool hasVideoGenerationTask = task.videoGenerationStatus != TaskStatus.notStarted;
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
@@ -110,7 +110,8 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
                 updatedAt: task.updatedAt ?? task.createdAt,
               ),
 
-            if (hasIllustrationTask && hasTranslationTask)
+            // 调整分隔线逻辑
+            if (hasIllustrationTask && (hasTranslationTask || hasVideoGenerationTask))
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.0),
                 child: Divider(height: 1),
@@ -126,6 +127,26 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
                 progress: task.translationProgress,
                 errorMessage: task.translationErrorMessage,
                 updatedAt: task.translationUpdatedAt ?? task.translationCreatedAt,
+              ),
+            
+            // 视频任务与翻译任务之间的分隔线
+            if (hasTranslationTask && hasVideoGenerationTask)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12.0),
+                child: Divider(height: 1),
+              ),
+
+            // 显示视频生成任务
+            if (hasVideoGenerationTask)
+              _buildSingleTaskInfo(
+                task: task,
+                type: TaskType.videoGeneration,
+                title: '图生视频',
+                icon: Icons.video_library,
+                status: task.videoGenerationStatus,
+                progress: task.videoGenerationProgress,
+                errorMessage: task.videoGenerationErrorMessage,
+                updatedAt: task.videoGenerationUpdatedAt ?? task.videoGenerationCreatedAt,
               ),
           ],
         ),
@@ -275,7 +296,7 @@ class _TaskManagementPageState extends State<TaskManagementPage> {
     }
     
     // 只有在整个书籍的所有任务都非运行时，才显示删除按钮
-    if (task.status != TaskStatus.running && task.translationStatus != TaskStatus.running) {
+    if (task.status != TaskStatus.running && task.translationStatus != TaskStatus.running && task.videoGenerationStatus != TaskStatus.running) {
        buttons.add(_actionButton('删除', Icons.delete_forever, () => _taskManager.deleteTask(task.id), isDestructive: true));
     }
 

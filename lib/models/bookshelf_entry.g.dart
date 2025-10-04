@@ -59,72 +59,119 @@ Map<String, dynamic> _$TranslationTaskChunkToJson(
   'status': _$ChunkStatusEnumMap[instance.status]!,
 };
 
-BookshelfEntry _$BookshelfEntryFromJson(Map<String, dynamic> json) =>
-    BookshelfEntry(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      originalPath: json['originalPath'] as String,
-      fileType: json['fileType'] as String,
-      subCachePath: json['subCachePath'] as String,
-      coverImagePath: json['coverImagePath'] as String?,
-      status:
-          $enumDecodeNullable(_$TaskStatusEnumMap, json['status']) ??
-          TaskStatus.notStarted,
-      taskChunks:
-          (json['taskChunks'] as List<dynamic>?)
-              ?.map(
-                (e) =>
-                    IllustrationTaskChunk.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          const [],
-      errorMessage: json['errorMessage'] as String?,
-      createdAt: json['createdAt'] == null
-          ? null
-          : DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] == null
-          ? null
-          : DateTime.parse(json['updatedAt'] as String),
-      translationStatus:
-          $enumDecodeNullable(_$TaskStatusEnumMap, json['translationStatus']) ??
-          TaskStatus.notStarted,
-      translationTaskChunks:
-          (json['translationTaskChunks'] as List<dynamic>?)
-              ?.map(
-                (e) => TranslationTaskChunk.fromJson(e as Map<String, dynamic>),
-              )
-              .toList() ??
-          [],
-      translationErrorMessage: json['translationErrorMessage'] as String?,
-      translationCreatedAt: json['translationCreatedAt'] == null
-          ? null
-          : DateTime.parse(json['translationCreatedAt'] as String),
-      translationUpdatedAt: json['translationUpdatedAt'] == null
-          ? null
-          : DateTime.parse(json['translationUpdatedAt'] as String),
-    );
+VideoGenerationTaskChunk _$VideoGenerationTaskChunkFromJson(
+  Map<String, dynamic> json,
+) => VideoGenerationTaskChunk(
+  id: json['id'] as String,
+  chapterId: json['chapterId'] as String,
+  lineId: (json['lineId'] as num).toInt(),
+  sourceImagePath: json['sourceImagePath'] as String,
+  status:
+      $enumDecodeNullable(_$ChunkStatusEnumMap, json['status']) ??
+      ChunkStatus.pending,
+);
 
-Map<String, dynamic> _$BookshelfEntryToJson(BookshelfEntry instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'title': instance.title,
-      'originalPath': instance.originalPath,
-      'fileType': instance.fileType,
-      'subCachePath': instance.subCachePath,
-      'coverImagePath': instance.coverImagePath,
-      'status': _$TaskStatusEnumMap[instance.status]!,
-      'taskChunks': instance.taskChunks.map((e) => e.toJson()).toList(),
-      'errorMessage': instance.errorMessage,
-      'createdAt': instance.createdAt?.toIso8601String(),
-      'updatedAt': instance.updatedAt?.toIso8601String(),
-      'translationStatus': _$TaskStatusEnumMap[instance.translationStatus]!,
-      'translationTaskChunks': instance.translationTaskChunks
-          .map((e) => e.toJson())
-          .toList(),
-      'translationErrorMessage': instance.translationErrorMessage,
-      'translationCreatedAt': instance.translationCreatedAt?.toIso8601String(),
-      'translationUpdatedAt': instance.translationUpdatedAt?.toIso8601String(),
-    };
+Map<String, dynamic> _$VideoGenerationTaskChunkToJson(
+  VideoGenerationTaskChunk instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'chapterId': instance.chapterId,
+  'lineId': instance.lineId,
+  'sourceImagePath': instance.sourceImagePath,
+  'status': _$ChunkStatusEnumMap[instance.status]!,
+};
+
+BookshelfEntry _$BookshelfEntryFromJson(
+  Map<String, dynamic> json,
+) => BookshelfEntry(
+  id: json['id'] as String,
+  title: json['title'] as String,
+  originalPath: json['originalPath'] as String,
+  fileType: json['fileType'] as String,
+  subCachePath: json['subCachePath'] as String,
+  coverImagePath: json['coverImagePath'] as String?,
+  status:
+      $enumDecodeNullable(_$TaskStatusEnumMap, json['status']) ??
+      TaskStatus.notStarted,
+  taskChunks:
+      (json['taskChunks'] as List<dynamic>?)
+          ?.map(
+            (e) => IllustrationTaskChunk.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      const [],
+  errorMessage: json['errorMessage'] as String?,
+  createdAt: json['createdAt'] == null
+      ? null
+      : DateTime.parse(json['createdAt'] as String),
+  updatedAt: json['updatedAt'] == null
+      ? null
+      : DateTime.parse(json['updatedAt'] as String),
+  translationStatus:
+      $enumDecodeNullable(_$TaskStatusEnumMap, json['translationStatus']) ??
+      TaskStatus.notStarted,
+  translationTaskChunks:
+      (json['translationTaskChunks'] as List<dynamic>?)
+          ?.map((e) => TranslationTaskChunk.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      [],
+  translationErrorMessage: json['translationErrorMessage'] as String?,
+  translationCreatedAt: json['translationCreatedAt'] == null
+      ? null
+      : DateTime.parse(json['translationCreatedAt'] as String),
+  translationUpdatedAt: json['translationUpdatedAt'] == null
+      ? null
+      : DateTime.parse(json['translationUpdatedAt'] as String),
+  videoGenerationStatus:
+      $enumDecodeNullable(_$TaskStatusEnumMap, json['videoGenerationStatus']) ??
+      TaskStatus.notStarted,
+  videoGenerationTaskChunks:
+      (json['videoGenerationTaskChunks'] as List<dynamic>?)
+          ?.map(
+            (e) => VideoGenerationTaskChunk.fromJson(e as Map<String, dynamic>),
+          )
+          .toList() ??
+      [],
+  videoGenerationErrorMessage: json['videoGenerationErrorMessage'] as String?,
+  videoGenerationCreatedAt: json['videoGenerationCreatedAt'] == null
+      ? null
+      : DateTime.parse(json['videoGenerationCreatedAt'] as String),
+  videoGenerationUpdatedAt: json['videoGenerationUpdatedAt'] == null
+      ? null
+      : DateTime.parse(json['videoGenerationUpdatedAt'] as String),
+);
+
+Map<String, dynamic> _$BookshelfEntryToJson(
+  BookshelfEntry instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'title': instance.title,
+  'originalPath': instance.originalPath,
+  'fileType': instance.fileType,
+  'subCachePath': instance.subCachePath,
+  'coverImagePath': instance.coverImagePath,
+  'status': _$TaskStatusEnumMap[instance.status]!,
+  'taskChunks': instance.taskChunks.map((e) => e.toJson()).toList(),
+  'errorMessage': instance.errorMessage,
+  'createdAt': instance.createdAt?.toIso8601String(),
+  'updatedAt': instance.updatedAt?.toIso8601String(),
+  'translationStatus': _$TaskStatusEnumMap[instance.translationStatus]!,
+  'translationTaskChunks': instance.translationTaskChunks
+      .map((e) => e.toJson())
+      .toList(),
+  'translationErrorMessage': instance.translationErrorMessage,
+  'translationCreatedAt': instance.translationCreatedAt?.toIso8601String(),
+  'translationUpdatedAt': instance.translationUpdatedAt?.toIso8601String(),
+  'videoGenerationStatus': _$TaskStatusEnumMap[instance.videoGenerationStatus]!,
+  'videoGenerationTaskChunks': instance.videoGenerationTaskChunks
+      .map((e) => e.toJson())
+      .toList(),
+  'videoGenerationErrorMessage': instance.videoGenerationErrorMessage,
+  'videoGenerationCreatedAt': instance.videoGenerationCreatedAt
+      ?.toIso8601String(),
+  'videoGenerationUpdatedAt': instance.videoGenerationUpdatedAt
+      ?.toIso8601String(),
+};
 
 const _$TaskStatusEnumMap = {
   TaskStatus.notStarted: 'notStarted',

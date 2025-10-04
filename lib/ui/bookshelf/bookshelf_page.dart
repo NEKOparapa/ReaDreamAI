@@ -18,6 +18,7 @@ import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
 import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
+import 'generate_video_dialog.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -290,6 +291,34 @@ class _BookshelfPageState extends State<BookshelfPage> {
     }
   }
 
+  /// 为指定书籍生成视频任务
+  Future<void> _generateVideosFromImages(BookshelfEntry entry) async {
+    // 显示配置对话框，并等待其返回结果
+    final bool? taskCreated = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => GenerateVideoDialog(entry: entry),
+    );
+
+    // 如果对话框返回true，说明任务已成功创建
+    if (taskCreated == true && mounted) {
+      // 重新从缓存加载书架数据，以更新UI状态
+      await _loadBookshelf();
+
+      final updatedEntry = _entries.firstWhere(
+        (e) => e.id == entry.id,
+        orElse: () => entry,
+      );
+
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('已为《${updatedEntry.title}》创建 ${updatedEntry.videoGenerationTaskChunks.length} 个视频生成子任务'),
+        ),
+      );
+    }
+  }
+
   /// 删除书籍
   void _deleteBook(BookshelfEntry entry) async {
     final bookTitle = entry.title;
@@ -345,6 +374,16 @@ class _BookshelfPageState extends State<BookshelfPage> {
           ]),
         ),
         PopupMenuItem(
+          // 始终启用此菜单项，让对话框来处理后续逻辑
+          enabled: true,
+          onTap: () => _generateVideosFromImages(entry),
+          child: const Row(children: [
+            Icon(Icons.video_library, color: Colors.purple),
+            SizedBox(width: 8),
+            Text('图生视频')
+          ]),
+        ),
+        PopupMenuItem(
           enabled: entry.translationStatus == TaskStatus.notStarted ||
               entry.translationStatus == TaskStatus.failed ||
               entry.translationStatus == TaskStatus.canceled,
@@ -368,7 +407,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
         ),
         PopupMenuItem(
           onTap: () => _deleteBook(entry),
-          child: const Text('删除书籍', style: TextStyle(color: Colors.red)),
+          child: const Row(
+            children: [
+              Icon(Icons.delete, color: Colors.red),
+              SizedBox(width: 8),
+              Text('删除书籍')
+            ],
+          ),
         ),
       ],
     );
