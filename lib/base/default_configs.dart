@@ -59,6 +59,36 @@ const Map<String, dynamic> appDefaultConfigs = {
   'activeDrawingApiId': null, // 当前激活的绘图接口ID
   'activeVideoApiId': null, // 当前激活的视频接口ID
   
+  // --- AI小说创作 ---
+  'ai_novel_creation_prompt': '少年遇见少女的开篇故事', // 创作提示词
+  'ai_novel_creation_chapter_count': 2, // 章节数
+  'ai_novel_creation_words_per_chapter': 1500, // 每章字数
+  'ai_novel_creation_title': '艾瑞多之心', // 小说标题
+  // 背景设定预设内容
+  'ai_novel_creation_background_setting': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。', 
+  // 写作风格预设内容
+  'ai_novel_creation_writing_style': '采用第三人称有限视角，文笔细腻，注重角色心理活动的描写和环境氛围的渲染。节奏快慢结合，在紧张的动作场面中穿插宁静的思考时刻，语言风格偏向史诗感与诗意。',
+  // 主要角色预设内容
+  'ai_novel_creation_main_characters': [
+    {
+      "name": "莉娜·风语者",
+      "identity": "一位年轻的精灵魔法师，也是一位机械工程师学徒",
+      "appearance": "拥有银色的长发和翠绿色的眼眸，常穿着便于活动的皮甲和沾满油污的工装裤，背上背着一把由自己改造的魔法步枪。",
+      "personality": "好奇心强，勇敢无畏，但内心深处对古老的魔法传统与新兴的科技文明之间的冲突感到迷茫。"
+    }
+  ], 
+  // 故事大纲预设内容
+  'ai_novel_creation_storyline': [
+    {
+      "chapter_title": "序章：生锈的齿轮与古老的符文",
+      "chapter_summary": "在蒸汽弥漫的城市“钢之心”的下层区，莉娜发现了一个无法用现有科技解释的古代遗物。这个发现让她原本平静的生活卷入了巨大的阴谋之中。"
+    },
+    {
+      "chapter_title": "第一章：来自天空的警告",
+      "chapter_summary": "为了解读遗物，莉娜决定前往传说中的浮空山脉寻找答案。在旅途中，她遭遇了机械刺客的追杀，并得到了一位神秘矮人铁匠的帮助。"
+    }
+  ],
+
   // --- 绘图标签设置 ---
   // 绘画风格
   'drawing_style_tags': [

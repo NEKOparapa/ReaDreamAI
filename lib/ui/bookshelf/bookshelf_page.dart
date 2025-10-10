@@ -16,6 +16,7 @@ import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
+import 'ai_novel_creation/ai_generate_outline_page.dart';
 import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
@@ -29,7 +30,7 @@ class BookshelfPage extends StatefulWidget {
 }
 
 /// 书架页面的状态管理类
-class _BookshelfPageState extends State<BookshelfPage> {
+class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserver {
   // 书架上的书籍条目列表
   final List<BookshelfEntry> _entries = [];
   // 标记是否有文件拖拽进入UI区域
@@ -42,7 +43,33 @@ class _BookshelfPageState extends State<BookshelfPage> {
   @override
   void initState() {
     super.initState();
+    // 添加生命周期观察者
+    WidgetsBinding.instance.addObserver(this);
     // 页面初始化时加载书架数据
+    _loadBookshelf();
+  }
+
+  @override
+  void dispose() {
+    // 移除生命周期观察者
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 监听应用生命周期变化
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 当应用从后台恢复到前台时，刷新书架
+    if (state == AppLifecycleState.resumed) {
+      _loadBookshelf();
+    }
+  }
+
+  // 每次页面重新构建时检查是否需要刷新
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 当路由变化时（比如从其他页面返回），刷新书架
     _loadBookshelf();
   }
 
@@ -207,14 +234,18 @@ class _BookshelfPageState extends State<BookshelfPage> {
       String title = titleInput.trim();
       // 如果用户未输入标题，则自动从内容第一行生成
       if (title.isEmpty) {
-        title = content.trim().split('\n').firstWhere((l) => l.trim().isNotEmpty, orElse: () => '无标题文本').trim();
+        title = content
+            .trim()
+            .split('\n')
+            .firstWhere((l) => l.trim().isNotEmpty, orElse: () => '无标题文本')
+            .trim();
         if (title.length > 40) {
           title = title.substring(0, 40);
         }
       }
 
       // 清理文件名中的非法字符
-      final sanitizedTitle = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final sanitizedTitle = title.replaceAll(RegExp(r'[\/:*?"<>|]'), '_');
       final uniqueId = const Uuid().v4().substring(0, 8); // 添加唯一ID防止重名
       final fileName = '$sanitizedTitle-$uniqueId.txt';
       final filePath = p.join(tempDir.path, fileName);
@@ -233,6 +264,19 @@ class _BookshelfPageState extends State<BookshelfPage> {
     }
   }
 
+  void _showAiNovelCreationFlow() async {
+    // 导航到新的、独立的AI创作流程入口页面
+    final bool? success = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => const AiGenerateOutlinePage(),
+      ),
+    );
+
+    // 当创作完成并从编辑页面返回时，无论成功与否都刷新书架
+    // 这样确保任何情况下书架都是最新的
+    await _loadBookshelf();
+  }
+
   /// 为指定书籍生成插图任务
   Future<void> _generateIllustrations(BookshelfEntry entry) async {
     // 显示配置对话框，并等待其返回结果
@@ -246,7 +290,7 @@ class _BookshelfPageState extends State<BookshelfPage> {
     if (taskCreated == true && mounted) {
       // 重新从缓存加载书架数据，以更新UI状态（例如显示"排队中"）
       await _loadBookshelf();
-      
+
       // 找到更新后的条目，以获取正确的任务信息用于提示
       final updatedEntry = _entries.firstWhere(
         (e) => e.id == entry.id,
@@ -343,9 +387,12 @@ class _BookshelfPageState extends State<BookshelfPage> {
   void _openBook(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
-      Navigator.of(context).push(
+      // 从阅读器页面返回时也刷新书架
+      await Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => BookReaderPage(book: book)),
       );
+      // 返回后刷新书架
+      await _loadBookshelf();
     } else {
       _showTopMessage('加载书籍详情失败', isError: true);
     }
@@ -473,7 +520,14 @@ class _BookshelfPageState extends State<BookshelfPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('我的书架'),
-        actions: const [],
+        actions: [
+          // 添加手动刷新按钮
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: '刷新书架',
+            onPressed: _loadBookshelf,
+          ),
+        ],
       ),
       // 使用 DropTarget 包装以接收拖拽文件
       body: DropTarget(
@@ -515,6 +569,13 @@ class _BookshelfPageState extends State<BookshelfPage> {
             tooltip: '粘贴导入',
             heroTag: 'paste_import',
             child: const Icon(Icons.paste),
+          ),
+          const SizedBox(width: 16), // 新增间距
+          FloatingActionButton(
+            onPressed: _showAiNovelCreationFlow,
+            tooltip: 'AI创作小说',
+            heroTag: 'ai_create_novel',
+            child: const Icon(Icons.auto_stories),
           ),
         ],
       ),
@@ -590,10 +651,11 @@ class _BookshelfPageState extends State<BookshelfPage> {
               height: 40, // 可以适当增加一点高度，让两行文本显示更舒适
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               // 使用 Alignment.centerLeft 来让单行文本垂直居中且左对齐
-              alignment: Alignment.centerLeft, 
+              alignment: Alignment.centerLeft,
               child: Text(
                 entry.title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, height: 1.2), // 增加行高，视觉效果更好
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 13, height: 1.2), // 增加行高，视觉效果更好
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -608,8 +670,12 @@ class _BookshelfPageState extends State<BookshelfPage> {
   Widget _buildCoverPlaceholder(BookshelfEntry entry) {
     // 根据书籍ID的哈希值选择一个颜色，确保同一本书的占位符颜色总是固定的
     final colors = [
-      Colors.deepPurple, Colors.teal, Colors.indigo,
-      Colors.brown, Colors.blueGrey, Colors.redAccent
+      Colors.deepPurple,
+      Colors.teal,
+      Colors.indigo,
+      Colors.brown,
+      Colors.blueGrey,
+      Colors.redAccent
     ];
     final color = colors[entry.id.hashCode % colors.length];
 

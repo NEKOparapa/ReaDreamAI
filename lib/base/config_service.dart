@@ -64,26 +64,24 @@ class ConfigService {
   Future<void> _synchronizeAndSaveDefaults() async {
     bool needsSave = false;
 
-    // 1. 处理简单的键值对（如果用户配置中不存在，则从默认配置中添加）
+    // 定义需要特殊处理的预设列表键，提前定义
+    const List<String> presetListKeys = [
+      'prompt_cards',
+      'drawing_style_tags',
+      'drawing_other_tags',
+      'drawing_character_cards',
+    ];
+    // 第一个循环处理所有非列表的默认配置项
     for (final entry in appDefaultConfigs.entries) {
-      if (entry.value is! List && !_config.containsKey(entry.key)) {
+      // 如果这个键不在特殊处理列表里，并且用户的配置中不存在这个键
+      if (!presetListKeys.contains(entry.key) && !_config.containsKey(entry.key)) {
+        // 那么就直接从默认配置中添加它，无论它是不是List
         _config[entry.key] = entry.value;
         needsSave = true;
       }
     }
 
-    // 2. 定义需要同步的预设列表的键
-    const List<String> presetListKeys = [
-      'prompt_cards',
-      'drawing_quality_tags',
-      'drawing_artist_tags',
-      'drawing_style_tags',
-      'drawing_other_tags',
-      'drawing_negative_tags',
-      'drawing_character_cards',
-    ];
-
-    // 3. 遍历并同步每个预设列表
+    // 处理那些需要特殊合并逻辑的预设列表
     for (final key in presetListKeys) {
       final defaultList = List<Map<String, dynamic>>.from(appDefaultConfigs[key] as List? ?? []);
       final userList = List<Map<String, dynamic>>.from(getSetting<List<dynamic>>(key, []).map((e) => e as Map<String, dynamic>));

@@ -46,6 +46,7 @@ ChapterStructure _$ChapterStructureFromJson(Map<String, dynamic> json) =>
       lines: (json['lines'] as List<dynamic>)
           .map((e) => LineStructure.fromJson(e as Map<String, dynamic>))
           .toList(),
+      chapterSummary: json['chapterSummary'] as String?,
     );
 
 Map<String, dynamic> _$ChapterStructureToJson(ChapterStructure instance) =>
@@ -53,6 +54,7 @@ Map<String, dynamic> _$ChapterStructureToJson(ChapterStructure instance) =>
       'id': instance.id,
       'title': instance.title,
       'sourceFile': instance.sourceFile,
+      'chapterSummary': instance.chapterSummary,
       'lines': instance.lines.map((e) => e.toJson()).toList(),
     };
 
@@ -63,6 +65,11 @@ Book _$BookFromJson(Map<String, dynamic> json) => Book(
   originalPath: json['originalPath'] as String,
   cachedPath: json['cachedPath'] as String,
   coverImagePath: json['coverImagePath'] as String?,
+  backgroundSetting: json['backgroundSetting'] as String?,
+  writingStyle: json['writingStyle'] as String?,
+  characters: (json['characters'] as List<dynamic>?)
+      ?.map((e) => CharacterProfile.fromJson(e as Map<String, dynamic>))
+      .toList(),
   chapters: (json['chapters'] as List<dynamic>)
       .map((e) => ChapterStructure.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -75,5 +82,8 @@ Map<String, dynamic> _$BookToJson(Book instance) => <String, dynamic>{
   'originalPath': instance.originalPath,
   'cachedPath': instance.cachedPath,
   'coverImagePath': instance.coverImagePath,
+  'backgroundSetting': instance.backgroundSetting,
+  'writingStyle': instance.writingStyle,
+  'characters': instance.characters?.map((e) => e.toJson()).toList(),
   'chapters': instance.chapters.map((e) => e.toJson()).toList(),
 };

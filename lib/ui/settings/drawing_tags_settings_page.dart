@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart';
 import 'drawing_tags/tag_category_page.dart';
 import 'drawing_tags/character_settings_page.dart';
-import 'drawing_tags/drawing_style_page.dart'; // 新增导入
+import 'drawing_tags/drawing_style_page.dart';
 import 'prompt_settings/prompt_settings_page.dart';
 
 class DrawingTagsSettingsPage extends StatelessWidget {

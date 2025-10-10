@@ -13,12 +13,10 @@ class VideoSettingsPage extends StatefulWidget {
 class _VideoSettingsPageState extends State<VideoSettingsPage> {
   final ConfigService _configService = ConfigService();
 
-  // --- 修改开始 ---
   late int _selectedDuration; // 类型从 String 改为 int
   late String _selectedResolution;
 
   final List<int> _durationOptions = [5, 10]; // 选项列表改为 int 类型
-  // --- 修改结束 ---
 
   final List<String> _resolutionOptions = ['720p', '1080p'];
 
@@ -42,7 +40,6 @@ class _VideoSettingsPageState extends State<VideoSettingsPage> {
             SettingsCard(
               title: '视频时长',
               subtitle: '选择生成视频的长度',
-              // --- 修改开始 ---
               control: DropdownButton<int>( // 泛型改为 int
                 value: _selectedDuration,
                 underline: const SizedBox.shrink(),
@@ -64,7 +61,6 @@ class _VideoSettingsPageState extends State<VideoSettingsPage> {
                   }
                 },
               ),
-              // --- 修改结束 ---
             ),
             // 视频分辨率设置 (这部分无需改动)
             SettingsCard(

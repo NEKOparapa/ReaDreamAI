@@ -1,7 +1,8 @@
 // lib/models/book.dart
 
-import 'dart:convert'; // 引入json编解码库
+import 'dart:convert';
 import 'package:json_annotation/json_annotation.dart';
+import 'character_profile.dart'; // 导入新的角色模型
 part 'book.g.dart'; // 运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
 
 // 行结构：存储单行文本及其元数据
@@ -37,7 +38,7 @@ class LineStructure {
     return LineStructure(
       id: id,
       text: text,
-      sourceInfo: sourceInfo, // CHANGED
+      sourceInfo: sourceInfo,
       originalContent: originalContent,
       illustrationPaths: illustrationPaths ?? this.illustrationPaths,
       videoPaths: videoPaths ?? this.videoPaths,
@@ -56,6 +57,7 @@ class ChapterStructure {
   final String id;
   final String title;
   final String sourceFile;
+  final String? chapterSummary; // 新增：章节简述
   final List<LineStructure> lines;
 
   ChapterStructure({
@@ -63,6 +65,7 @@ class ChapterStructure {
     required this.title,
     required this.sourceFile,
     required this.lines,
+    this.chapterSummary, // 新增
   });
 
   /// 为指定行添加插图，并保存包含提示词和登场角色的JSON
@@ -116,10 +119,16 @@ class ChapterStructure {
 class Book {
   final String id; // 书籍的唯一标识符
   final String title; // 书籍标题
-  final String fileType; // 书籍文件类型
+  final String fileType; // 书籍文件类型,仅为txt或者epub
   final String originalPath; // 书籍原始文件的绝对路径
   final String cachedPath; // 书籍缓存文件的绝对路径
   final String? coverImagePath; // 封面图片路径字段
+
+  // --- 新增AI小说特有字段 ---
+  final String? backgroundSetting; // 背景设定
+  final String? writingStyle; // 写作风格
+  final List<CharacterProfile>? characters; // 角色列表
+
   final List<ChapterStructure> chapters; // 存储书籍的所有章节
 
   Book({
@@ -129,7 +138,13 @@ class Book {
     required this.originalPath,
     required this.cachedPath,
     this.coverImagePath,
-    required this.chapters,
+
+    // 新增
+    this.backgroundSetting,
+    this.writingStyle,
+    this.characters,
+
+    required this.chapters, 
   });
 
   factory Book.fromJson(Map<String, dynamic> json) => _$BookFromJson(json);
