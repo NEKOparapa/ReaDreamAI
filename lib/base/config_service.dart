@@ -70,6 +70,8 @@ class ConfigService {
       'drawing_style_tags',
       'drawing_other_tags',
       'drawing_character_cards',
+      'writing_background_cards', // 新增
+      'writing_style_cards',      // 新增
     ];
     // 第一个循环处理所有非列表的默认配置项
     for (final entry in appDefaultConfigs.entries) {

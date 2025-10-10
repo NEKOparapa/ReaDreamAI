@@ -9,6 +9,9 @@ import 'image_gen_settings_page.dart'; // 引入生图设置页
 import 'translation_settings_page.dart'; // 引入翻译设置页
 import 'video_settings_page.dart'; // 引入视频设置页
 import 'log_history_page.dart'; // 引入日志历史页
+import 'drawing_tags/character_settings_page.dart'; // 新增导入
+import 'writing_presets_settings_page.dart'; // 新增导入
+
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -23,14 +26,36 @@ class SettingsPage extends StatelessWidget {
         // 给列表一些顶部边距
         padding: const EdgeInsets.only(top: 8.0),
         children: [
-          // 绘图标签设置卡片
+          // 角色设定卡片 (位置调整)
+          SettingEntryCard(
+            icon: Icons.person_outline,
+            title: '角色设定',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CharacterSettingsPage()),
+              );
+            },
+          ),
+          // 绘图预设卡片
           SettingEntryCard(
             icon: Icons.label_important_outline,
-            title: '绘图预设',
+            title: '绘画预设',
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const DrawingTagsSettingsPage()),
+              );
+            },
+          ),
+          // 写作预设卡片 (新增)
+          SettingEntryCard(
+            icon: Icons.edit_note_outlined,
+            title: '写作预设',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const WritingPresetsSettingsPage()),
               );
             },
           ),

@@ -68,7 +68,9 @@ class CharacterExtractor {
    - 身份（性别、年龄、职业、社会地位等）
    - 外貌特征（发型、发色、眼睛、身高、体型等）
    - 服装配饰（衣服、饰品、装备等）
-   - 其他特征（性格、特殊能力、标志性动作等）
+   - 性格（冷静、活泼、傲娇等内在特质）
+   - 状态（当前情绪、身体状况，如开心、受伤、疲惫等）
+   - 其他特征（特殊能力、标志性动作等）
 3. 所有描述使用中文
 4. 使用具体、视觉化的语言描述
 5. 每个字段的描述要简洁但准确''';
@@ -82,7 +84,9 @@ Requirements:
    - Identity (gender, age, occupation, social status, etc.)
    - Appearance (hairstyle, hair color, eyes, height, body type, etc.)
    - Clothing & Accessories (clothes, accessories, equipment, etc.)
-   - Other features (personality, special abilities, signature moves, etc.)
+   - Personality (inherent traits like calm, cheerful, tsundere, etc.)
+   - Status (current emotion or physical condition, e.g., happy, injured, tired, etc.)
+   - Other features (special abilities, signature moves, etc.)
 3. All descriptions should be in English
 4. Use specific, visual language for descriptions
 5. Keep descriptions concise but accurate''';
@@ -117,6 +121,8 @@ $outputFormatLabel
     "identity": "身份描述",
     "appearance": "外貌描述", 
     "clothing": "服装描述",
+    "personality": "性格描述",
+    "status": "状态描述",
     "other": "其他特征"
   }
 ]
@@ -151,6 +157,8 @@ $outputFormatLabel
           identity: json['identity'] ?? '',
           appearance: json['appearance'] ?? '',
           clothing: json['clothing'] ?? '',
+          personality: json['personality'] ?? '', // 新增
+          status: json['status'] ?? '',           // 新增
           other: json['other'] ?? '',
           isSystemPreset: false,
         );

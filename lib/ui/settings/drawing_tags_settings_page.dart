@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart';
 import 'drawing_tags/tag_category_page.dart';
-import 'drawing_tags/character_settings_page.dart';
 import 'drawing_tags/drawing_style_page.dart';
 import 'prompt_settings/prompt_settings_page.dart';
 
@@ -14,21 +13,11 @@ class DrawingTagsSettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('绘图预设'),
+        title: const Text('绘画预设'),
       ),
       body: ListView(
         padding: const EdgeInsets.only(top: 8.0),
         children: [
-          SettingEntryCard(
-            icon: Icons.person_outline,
-            title: '角色设定',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CharacterSettingsPage()),
-              );
-            },
-          ),
           SettingEntryCard(
             icon: Icons.style_outlined,
             title: '绘画风格',

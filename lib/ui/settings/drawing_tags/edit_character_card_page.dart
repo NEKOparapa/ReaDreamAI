@@ -24,6 +24,8 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
   late TextEditingController _identityController;
   late TextEditingController _appearanceController;
   late TextEditingController _clothingController;
+  late TextEditingController _personalityController; // 新增
+  late TextEditingController _statusController;      // 新增
   late TextEditingController _otherController;
   late TextEditingController _referenceImageUrlController;
   String? _referenceImagePath;
@@ -36,6 +38,8 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
     _identityController = TextEditingController(text: widget.card?.identity ?? '');
     _appearanceController = TextEditingController(text: widget.card?.appearance ?? '');
     _clothingController = TextEditingController(text: widget.card?.clothing ?? '');
+    _personalityController = TextEditingController(text: widget.card?.personality ?? ''); // 新增
+    _statusController = TextEditingController(text: widget.card?.status ?? '');           // 新增
     _otherController = TextEditingController(text: widget.card?.other ?? '');
     _referenceImageUrlController = TextEditingController(text: widget.card?.referenceImageUrl ?? '');
     _referenceImagePath = widget.card?.referenceImagePath;
@@ -48,6 +52,8 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
     _identityController.dispose();
     _appearanceController.dispose();
     _clothingController.dispose();
+    _personalityController.dispose(); // 新增
+    _statusController.dispose();      // 新增
     _otherController.dispose();
     _referenceImageUrlController.dispose();
     super.dispose();
@@ -94,6 +100,8 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
         identity: _identityController.text,
         appearance: _appearanceController.text,
         clothing: _clothingController.text,
+        personality: _personalityController.text, // 新增
+        status: _statusController.text,           // 新增
         other: _otherController.text,
         referenceImageUrl: imageUrl.isNotEmpty ? imageUrl : null,
         referenceImagePath: imagePath,
@@ -196,6 +204,10 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
               _buildTextField(_appearanceController, '外貌特征'),
               const SizedBox(height: 16),
               _buildTextField(_clothingController, '服装配饰'),
+              const SizedBox(height: 16),
+              _buildTextField(_personalityController, '性格'), // 新增
+              const SizedBox(height: 16),
+              _buildTextField(_statusController, '状态'), // 新增
               const SizedBox(height: 16),
               _buildTextField(_otherController, '其他标签'),
               const SizedBox(height: 24),

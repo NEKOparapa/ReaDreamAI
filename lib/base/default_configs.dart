@@ -64,9 +64,9 @@ const Map<String, dynamic> appDefaultConfigs = {
   'ai_novel_creation_chapter_count': 2, // 章节数
   'ai_novel_creation_words_per_chapter': 1500, // 每章字数
   'ai_novel_creation_title': '艾瑞多之心', // 小说标题
-  // 背景设定预设内容
+  // 背景设定预设内容 (保留旧字段以兼容可能存在的直接调用)
   'ai_novel_creation_background_setting': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。', 
-  // 写作风格预设内容
+  // 写作风格预设内容 (保留旧字段以兼容可能存在的直接调用)
   'ai_novel_creation_writing_style': '采用第三人称有限视角，文笔细腻，注重角色心理活动的描写和环境氛围的渲染。节奏快慢结合，在紧张的动作场面中穿插宁静的思考时刻，语言风格偏向史诗感与诗意。',
   // 主要角色预设内容
   'ai_novel_creation_main_characters': [
@@ -88,6 +88,27 @@ const Map<String, dynamic> appDefaultConfigs = {
       "chapter_summary": "为了解读遗物，莉娜决定前往传说中的浮空山脉寻找答案。在旅途中，她遭遇了机械刺客的追杀，并得到了一位神秘矮人铁匠的帮助。"
     }
   ],
+
+  // --- 写作预设 --- (新增部分)
+  'writing_background_cards': [
+    {
+      'id': 'system_default_background',
+      'name': '预设-艾瑞多世界',
+      'content': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
+      'isSystemPreset': true,
+    }
+  ],
+  'active_writing_background_card_id': 'system_default_background',
+
+  'writing_style_cards': [
+    {
+      'id': 'system_default_style',
+      'name': '预设-史诗与诗意',
+      'content': '采用第三人称有限视角，文笔细腻，注重角色心理活动的描写和环境氛围的渲染。节奏快慢结合，在紧张的动作场面中穿插宁静的思考时刻，语言风格偏向史诗感与诗意。',
+      'isSystemPreset': true,
+    }
+  ],
+  'active_writing_style_card_id': 'system_default_style',
 
   // --- 绘图标签设置 ---
   // 绘画风格
@@ -158,6 +179,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, student',
       'appearance': 'long hair, straight hair, black hair, bangs, black eyes, fair skin, beautiful face',
       'clothing': 'school uniform, sailor uniform, blue sailor collar, red necktie, white shirt, blue pleated skirt, black stockings, school shoes',
+      'personality': '文静, 内向', // 新增
+      'status': '', // 新增
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/student_girl.png',
@@ -170,6 +193,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, loli',
       'appearance': 'blonde hair, golden hair, twintails, long twintails, big eyes, round eyes, blue eyes, sparkly eyes, blush, cute face, small stature, childlike',
       'clothing': 'frilly dress, white dress, pink ribbons, bow, knee-high socks, mary janes, hair ribbons',
+      'personality': '活泼, 开朗, 天真', // 新增
+      'status': '开心', // 新增
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/cute_loli.png',
@@ -182,6 +207,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, catgirl, maid',
       'appearance': 'medium hair, fluffy hair, silver hair, cat ears, cat tail, yellow eyes, slit pupils, cute face',
       'clothing': 'maid outfit, frilly apron, maid headdress, puffy sleeves, black dress, white apron, bell collar, paw gloves',
+      'personality': ' mischievous, loyal', // 新增
+      'status': '', // 新增
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/catgirl_mid.png',

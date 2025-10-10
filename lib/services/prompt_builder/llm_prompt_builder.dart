@@ -35,6 +35,8 @@ class LlmPromptBuilder {
           if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
           if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
           if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
+          if (card.personality.isNotEmpty) buffer.writeln('  - 性格: ${card.personality}'); // 新增
+          if (card.status.isNotEmpty) buffer.writeln('  - 状态: ${card.status}');           // 新增
           if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
         }
       }
@@ -111,6 +113,8 @@ class LlmPromptBuilder {
             if (card.identity.isNotEmpty) buffer.writeln('  - 身份: ${card.identity}');
             if (card.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${card.appearance}');
             if (card.clothing.isNotEmpty) buffer.writeln('  - 服装: ${card.clothing}');
+            if (card.personality.isNotEmpty) buffer.writeln('  - 性格: ${card.personality}'); // 新增
+            if (card.status.isNotEmpty) buffer.writeln('  - 状态: ${card.status}');           // 新增
             if (card.other.isNotEmpty) buffer.writeln('  - 其他: ${card.other}');
          }
       }

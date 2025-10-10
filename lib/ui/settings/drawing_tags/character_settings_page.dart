@@ -156,6 +156,8 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
             if (card.identity.isNotEmpty) card.identity,
             if (card.appearance.isNotEmpty) card.appearance,
             if (card.clothing.isNotEmpty) card.clothing,
+            if (card.personality.isNotEmpty) card.personality, // 新增
+            if (card.status.isNotEmpty) card.status,           // 新增
             if (card.other.isNotEmpty) card.other,
           ].join(', ');
 

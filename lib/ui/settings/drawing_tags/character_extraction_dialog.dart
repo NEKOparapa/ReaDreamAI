@@ -120,6 +120,10 @@ class _CharacterExtractionDialogState extends State<CharacterExtractionDialog> {
                         _buildInfoRow('外貌', character.appearance),
                       if (character.clothing.isNotEmpty)
                         _buildInfoRow('服装', character.clothing),
+                      if (character.personality.isNotEmpty) // 新增
+                        _buildInfoRow('性格', character.personality), // 新增
+                      if (character.status.isNotEmpty) // 新增
+                        _buildInfoRow('状态', character.status), // 新增
                       if (character.other.isNotEmpty)
                         _buildInfoRow('其他', character.other),
                     ],
