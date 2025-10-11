@@ -76,7 +76,7 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
     final activeOtherTagId = _configService
         .getSetting<String?>('active_drawing_other_tag_id', null);
 
-    // 新增：加载快速设置的默认值
+    // 加载快速设置的默认值
     _scenesPerChapter =
         _configService.getSetting<int>('image_gen_scenes_per_chapter', 3);
     _imagesPerScene =

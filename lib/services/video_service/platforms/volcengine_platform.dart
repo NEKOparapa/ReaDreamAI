@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../../../base/log/log_service.dart';
-import '../../../models/api_model.dart';
+import '../../../base/api_model.dart';
 import '../video_platform.dart';
 
 /// 火山方舟视频平台的具体实现。

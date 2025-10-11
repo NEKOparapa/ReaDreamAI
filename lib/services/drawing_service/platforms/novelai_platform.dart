@@ -11,7 +11,7 @@ import 'package:image/image.dart' as img; // 用于图像处理
 import 'package:archive/archive.dart'; // 用于解压ZIP
 
 import '../../../base/log/log_service.dart';
-import '../../../models/api_model.dart';
+import '../../../base/api_model.dart';
 import '../drawing_platform.dart';
 
 /// NovelAI 平台的具体实现。

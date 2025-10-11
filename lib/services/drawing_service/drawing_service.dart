@@ -2,7 +2,7 @@
 
 import 'package:http/http.dart' as http;
 
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 import '../../base/log/log_service.dart'; 
 import 'drawing_platform.dart';
 import 'platforms/comfyui_platform.dart';

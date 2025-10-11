@@ -2,7 +2,7 @@
 
 import 'package:http/http.dart' as http;
 import '../../base/log/log_service.dart';
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 import 'platforms/bailian_platform.dart';
 import 'platforms/volcengine_platform.dart';
 import 'platforms/google_platform.dart';

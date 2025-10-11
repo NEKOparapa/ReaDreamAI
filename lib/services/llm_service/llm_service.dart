@@ -2,7 +2,7 @@
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 import '../../base/log/log_service.dart'; 
 
 /// 大语言模型（LLM）服务类

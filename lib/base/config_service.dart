@@ -6,7 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import 'default_configs.dart';
-import '../models/api_model.dart';
+import 'api_model.dart';
 import '../models/prompt_card_model.dart';
 import '../models/tag_card_model.dart'; 
 import 'rate_limiter.dart';

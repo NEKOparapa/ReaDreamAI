@@ -1,6 +1,6 @@
 // lib/services/drawing_service/drawing_platform.dart
 
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 
 /// 定义一个抽象的绘图平台接口，所有具体的绘图平台都需要实现这个接口。
 abstract class DrawingPlatform {

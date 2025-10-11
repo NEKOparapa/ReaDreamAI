@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 
 class DrawingApiSettingsPage extends StatefulWidget {
   final ApiModel apiModel;

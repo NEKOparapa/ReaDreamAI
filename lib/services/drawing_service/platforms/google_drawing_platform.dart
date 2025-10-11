@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../../../base/log/log_service.dart';
-import '../../../models/api_model.dart';
+import '../../../base/api_model.dart';
 import '../drawing_platform.dart';
 
 // 辅助类，封装图片的二进制数据和MIME类型

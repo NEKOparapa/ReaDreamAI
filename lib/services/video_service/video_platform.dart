@@ -1,6 +1,6 @@
 // lib/services/video_service/video_platform.dart
 
-import '../../models/api_model.dart';
+import '../../../base/api_model.dart';
 
 /// 定义一个抽象的视频生成平台接口，所有具体的视频平台都需要实现这个接口。
 abstract class VideoPlatform {

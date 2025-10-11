@@ -1,5 +1,7 @@
 // lib/models/character_card_model.dart
 
+import 'package:uuid/uuid.dart';
+
 
 /// 角色设定卡片模型
 class CharacterCard {
@@ -34,8 +36,8 @@ class CharacterCard {
   // 工厂构造函数：用于从JSON创建实例
   factory CharacterCard.fromJson(Map<String, dynamic> json) {
     return CharacterCard(
-      id: json['id'],
-      name: json['name'],
+      id: json['id'] ?? const Uuid().v4(),  // 如果 id 缺失，生成一个新的 UUID
+      name: json['name'] ?? '未命名角色',    // 如果 name 缺失，提供默认名称
       characterName: json['characterName'] ?? '',
       identity: json['identity'] ?? '',
       appearance: json['appearance'] ?? '',

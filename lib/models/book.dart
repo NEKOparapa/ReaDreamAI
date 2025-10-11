@@ -2,8 +2,19 @@
 
 import 'dart:convert';
 import 'package:json_annotation/json_annotation.dart';
-import 'character_profile.dart'; // 导入新的角色模型
+import 'character_card_model.dart'; // 导入新的角色模型
 part 'book.g.dart'; // 运行 flutter pub run build_runner build --delete-conflicting-outputs 来生成这个文件
+
+
+
+
+// 在文件顶部或 Book 类外部定义这些辅助函数
+List<CharacterCard>? _charactersFromJson(List<dynamic>? json) =>
+    json?.map((e) => CharacterCard.fromJson(e as Map<String, dynamic>)).toList();
+
+List<Map<String, dynamic>>? _charactersToJson(List<CharacterCard>? characters) =>
+    characters?.map((e) => e.toJson()).toList();
+
 
 // 行结构：存储单行文本及其元数据
 @JsonSerializable()
@@ -127,7 +138,9 @@ class Book {
   // --- 新增AI小说特有字段 ---
   final String? backgroundSetting; // 背景设定
   final String? writingStyle; // 写作风格
-  final List<CharacterProfile>? characters; // 角色列表
+
+  @JsonKey(fromJson: _charactersFromJson, toJson: _charactersToJson)
+  final List<CharacterCard>? characters; // 主要角色列表
 
   final List<ChapterStructure> chapters; // 存储书籍的所有章节
 

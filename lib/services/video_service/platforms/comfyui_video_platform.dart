@@ -9,7 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
-import '../../../models/api_model.dart';
+import '../../../base/api_model.dart';
 import '../../../base/config_service.dart';
 import '../../../base/default_configs.dart';
 import '../video_platform.dart';

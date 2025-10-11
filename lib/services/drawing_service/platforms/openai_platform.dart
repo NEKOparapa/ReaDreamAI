@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../../../base/log/log_service.dart'; 
-import '../../../models/api_model.dart';
+import '../../../base/api_model.dart';
 import '../drawing_platform.dart';
 
 /// 自定义（OpenAI格式）平台的具体实现。

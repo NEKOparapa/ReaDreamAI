@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../base/config_service.dart';
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 import '../../services/api_tester/api_tester_service.dart';
 import 'api_settings_page.dart';
 import 'drawing_api_settings_page.dart';

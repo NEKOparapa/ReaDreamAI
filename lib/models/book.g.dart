@@ -67,9 +67,7 @@ Book _$BookFromJson(Map<String, dynamic> json) => Book(
   coverImagePath: json['coverImagePath'] as String?,
   backgroundSetting: json['backgroundSetting'] as String?,
   writingStyle: json['writingStyle'] as String?,
-  characters: (json['characters'] as List<dynamic>?)
-      ?.map((e) => CharacterProfile.fromJson(e as Map<String, dynamic>))
-      .toList(),
+  characters: _charactersFromJson(json['characters'] as List?),
   chapters: (json['chapters'] as List<dynamic>)
       .map((e) => ChapterStructure.fromJson(e as Map<String, dynamic>))
       .toList(),
@@ -84,6 +82,6 @@ Map<String, dynamic> _$BookToJson(Book instance) => <String, dynamic>{
   'coverImagePath': instance.coverImagePath,
   'backgroundSetting': instance.backgroundSetting,
   'writingStyle': instance.writingStyle,
-  'characters': instance.characters?.map((e) => e.toJson()).toList(),
+  'characters': _charactersToJson(instance.characters),
   'chapters': instance.chapters.map((e) => e.toJson()).toList(),
 };

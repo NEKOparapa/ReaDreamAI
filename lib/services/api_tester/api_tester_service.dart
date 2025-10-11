@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
-import '../../models/api_model.dart';
+import '../../base/api_model.dart';
 import '../drawing_service/drawing_service.dart';
 import '../llm_service/llm_service.dart';
 import '../video_service/video_service.dart';

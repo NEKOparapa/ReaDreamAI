@@ -89,7 +89,8 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
 
-  // --- 写作预设 --- (新增部分)
+  // --- 写作预设 ---
+  // 背景设定
   'writing_background_cards': [
     {
       'id': 'system_default_background',
@@ -100,6 +101,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   ],
   'active_writing_background_card_id': 'system_default_background',
 
+  // 写作风格
   'writing_style_cards': [
     {
       'id': 'system_default_style',
