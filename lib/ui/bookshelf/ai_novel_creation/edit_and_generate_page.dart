@@ -474,7 +474,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                       TextButton.icon(
                         onPressed: () => _saveCharacterToPresets(char),
                         icon: const Icon(Icons.save_alt, size: 18),
-                        label: const Text('存为预设'),
+                        label: const Text('存为角色设定'),
                       ),
                       TextButton.icon(
                         onPressed: () => _deleteCharacter(idx),
