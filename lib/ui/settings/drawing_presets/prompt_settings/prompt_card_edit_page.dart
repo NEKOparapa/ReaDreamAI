@@ -1,8 +1,8 @@
-// lib/ui/settings/prompt_card_edit_page.dart
+// lib/ui/settings/drawing_presets/prompt_settings/prompt_card_edit_page.dart
 
 import 'package:flutter/material.dart';
-import '../../../base/config_service.dart';
-import '../../../models/prompt_card_model.dart';
+import '../../../../base/config_service.dart';
+import '../../../../models/prompt_card_model.dart';
 
 class PromptCardEditPage extends StatefulWidget {
   final PromptCard? cardToEdit;

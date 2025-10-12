@@ -264,9 +264,10 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
+  /// START: 功能函数未改变，保持原样 ///
   void _showAiNovelCreationFlow() async {
     // 导航到新的、独立的AI创作流程入口页面
-    final bool? success = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (context) => const AiGenerateOutlinePage(),
       ),
@@ -294,7 +295,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       // 找到更新后的条目，以获取正确的任务信息用于提示
       final updatedEntry = _entries.firstWhere(
         (e) => e.id == entry.id,
-        orElse: () => entry, // 如果找不到，使用旧条目作为备用
+        orElse: () => entry,
       );
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -311,7 +312,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     // 显示配置对话框，并等待其返回结果
     final bool? taskCreated = await showDialog<bool>(
       context: context,
-      barrierDismissible: false, // 阻止点击外部关闭
+      barrierDismissible: false,
       builder: (context) => GenerateTranslationDialog(entry: entry),
     );
 
@@ -323,7 +324,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       // 找到更新后的条目，以获取正确的任务信息用于提示
       final updatedEntry = _entries.firstWhere(
         (e) => e.id == entry.id,
-        orElse: () => entry, // 如果找不到，使用旧条目作为备用
+        orElse: () => entry,
       );
 
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -335,25 +336,18 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// 为指定书籍生成视频任务
   Future<void> _generateVideosFromImages(BookshelfEntry entry) async {
-    // 显示配置对话框，并等待其返回结果
     final bool? taskCreated = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => GenerateVideoDialog(entry: entry),
     );
-
-    // 如果对话框返回true，说明任务已成功创建
     if (taskCreated == true && mounted) {
-      // 重新从缓存加载书架数据，以更新UI状态
       await _loadBookshelf();
-
       final updatedEntry = _entries.firstWhere(
         (e) => e.id == entry.id,
         orElse: () => entry,
       );
-
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -363,18 +357,13 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// 删除书籍
   void _deleteBook(BookshelfEntry entry) async {
     final bookTitle = entry.title;
-    // 从任务管理器中删除相关任务
     TaskManagerService.instance.deleteTask(entry.id);
-    // 从UI中移除
     setState(() {
       _entries.removeWhere((e) => e.id == entry.id);
     });
-    // 从缓存中删除书籍文件
     await CacheManager().removeBookCacheFolder(entry.id);
-    // 保存书架变更
     await _saveBookshelf();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -383,22 +372,18 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// 打开书籍阅读器页面
   void _openBook(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
-      // 从阅读器页面返回时也刷新书架
       await Navigator.of(context).push(
         MaterialPageRoute(builder: (context) => BookReaderPage(book: book)),
       );
-      // 返回后刷新书架
       await _loadBookshelf();
     } else {
       _showTopMessage('加载书籍详情失败', isError: true);
     }
   }
 
-  /// 显示书籍条目的上下文菜单（右键菜单）
   void _showContextMenu(
       BuildContext context, BookshelfEntry entry, TapDownDetails details) {
     final RenderBox overlay =
@@ -409,7 +394,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
           details.globalPosition & const Size(40, 40), Offset.zero & overlay.size),
       items: <PopupMenuEntry>[
         PopupMenuItem(
-          // 仅在任务未开始、失败或取消时可点击
           enabled: entry.status == TaskStatus.notStarted ||
               entry.status == TaskStatus.failed ||
               entry.status == TaskStatus.canceled,
@@ -421,7 +405,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
           ]),
         ),
         PopupMenuItem(
-          // 始终启用此菜单项，让对话框来处理后续逻辑
           enabled: true,
           onTap: () => _generateVideosFromImages(entry),
           child: const Row(children: [
@@ -466,7 +449,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     );
   }
 
-  /// 导出书籍为 EPUB 格式
   Future<void> _exportBook(BookshelfEntry entry) async {
     try {
       final book = await CacheManager().loadBookDetail(entry.id);
@@ -484,7 +466,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// 在屏幕顶部显示一个消息条 (SnackBar)
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _showTopMessage(
     String message, {
     Widget? leading,
@@ -514,6 +495,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       ),
     );
   }
+  /// END: 功能函数未改变，保持原样 ///
 
   @override
   Widget build(BuildContext context) {
@@ -521,7 +503,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       appBar: AppBar(
         title: const Text('我的书架'),
         actions: [
-          // 添加手动刷新按钮
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: '刷新书架',
@@ -529,13 +510,11 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
           ),
         ],
       ),
-      // 使用 DropTarget 包装以接收拖拽文件
       body: DropTarget(
         onDragDone: _onDragDone,
         onDragEntered: (details) => setState(() => _isDragging = true),
         onDragExited: (details) => setState(() => _isDragging = false),
         child: Container(
-          // 根据是否拖拽中显示不同的边框和背景
           decoration: BoxDecoration(
             border: Border.all(
                 color: _isDragging
@@ -547,20 +526,18 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                 : Colors.transparent,
           ),
           padding: const EdgeInsets.all(20.0),
-          // 如果书架为空且不在加载中，则显示空状态，否则显示书籍网格
-          child: _entries.isEmpty && !_isLoadingFromCache
-              ? _buildEmptyState()
+          child: _isLoadingFromCache
+              ? const Center(child: CircularProgressIndicator())
               : _buildBookshelfGrid(),
         ),
       ),
-      // 浮动操作按钮
       floatingActionButton: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton(
             onPressed: _addBooksWithPicker,
             tooltip: '导入文件',
-            heroTag: 'import_file', // heroTag 必须唯一
+            heroTag: 'import_file',
             child: const Icon(Icons.file_open),
           ),
           const SizedBox(width: 16),
@@ -570,31 +547,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
             heroTag: 'paste_import',
             child: const Icon(Icons.paste),
           ),
-          const SizedBox(width: 16), // 新增间距
-          FloatingActionButton(
-            onPressed: _showAiNovelCreationFlow,
-            tooltip: 'AI创作小说',
-            heroTag: 'ai_create_novel',
-            child: const Icon(Icons.auto_stories),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// 构建书架为空时的占位UI
-  Widget _buildEmptyState() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('拖入文件或点击右下角按钮添加书籍',
-              style:
-                  TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.grey)),
-          SizedBox(height: 8),
-          Text('开始你的阅读之旅', style: TextStyle(fontSize: 16, color: Colors.grey)),
         ],
       ),
     );
@@ -604,36 +556,128 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   Widget _buildBookshelfGrid() {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 180, // 每个格子的最大宽度
-        childAspectRatio: 2 / 3.2, // 宽高比
-        crossAxisSpacing: 20, // 水平间距
-        mainAxisSpacing: 20, // 垂直间距
+        maxCrossAxisExtent: 180,
+        childAspectRatio: 2 / 3.2,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
       ),
-      itemCount: _entries.length,
+      itemCount: _entries.length + 1,
       itemBuilder: (context, index) {
-        final entry = _entries[index];
+        // 第一个位置 (index == 0) 固定为AI创作卡片
+        if (index == 0) {
+          return _buildAiCreationCard();
+        }
+        // 后续的位置显示书籍，注意索引需要减1
+        final entry = _entries[index - 1];
         return _buildBookItem(entry);
       },
     );
   }
+  /// 构建AI创作小说的特殊卡片
+  Widget _buildAiCreationCard() {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: _showAiNovelCreationFlow,
+      child: Card(
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.deepPurple.shade700,
+                Colors.teal.shade600,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: Stack(
+            children: [
+              // 添加一些微妙的背景装饰图案
+              Positioned(
+                top: -20,
+                right: -20,
+                child: Icon(
+                  Icons.auto_fix_high,
+                  size: 100,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              Positioned(
+                bottom: -30,
+                left: -30,
+                child: Icon(
+                  Icons.lightbulb_outline,
+                  size: 120,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              // 主要内容
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.auto_stories_outlined,
+                      size: 60,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'AI 创作小说',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '点击开启创作之旅',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 一个微妙的边框高光，增加卡片质感
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-  /// 构建单个书籍封面的UI
+  /// 构建单个书籍封面的UI 
   Widget _buildBookItem(BookshelfEntry entry) {
-    // 检查封面图片是否存在
     final hasCover =
         entry.coverImagePath != null && File(entry.coverImagePath!).existsSync();
 
     return GestureDetector(
-      onTap: () => _openBook(entry), // 左键单击打开书籍
-      onSecondaryTapDown: (details) => _showContextMenu(context, entry, details), // 右键单击显示菜单
+      onTap: () => _openBook(entry),
+      onSecondaryTapDown: (details) => _showContextMenu(context, entry, details),
       child: Card(
         elevation: 4.0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        clipBehavior: Clip.antiAlias, // 裁剪子组件以匹配圆角
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 封面区域
             Expanded(
               flex: 4,
               child: hasCover
@@ -646,16 +690,14 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                     )
                   : _buildCoverPlaceholder(entry),
             ),
-            // 标题区域
             Container(
-              height: 40, // 可以适当增加一点高度，让两行文本显示更舒适
+              height: 40,
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              // 使用 Alignment.centerLeft 来让单行文本垂直居中且左对齐
               alignment: Alignment.centerLeft,
               child: Text(
                 entry.title,
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 13, height: 1.2), // 增加行高，视觉效果更好
+                    fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -668,7 +710,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
 
   /// 构建没有封面时的占位符UI
   Widget _buildCoverPlaceholder(BookshelfEntry entry) {
-    // 根据书籍ID的哈希值选择一个颜色，确保同一本书的占位符颜色总是固定的
     final colors = [
       Colors.deepPurple,
       Colors.teal,

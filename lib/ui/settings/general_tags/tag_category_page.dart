@@ -1,4 +1,4 @@
-// lib/ui/settings/drawing_tags/tag_category_page.dart
+// lib/ui/settings/general_tags/tag_category_page.dart
 
 import 'package:flutter/material.dart';
 import '../../../base/config_service.dart';

@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart'; // 引入一级入口卡片
 import 'app_settings_page.dart'; // 引入应用设置页
 import 'comfyui_settings_page.dart'; // 引入ComfyUI设置页
-import 'drawing_tags_settings_page.dart'; // 引入绘图标签设置页
-import 'image_gen_settings_page.dart'; // 引入生图设置页
+import 'drawing_presets/drawing_presets_settings_page.dart'; // 引入绘图预设设置页
 import 'translation_settings_page.dart'; // 引入翻译设置页
 import 'video_settings_page.dart'; // 引入视频设置页
 import 'log_history_page.dart'; // 引入日志历史页
-import 'drawing_tags/character_settings_page.dart'; // 新增导入
-import 'writing_presets_settings_page.dart'; // 新增导入
+import 'character_settings/character_settings_page.dart'; // 引入角色设定页
+import 'writing_presets/writing_presets_settings_page.dart'; // 引入写作预设设置页
 
 
 class SettingsPage extends StatelessWidget {
@@ -48,7 +47,7 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          // 写作预设卡片 (新增)
+          // 写作预设卡片
           SettingEntryCard(
             icon: Icons.edit_note_outlined,
             title: '写作预设',
@@ -59,18 +58,6 @@ class SettingsPage extends StatelessWidget {
               );
             },
           ),
-          // 生图设置卡片
-          SettingEntryCard(
-            icon: Icons.image_outlined,
-            title: '生图设置',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ImageGenSettingsPage()),
-              );
-            },
-          ),
-          // 视频设置卡片
           SettingEntryCard(
             icon: Icons.videocam_outlined,
             title: '视频设置',

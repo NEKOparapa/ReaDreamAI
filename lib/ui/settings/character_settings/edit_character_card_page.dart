@@ -1,4 +1,4 @@
-// lib/ui/settings/drawing_tags/edit_character_card_page.dart
+// lib/ui/settings/character_settings/edit_character_card_page.dart
 
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';

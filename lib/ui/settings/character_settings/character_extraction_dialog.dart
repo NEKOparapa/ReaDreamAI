@@ -1,4 +1,4 @@
-// lib/ui/settings/drawing_tags/character_extraction_dialog.dart
+// lib/ui/settings/character_settings/character_extraction_dialog.dart
 
 import 'package:flutter/material.dart';
 import '../../../services/task_executor/character_extractor.dart';

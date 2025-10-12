@@ -1,4 +1,4 @@
-// lib/ui/settings/drawing_tags/character_settings_page.dart
+// lib/ui/settings/character_settings/character_settings_page.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';

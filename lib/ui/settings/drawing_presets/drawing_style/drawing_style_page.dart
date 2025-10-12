@@ -1,9 +1,9 @@
-// lib/ui/settings/drawing_tags/drawing_style_page.dart
+// lib/ui/settings/drawing_presets/drawing_style/drawing_style_page.dart
 
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../../base/config_service.dart';
-import '../../../models/style_card_model.dart';
+import '../../../../base/config_service.dart';
+import '../../../../models/style_card_model.dart';
 import 'edit_style_card_page.dart';
 
 class DrawingStylePage extends StatefulWidget {

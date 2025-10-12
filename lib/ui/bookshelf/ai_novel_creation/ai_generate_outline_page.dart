@@ -51,7 +51,6 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
       );
       LogService.instance.success('AI 小说大纲生成成功。');
 
-      // 关键点：整合用户选择和AI生成的结果
       final finalOutline = {
         'title': result['title'] ?? '未命名小说',
         'background_setting': selectedBackground ?? result['background_setting'] ?? '',
@@ -89,7 +88,23 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI 创作小说：第一步'),
+        title: const Text('生成大纲'),
+        actions: [
+          TextButton.icon(
+            icon: const Icon(Icons.edit_note_outlined),
+            label: const Text('编辑大纲'),
+            onPressed: _isGeneratingOutline
+              ? null
+              : () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const EditAndGeneratePage(),
+                    ),
+                  );
+                },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: GenerateOutlineForm(
         isLoading: _isGeneratingOutline,
@@ -145,7 +160,6 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
   }
   
   void _loadCardData() {
-    LogService.instance.info('加载写作相关的卡片数据...');
     setState(() {
       _backgroundCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_background_cards', []));
       _styleCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_style_cards', []));
@@ -153,13 +167,10 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
       final charList = List<Map<String, dynamic>>.from(_configService.getSetting('drawing_character_cards', []));
       _characterCards = charList.map((e) => CharacterCard.fromJson(e)).toList();
 
-      // [FINAL MODIFICATION] 使用写作和绘画模块共用的配置项
       _selectedBackgroundId = _configService.getSetting<String?>('active_writing_background_card_id', null);
       _selectedStyleId = _configService.getSetting<String?>('active_writing_style_card_id', null);
-      // 直接沿用绘画模块的激活角色列表，实现完全同步
       _selectedCharacterIds = List<String>.from(_configService.getSetting<List>('active_drawing_character_card_ids', []));
 
-      // 确保选中的ID在列表中存在，否则置为null
       if (_selectedBackgroundId != null && !_backgroundCards.any((c) => c['id'] == _selectedBackgroundId)) {
         _selectedBackgroundId = null;
       }
@@ -171,7 +182,6 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
   }
 
   void _loadFormData() {
-    LogService.instance.info('从配置加载表单历史数据...');
     _storyPromptController.text = _configService.getSetting<String>('ai_novel_creation_prompt', '');
     _chapterCountController.text = _configService.getSetting<int>('ai_novel_creation_chapter_count', 2).toString();
     _wordsPerChapterController.text = _configService.getSetting<int>('ai_novel_creation_words_per_chapter', 1500).toString();
@@ -194,19 +204,16 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
   void _triggerGenerate() {
     if (_formKey.currentState!.validate()) {
       LogService.instance.info('触发生成大纲操作，正在收集表单数据...');
-      // 获取选定的背景设定内容
       String? selectedBackground;
       if (_selectedBackgroundId != null) {
         selectedBackground = _backgroundCards.firstWhere((c) => c['id'] == _selectedBackgroundId)['content'];
       }
 
-      // 获取选定的文风设定内容
       String? selectedStyle;
       if (_selectedStyleId != null) {
         selectedStyle = _styleCards.firstWhere((c) => c['id'] == _selectedStyleId)['content'];
       }
 
-      // 获取选定的角色卡片内容
       List<Map<String, dynamic>>? selectedCharacters;
       if (_selectedCharacterIds.isNotEmpty) {
         selectedCharacters = _characterCards
@@ -236,34 +243,51 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
       child: Form(
         key: _formKey,
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('1. 你希望写一个什么样的故事？', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _storyPromptController,
-              autofocus: true,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: '例如：一个关于赛博朋克侦探在反乌托邦城市中寻找失落机器人的故事...',
-                border: OutlineInputBorder(),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ListTile(
+                      leading: Icon(Icons.lightbulb_outline),
+                      title: Text('你希望写一个什么样的故事？'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _storyPromptController,
+                      autofocus: true,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        hintText: '例如：一个关于赛博朋克侦探在反乌托邦城市中寻找失落机器人的故事...',
+                        border: OutlineInputBorder(),
+                        filled: true,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return '请输入故事描述';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return '请输入故事描述';
-                }
-                return null;
-              },
             ),
-            const SizedBox(height: 24),
-            _buildCardSelector(
-              title: '2. 选择一个背景设定（可选）',
+            const SizedBox(height: 16),
+            _buildSingleChoiceChipSelector(
+              icon: Icons.public,
+              title: '背景设定 (可选)',
               cards: _backgroundCards,
               selectedId: _selectedBackgroundId,
               onChanged: (id) {
@@ -271,9 +295,10 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                 _configService.modifySetting('active_writing_background_card_id', id);
               },
             ),
-            const SizedBox(height: 24),
-            _buildCardSelector(
-              title: '3. 选择一种文风（可选）',
+            const SizedBox(height: 16),
+            _buildSingleChoiceChipSelector(
+              icon: Icons.brush,
+              title: '文风设定 (可选)',
               cards: _styleCards,
               selectedId: _selectedStyleId,
               onChanged: (id) {
@@ -281,77 +306,136 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                 _configService.modifySetting('active_writing_style_card_id', id);
               },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildCharacterSelector(),
-            const SizedBox(height: 24),
-            Text('5. 设置章节和字数', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _chapterCountController,
-                    decoration: const InputDecoration(
-                      labelText: '章节数',
-                      border: OutlineInputBorder(),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                     const ListTile(
+                      leading: Icon(Icons.format_list_numbered),
+                      title: Text('篇幅设定'),
+                      subtitle: Text('设置章节和字数'),
+                      contentPadding: EdgeInsets.zero,
                     ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (value) {
-                      if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
-                        return '请输入有效数字';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextFormField(
-                    controller: _wordsPerChapterController,
-                    decoration: const InputDecoration(
-                      labelText: '每章字数',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _chapterCountController,
+                            decoration: const InputDecoration(
+                              labelText: '章节数',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.library_books_outlined),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
+                                return '请输入有效数字';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _wordsPerChapterController,
+                            decoration: const InputDecoration(
+                              labelText: '每章字数',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.text_fields_outlined),
+                            ),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            validator: (value) {
+                              if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
+                                return '请输入有效数字';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    validator: (value) {
-                      if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
-                        return '请输入有效数字';
-                      }
-                      return null;
-                    },
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: widget.isLoading ? null : _triggerGenerate,
-                style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
-                icon: widget.isLoading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.auto_fix_high),
-                label: Text(widget.isLoading ? '生成中...' : '生成大纲', style: const TextStyle(fontSize: 16)),
               ),
             ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: widget.isLoading
-                    ? null
-                    : () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const EditAndGeneratePage(),
-                          ),
-                        );
+            const SizedBox(height: 32),
+            FilledButton.icon(
+              onPressed: widget.isLoading ? null : _triggerGenerate,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              icon: widget.isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Icon(Icons.auto_fix_high),
+              label: Text(widget.isLoading ? '生成中...' : '生成大纲'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleChoiceChipSelector({
+    required IconData icon,
+    required String title,
+    required List<Map<String, dynamic>> cards,
+    required String? selectedId,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: Icon(icon),
+              title: Text(title),
+              subtitle: const Text('从预设中选择或由AI自动生成'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  ChoiceChip(
+                    label: const Text('由AI自动生成'),
+                    selected: selectedId == null,
+                    onSelected: (isSelected) {
+                      if (isSelected) {
+                        onChanged(null);
+                      }
+                    },
+                  ),
+                  ...cards.map((card) {
+                    return ChoiceChip(
+                      label: Text(card['name']),
+                      selected: selectedId == card['id'],
+                      onSelected: (isSelected) {
+                        if (isSelected) {
+                          onChanged(card['id']);
+                        }
                       },
-                icon: const Icon(Icons.edit_note),
-                label: const Text('预览和编辑上次的大纲'),
+                    );
+                  }).toList(),
+                ],
               ),
             ),
           ],
@@ -360,105 +444,66 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
     );
   }
 
-  Widget _buildCardSelector({
-    required String title,
-    required List<Map<String, dynamic>> cards,
-    required String? selectedId,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String?>(
-          value: selectedId,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          ),
-          hint: const Text('由AI自动生成'),
-          isExpanded: true,
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text('由AI自动生成'),
-            ),
-            ...cards.map((card) {
-              return DropdownMenuItem<String>(
-                value: card['id'],
-                child: Tooltip(
-                  message: card['content'],
-                  child: Text(
-                    card['name'],
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              );
-            }).toList(),
-          ],
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
-
   Widget _buildCharacterSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('4. 选择主要角色（可选）', style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(8.0),
-          ),
-          child: Wrap(
-            spacing: 8.0,
-            runSpacing: 4.0,
-            children: [
-              FilterChip(
-                label: const Text('由AI自动生成'),
-                selectedColor: Theme.of(context).primaryColor,
-                labelStyle: TextStyle(
-                  color: _selectedCharacterIds.isEmpty ? Colors.white : null,
-                ),
-                selected: _selectedCharacterIds.isEmpty,
-                onSelected: (isSelected) {
-                  if (isSelected) {
-                    setState(() {
-                      _selectedCharacterIds.clear();
-                      // [FINAL MODIFICATION] 直接更新绘画模块的激活列表
-                      _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
-                    });
-                  }
-                },
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ListTile(
+              leading: Icon(Icons.people_alt_outlined),
+              title: Text('主要角色 (可选)'),
+              subtitle: Text('选择参与故事的核心人物'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12.0),
               ),
-              // --- 遍历并显示所有可用的角色预设 ---
-              ..._characterCards.map((card) {
-                final isSelected = _selectedCharacterIds.contains(card.id);
-                return FilterChip(
-                  label: Text(card.name),
-                  selected: isSelected,
-                  onSelected: (selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedCharacterIds.add(card.id);
-                      } else {
-                        _selectedCharacterIds.remove(card.id);
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: [
+                  FilterChip(
+                    label: const Text('由AI自动生成'),
+                    selected: _selectedCharacterIds.isEmpty,
+                    onSelected: (isSelected) {
+                      if (isSelected) {
+                        setState(() {
+                          _selectedCharacterIds.clear();
+                          _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
+                        });
                       }
-                      // [FINAL MODIFICATION] 直接更新绘画模块的激活列表
-                      _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
-                    });
-                  },
-                );
-              }).toList(),
-            ],
-          ),
+                    },
+                  ),
+                  ..._characterCards.map((card) {
+                    final isSelected = _selectedCharacterIds.contains(card.id);
+                    return FilterChip(
+                      label: Text(card.name),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedCharacterIds.add(card.id);
+                          } else {
+                            _selectedCharacterIds.remove(card.id);
+                          }
+                          _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

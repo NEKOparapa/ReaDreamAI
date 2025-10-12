@@ -1,10 +1,11 @@
-// lib/ui/settings/drawing_tags_settings_page.dart
+// lib/ui/settings/drawing_presets/drawing_presets_settings_page.dart
 
 import 'package:flutter/material.dart';
-import 'widgets/setting_entry_card.dart';
-import 'drawing_tags/tag_category_page.dart';
-import 'drawing_tags/drawing_style_page.dart';
+import '../widgets/setting_entry_card.dart';
+import '../general_tags/tag_category_page.dart';
+import 'drawing_style/drawing_style_page.dart';
 import 'prompt_settings/prompt_settings_page.dart';
+import 'image_gen_settings_page.dart';
 
 class DrawingTagsSettingsPage extends StatelessWidget {
   const DrawingTagsSettingsPage({super.key});
@@ -54,6 +55,17 @@ class DrawingTagsSettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const PromptSettingsPage()),
+              );
+            },
+          ),
+          // 生图设置卡片
+          SettingEntryCard(
+            icon: Icons.image_outlined,
+            title: '生图设置',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ImageGenSettingsPage()),
               );
             },
           ),

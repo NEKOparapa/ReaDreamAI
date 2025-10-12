@@ -1,8 +1,8 @@
-// lib/ui/settings/writing_presets_settings_page.dart
+// lib/ui/settings/writing_presets/writing_presets_settings_page.dart
 
 import 'package:flutter/material.dart';
-import 'widgets/setting_entry_card.dart';
-import 'drawing_tags/tag_category_page.dart';
+import '../widgets/setting_entry_card.dart';
+import '../general_tags/tag_category_page.dart';
 
 class WritingPresetsSettingsPage extends StatelessWidget {
   const WritingPresetsSettingsPage({super.key});

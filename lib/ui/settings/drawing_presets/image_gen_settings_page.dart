@@ -1,8 +1,10 @@
+// lib/ui/settings/drawing_presets/image_gen_settings_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../base/config_service.dart';
-import '../../base/default_configs.dart';
-import 'widgets/settings_widgets.dart'; // 导入新的组件
+import '../../../base/config_service.dart';
+import '../../../base/default_configs.dart';
+import '../widgets/settings_widgets.dart'; // 导入新的组件
 
 class ImageGenSettingsPage extends StatefulWidget {
   const ImageGenSettingsPage({super.key});

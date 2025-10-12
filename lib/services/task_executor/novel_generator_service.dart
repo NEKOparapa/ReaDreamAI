@@ -1,5 +1,3 @@
-// lib/services/task_executor/novel_generator_service.dart
-
 import 'dart:convert';
 import '../llm_service/llm_service.dart';
 import '../../base/config_service.dart';
@@ -146,27 +144,40 @@ $presetPrompts
 3. 为你生成的内容，提供一个新的、更详细的简述。
 """;
 
-    try {
-      LogService.instance.info('NovelGeneratorService: 正在向 LLM 发送第 ${chapterIndex + 1} 章内容生成请求...');
-      final llmResponse = await _llmService.requestCompletion(
-        systemPrompt: systemPrompt,
-        messages: [{'role': 'user', 'content': userPrompt}],
-        apiConfig: _configService.getActiveLanguageApi(),
-      );
-      LogService.instance.info('NovelGeneratorService: 收到 LLM 的第 ${chapterIndex + 1} 章内容响应。');
-
-      final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
-      final jsonString = jsonMatch?.group(1) ?? llmResponse;
-      
+    const maxRetries = 2; // 总共尝试次数
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        return jsonDecode(jsonString);
+        LogService.instance.info('NovelGeneratorService: 正在向 LLM 发送第 ${chapterIndex + 1} 章内容生成请求... (尝试 $attempt/$maxRetries)');
+        final llmResponse = await _llmService.requestCompletion(
+          systemPrompt: systemPrompt,
+          messages: [{'role': 'user', 'content': userPrompt}],
+          apiConfig: _configService.getActiveLanguageApi(),
+        );
+        LogService.instance.info('NovelGeneratorService: 收到 LLM 的第 ${chapterIndex + 1} 章内容响应。');
+
+        final jsonMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(llmResponse);
+        final jsonString = jsonMatch?.group(1) ?? llmResponse;
+        
+        try {
+          // 如果解析成功，直接返回结果，跳出循环
+          return jsonDecode(jsonString);
+        } on FormatException catch (e, s) {
+          LogService.instance.error('解析第 ${chapterIndex + 1} 章内容 LLM 响应 JSON 失败 (尝试 $attempt/$maxRetries)。响应原文: $jsonString', e, s);
+          if (attempt == maxRetries) {
+            // 如果是最后一次尝试仍然失败，则抛出异常
+            rethrow;
+          }
+          // 否则，循环将继续进行下一次尝试
+        }
       } catch (e, s) {
-        LogService.instance.error('解析第 ${chapterIndex + 1} 章内容 LLM 响应 JSON 失败。响应原文: $jsonString', e, s);
-        rethrow;
+        LogService.instance.error('调用 LLM Service 生成第 ${chapterIndex + 1} 章内容时出错 (尝试 $attempt/$maxRetries)', e, s);
+        if (attempt == maxRetries) {
+          // 如果是最后一次尝试仍然失败，则抛出异常
+          rethrow;
+        }
       }
-    } catch (e, s) {
-      LogService.instance.error('调用 LLM Service 生成第 ${chapterIndex + 1} 章内容时出错', e, s);
-      rethrow;
     }
+    // 理论上不会执行到这里，但为了代码完整性，抛出一个通用错误
+    throw Exception('无法生成章节内容，已达到最大重试次数。');
   }
 }

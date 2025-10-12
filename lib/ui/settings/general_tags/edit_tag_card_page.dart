@@ -1,4 +1,4 @@
-// lib/ui/settings/drawing_tags/edit_tag_card_page.dart
+// lib/ui/settings/general_tags/edit_tag_card_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';

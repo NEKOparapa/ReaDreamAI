@@ -1,12 +1,12 @@
-// lib/ui/settings/drawing_tags/edit_style_card_page.dart
+// lib/ui/settings/drawing_presets/drawing_style/edit_style_card_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
-import '../../../models/style_card_model.dart';
-import '../../../base/config_service.dart';
+import '../../../../models/style_card_model.dart';
+import '../../../../base/config_service.dart';
 
 class EditStyleCardPage extends StatefulWidget {
   final StyleCard? card;
