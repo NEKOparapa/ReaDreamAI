@@ -7,7 +7,7 @@ import '../../../base/config_service.dart';
 import '../../../base/default_configs.dart';
 import '../../../base/log/log_service.dart';
 import '../../../models/character_card_model.dart';
-import 'novel_generation_progress_page.dart'; // 导入新页面
+import 'novel_generation_progress_page.dart';
 
 class EditAndGeneratePage extends StatefulWidget {
   const EditAndGeneratePage({super.key});
@@ -19,9 +19,8 @@ class EditAndGeneratePage extends StatefulWidget {
 class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   final _configService = ConfigService();
   late Map<String, dynamic> _outline;
-  // 移除 _isGenerating, _progress, _statusMessage
   bool _isLoading = true;
-  
+
   late TextEditingController _titleController;
 
   @override
@@ -30,7 +29,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     _titleController = TextEditingController();
     loadOutlineFromConfig();
   }
-  
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -73,11 +72,10 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // startGeneration, _createLines, _saveBook 方法已移动到新页面，在此处删除
-  
   void navigateToGenerationPage() {
     // 在导航前，确保所有最新的修改都已保存（尽管我们的实现是实时保存的）
-    _configService.modifySetting('ai_novel_creation_title', _titleController.text);
+    _configService.modifySetting(
+        'ai_novel_creation_title', _titleController.text);
     _outline['title'] = _titleController.text;
 
     Navigator.of(context).push(
@@ -92,7 +90,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     });
   }
 
-  // ... (保留 _saveCharacterToPresets, _addCharacter, _deleteCharacter, _addChapter, _deleteChapter 方法)
   void _saveCharacterToPresets(Map<String, dynamic> characterData) async {
     LogService.instance.info('正在将角色 ${characterData['name']} 保存为预设...');
     final presetList = List<Map<String, dynamic>>.from(
@@ -120,7 +117,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       );
     }
   }
-
 
   void _addCharacter() {
     setState(() {
@@ -157,8 +153,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 setState(() {
                   (_outline['main_characters'] as List).removeAt(index);
                 });
-                _configService.modifySetting(
-                    'ai_novel_creation_main_characters', _outline['main_characters']);
+                _configService.modifySetting('ai_novel_creation_main_characters',
+                    _outline['main_characters']);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -187,6 +183,19 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     );
   }
 
+  void _moveChapter(int oldIndex, int newIndex) {
+    setState(() {
+      final chapters = _outline['storyline'] as List;
+      // 从列表中移除要移动的章节
+      final chapter = chapters.removeAt(oldIndex);
+      // 将章节插入到新位置
+      chapters.insert(newIndex, chapter);
+      // 保存更改
+      _configService.modifySetting(
+          'ai_novel_creation_storyline', _outline['storyline']);
+    });
+  }
+
   void _deleteChapter(int index) {
     showDialog(
       context: context,
@@ -212,7 +221,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                     'ai_novel_creation_storyline', _outline['storyline']);
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('章节已删除。'), duration: Duration(seconds: 2)),
+                  const SnackBar(
+                      content: Text('章节已删除。'), duration: Duration(seconds: 2)),
                 );
               },
             ),
@@ -230,20 +240,19 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
-              onPressed: navigateToGenerationPage, // 修改 onPressed
-              icon: const Icon(Icons.auto_awesome),
-              label: const Text('开始生成小说'),
-            ),
+        onPressed: navigateToGenerationPage,
+        icon: const Icon(Icons.auto_awesome),
+        label: const Text('开始生成小说'),
+      ),
     );
   }
 
   Widget _buildBody() {
     if (_isLoading) return const Center(child: CircularProgressIndicator());
-    
-    // 移除 if (_isGenerating) {...} 分支
-    
+
     final theme = Theme.of(context);
-    final titleStyle = theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold);
+    final titleStyle =
+        theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 88.0),
@@ -269,8 +278,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                     ),
                     onChanged: (newValue) {
                       _outline['title'] = newValue;
-                      // 实时保存标题
-                      _configService.modifySetting('ai_novel_creation_title', newValue);
+                      _configService.modifySetting(
+                          'ai_novel_creation_title', newValue);
                     },
                   ),
                 ),
@@ -278,34 +287,58 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
-
-          // ... (所有 _build... 卡片和列表的UI代码保持不变)
-          _buildStaticEditableCard(
-            '背景设定',
-            Icons.public,
-            _outline['background_setting'],
-            'ai_novel_creation_background_setting',
-            maxLines: 5,
+          _buildSectionHeader(theme, '背景设定', Icons.public),
+          Card(
+            margin: const EdgeInsets.only(top: 8.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextFormField(
+                initialValue: _outline['background_setting'],
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                maxLines: 5,
+                onChanged: (newValue) {
+                  _outline['background_setting'] = newValue;
+                  _configService.modifySetting(
+                      'ai_novel_creation_background_setting', newValue);
+                },
+              ),
+            ),
           ),
-          _buildStaticEditableCard(
-            '文风设定',
-            Icons.brush,
-            _outline['writing_style'],
-            'ai_novel_creation_writing_style',
-            maxLines: 3,
+          _buildSectionHeader(theme, '文风设定', Icons.brush),
+          Card(
+            margin: const EdgeInsets.only(top: 8.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextFormField(
+                initialValue: _outline['writing_style'],
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                maxLines: 3,
+                onChanged: (newValue) {
+                  _outline['writing_style'] = newValue;
+                  _configService.modifySetting(
+                      'ai_novel_creation_writing_style', newValue);
+                },
+              ),
+            ),
           ),
-          
-          _buildSectionHeader(theme, '主要角色', Icons.people_alt_outlined, onAddPressed: _addCharacter),
+          _buildSectionHeader(theme, '主要角色', Icons.people_alt_outlined,
+              onAddPressed: _addCharacter),
           ..._buildCharacterCards(),
-          
-          const SizedBox(height: 16),
-          _buildSectionHeader(theme, '故事线', Icons.timeline, onAddPressed: _addChapter),
-          const SizedBox(height: 8),
+          _buildSectionHeader(theme, '故事线', Icons.timeline,
+              onAddPressed: _addChapter),
           ...(_outline['storyline'] as List).asMap().entries.map((entry) {
             int idx = entry.key;
             var chapter = entry.value;
+            final storylineList = _outline['storyline'] as List;
+
             return Card(
+              key: ObjectKey(chapter), // 为Card提供一个唯一的Key
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
@@ -315,8 +348,10 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                       leading: CircleAvatar(child: Text('${idx + 1}')),
                       title: TextFormField(
                         initialValue: chapter['chapter_title'] ?? '',
-                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        decoration: const InputDecoration.collapsed(hintText: '章节标题'),
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                        decoration:
+                            const InputDecoration.collapsed(hintText: '章节标题'),
                         onChanged: (val) {
                           _outline['storyline'][idx]['chapter_title'] = val;
                           _configService.modifySetting(
@@ -324,10 +359,28 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               _outline['storyline']);
                         },
                       ),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        tooltip: '删除本章',
-                        onPressed: () => _deleteChapter(idx),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.arrow_upward),
+                            tooltip: '上移',
+                            onPressed:
+                                idx == 0 ? null : () => _moveChapter(idx, idx - 1),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.arrow_downward),
+                            tooltip: '下移',
+                            onPressed: idx == storylineList.length - 1
+                                ? null
+                                : () => _moveChapter(idx, idx + 1),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            tooltip: '删除本章',
+                            onPressed: () => _deleteChapter(idx),
+                          ),
+                        ],
                       ),
                       contentPadding: const EdgeInsets.only(left: 4),
                     ),
@@ -359,47 +412,9 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       ),
     );
   }
-  
-  // ... (保留 _buildStaticEditableCard, _buildSectionHeader, _buildCharacterCards 方法)
-   Widget _buildStaticEditableCard(
-    String title,
-    IconData icon,
-    String initialValue,
-    String configKey, {
-    int maxLines = 1,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ListTile(
-              leading: Icon(icon),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-              contentPadding: EdgeInsets.zero,
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              initialValue: initialValue,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                filled: true,
-              ),
-              maxLines: maxLines,
-              onChanged: (newValue) {
-                _configService.modifySetting(configKey, newValue);
-                _outline[configKey.replaceFirst('ai_novel_creation_', '')] = newValue;
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildSectionHeader(ThemeData theme, String title, IconData icon, {required VoidCallback onAddPressed}) {
+
+  Widget _buildSectionHeader(ThemeData theme, String title, IconData icon,
+      {VoidCallback? onAddPressed}) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 24, 4, 8),
       child: Row(
@@ -408,11 +423,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
           const SizedBox(width: 8),
           Text(title, style: theme.textTheme.headlineSmall),
           const Spacer(),
-          TextButton.icon(
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('添加'),
-            onPressed: onAddPressed,
-          ),
+          if (onAddPressed != null)
+            TextButton.icon(
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('添加'),
+              onPressed: onAddPressed,
+            ),
         ],
       ),
     );
@@ -438,8 +454,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             maxLines: maxLines,
             onChanged: (val) {
               _outline['main_characters'][idx][key] = val;
-              _configService.modifySetting(
-                  'ai_novel_creation_main_characters',
+              _configService.modifySetting('ai_novel_creation_main_characters',
                   _outline['main_characters']);
             },
           ),
@@ -447,10 +462,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       }
 
       return Card(
+        key: ObjectKey(char), // 同样，为角色卡片也加上Key，是个好习惯
         margin: const EdgeInsets.symmetric(vertical: 8),
         child: ExpansionTile(
           leading: const Icon(Icons.person_outline),
-          title: Text(char['name'] ?? '未命名角色', style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(char['name'] ?? '未命名角色',
+              style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(char['characterName'] ?? ''),
           children: [
             Padding(

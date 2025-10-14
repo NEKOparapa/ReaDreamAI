@@ -1,25 +1,26 @@
+// lib/ui/reader/book_reader.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
-
+import '../../base/config_service.dart';
 import '../../models/book.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/task_executor/single_illustration_executor.dart';
 
-
 class _ReaderTheme {
+  final String id;
+  final String name;
   final Color background;
   final Color font;
-  final String name;
 
-  const _ReaderTheme({required this.name, required this.background, required this.font});
+  const _ReaderTheme({required this.id, required this.name, required this.background, required this.font});
 
   static const List<_ReaderTheme> themes = [
-    _ReaderTheme(name: '默认', background: Color(0xFFFFFFFF), font: Color(0xFF333333)),
-    _ReaderTheme(name: '护眼', background: Color(0xFFF0F5E9), font: Color(0xFF58452D)),
-    _ReaderTheme(name: '夜间', background: Color(0xFF222222), font: Color(0xFFBBBBBB)),
-    _ReaderTheme(name: '羊皮纸', background: Color(0xFFF5EFDC), font: Color(0xFF8B4513)),
+    _ReaderTheme(id: 'default', name: '默认', background: Color(0xFFFFFFFF), font: Color(0xFF333333)),
+    _ReaderTheme(id: 'eye_care', name: '护眼', background: Color(0xFFF0F5E9), font: Color(0xFF58452D)),
+    _ReaderTheme(id: 'dark', name: '夜间', background: Color(0xFF222222), font: Color(0xFFBBBBBB)),
   ];
 }
 
@@ -47,16 +48,39 @@ class _BookReaderPageState extends State<BookReaderPage> {
   final ValueNotifier<bool> _isToolbarVisible = ValueNotifier(true);
 
   // --- 阅读器设置 ---
-  _ReaderTheme _currentTheme = _ReaderTheme.themes[0];
-  double _fontSize = 18.0;
-  String _fontFamily = 'SystemDefault';
-  DisplayMode _displayMode = DisplayMode.original;
+  late _ReaderTheme _currentTheme;
+  late double _fontSize;
+  late double _lineHeight;
+  late String _fontFamily;
+  DisplayMode _displayMode = DisplayMode.original; // 显示模式保持会话级状态
+
+  // --- 配置服务实例和加载状态 ---
+  final _configService = ConfigService();
+  bool _settingsLoaded = false;
+
 
   @override
   void initState() {
     super.initState();
     _currentBook = widget.book;
+    _loadReaderSettings();
     _toggleSystemUI(_isToolbarVisible.value);
+  }
+
+  // 从ConfigService加载阅读器设置
+  void _loadReaderSettings() {
+    final themeId = _configService.getSetting<String>('reader_theme_id', 'default');
+    _currentTheme = _ReaderTheme.themes.firstWhere(
+      (t) => t.id == themeId,
+      orElse: () => _ReaderTheme.themes.first,
+    );
+    _fontSize = _configService.getSetting<double>('reader_font_size', 18.0);
+    _lineHeight = _configService.getSetting<double>('reader_line_height', 1.8);
+    _fontFamily = _configService.getSetting<String>('reader_font_family', 'SystemDefault');
+
+    setState(() {
+      _settingsLoaded = true;
+    });
   }
   
   // 切换系统UI（状态栏、导航栏）的可见性
@@ -360,22 +384,33 @@ class _BookReaderPageState extends State<BookReaderPage> {
     super.dispose();
   }
 
+  // 显示设置面板，并使用英文id持久化
   void _showReaderSettings() {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (context) {
         return _ReaderSettingsPanel(
           initialTheme: _currentTheme,
           initialFontSize: _fontSize,
+          initialLineHeight: _lineHeight,
           initialFontFamily: _fontFamily,
           initialDisplayMode: _displayMode,
-          onSettingsChanged: (theme, fontSize, fontFamily, displayMode) {
+          onSettingsChanged: (theme, fontSize, fontFamily, displayMode, lineHeight) {
+            // 1. 更新UI状态
             setState(() {
               _currentTheme = theme;
               _fontSize = fontSize;
               _fontFamily = fontFamily;
               _displayMode = displayMode;
+              _lineHeight = lineHeight;
             });
+            // 2. 持久化保存设置
+            _configService.modifySetting('reader_theme_id', theme.id); 
+            _configService.modifySetting('reader_font_size', fontSize);
+            _configService.modifySetting('reader_line_height', lineHeight);
+            _configService.modifySetting('reader_font_family', fontFamily);
           },
         );
       },
@@ -389,6 +424,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_settingsLoaded) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: _currentTheme.background,
       body: ValueListenableBuilder<bool>(
@@ -396,12 +437,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
         builder: (context, isVisible, child) {
           return Stack(
             children: [
-              // 主内容区域
               child!,
-              // 顶部工具栏 (AppBar)
               _buildTopToolbar(isVisible),
-              // 底部工具栏
-              _buildBottomToolbar(isVisible),
             ],
           );
         },
@@ -464,72 +501,52 @@ class _BookReaderPageState extends State<BookReaderPage> {
                 ),
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 56.0),
-                    child: Text(
-                      chapterTitle,
-                      style: const TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
+                    padding: const EdgeInsets.only(left: 56, right: 96),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          tooltip: '上一章',
+                          onPressed: _currentChapterIndex > 0 ? () => _jumpToChapter(_currentChapterIndex - 1) : null,
+                        ),
+                        Flexible(
+                          child: Text(
+                            chapterTitle,
+                            style: const TextStyle(fontSize: 16),
+                            textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          tooltip: '下一章',
+                          onPressed: _currentChapterIndex < _currentBook.chapters.length - 1 ? () => _jumpToChapter(_currentChapterIndex + 1) : null,
+                        ),
+                      ],
                     ),
                   ),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16.0),
-                    child: Text(
-                      '${_currentChapterIndex + 1}/${_currentBook.chapters.length}',
-                      style: const TextStyle(fontSize: 14.0),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Builder(builder: (context) {
+                        return IconButton(
+                          icon: const Icon(Icons.menu_book_outlined),
+                          tooltip: '目录',
+                          onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        );
+                      }),
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        tooltip: '阅读设置',
+                        onPressed: _showReaderSettings,
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-  // 构建底部工具栏
-  Widget _buildBottomToolbar(bool isVisible) {
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      bottom: isVisible ? 0 : -kBottomNavigationBarHeight - MediaQuery.of(context).padding.bottom,
-      left: 0,
-      right: 0,
-      child: Material(
-        color: Theme.of(context).bottomAppBarTheme.color?.withOpacity(0.95),
-        elevation: 2,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-          child: SizedBox(
-            height: kBottomNavigationBarHeight,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.skip_previous),
-                  tooltip: '上一章',
-                  onPressed: _currentChapterIndex > 0 ? () => _jumpToChapter(_currentChapterIndex - 1) : null,
-                ),
-                Builder(builder: (context) {
-                  return IconButton(
-                    icon: const Icon(Icons.menu_book_outlined),
-                    tooltip: '目录',
-                    onPressed: () => Scaffold.of(context).openEndDrawer(),
-                  );
-                }),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  tooltip: '阅读设置',
-                  onPressed: _showReaderSettings,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.skip_next),
-                  tooltip: '下一章',
-                  onPressed: _currentChapterIndex < _currentBook.chapters.length - 1 ? () => _jumpToChapter(_currentChapterIndex + 1) : null,
                 ),
               ],
             ),
@@ -566,7 +583,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final chapter = _currentBook.chapters[chapterIndex];
     
     return Padding(
-      padding: EdgeInsets.fromLTRB(24.0, 48.0 + kToolbarHeight + MediaQuery.of(context).padding.top, 24.0, 48.0 + kBottomNavigationBarHeight + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(24.0, 48.0 + kToolbarHeight + MediaQuery.of(context).padding.top, 24.0, 48.0 + MediaQuery.of(context).padding.bottom),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -584,6 +601,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
             ),
           ),
           ..._buildContentWidgets(chapter),
+          _buildChapterNavigation(chapterIndex),
         ],
       ),
     );
@@ -642,7 +660,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
       style: TextStyle(
         fontSize: _fontSize,
-        height: 1.7,
+        height: _lineHeight,
         color: _currentTheme.font,
         fontFamily: _fontFamily == 'SystemDefault' ? null : _fontFamily,
       ),
@@ -650,13 +668,57 @@ class _BookReaderPageState extends State<BookReaderPage> {
       contextMenuBuilder: (context, state) => _buildTextContextMenu(context, state, linesInfo),
     );
   }
+
+  // 构建章节末尾的导航按钮
+  Widget _buildChapterNavigation(int chapterIndex) {
+    final bool hasPrevious = chapterIndex > 0;
+    final bool hasNext = chapterIndex < _currentBook.chapters.length - 1;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 64.0, bottom: 24.0),
+      child: Column(
+        children: [
+          Divider(color: _currentTheme.font.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Opacity(
+                opacity: hasPrevious ? 1.0 : 0.3,
+                child: OutlinedButton(
+                  onPressed: hasPrevious ? () => _jumpToChapter(chapterIndex - 1) : null,
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: _currentTheme.font.withOpacity(0.5)),
+                    foregroundColor: _currentTheme.font,
+                  ),
+                  child: const Icon(Icons.arrow_back),
+                ),
+              ),
+              Opacity(
+                opacity: hasNext ? 1.0 : 0.3,
+                child: OutlinedButton(
+                  onPressed: hasNext ? () => _jumpToChapter(chapterIndex + 1) : null,
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: _currentTheme.font.withOpacity(0.5)),
+                    foregroundColor: _currentTheme.font,
+                  ),
+                  child: const Icon(Icons.arrow_forward),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 
-// 独立、有状态的设置面板 Widget
+// 设置面板
 class _ReaderSettingsPanel extends StatefulWidget {
   final _ReaderTheme initialTheme;
   final double initialFontSize;
+  final double initialLineHeight;
   final String initialFontFamily;
   final DisplayMode initialDisplayMode;
   final Function(
@@ -664,11 +726,13 @@ class _ReaderSettingsPanel extends StatefulWidget {
     double fontSize,
     String fontFamily,
     DisplayMode displayMode,
+    double lineHeight,
   ) onSettingsChanged;
 
   const _ReaderSettingsPanel({
     required this.initialTheme,
     required this.initialFontSize,
+    required this.initialLineHeight,
     required this.initialFontFamily,
     required this.initialDisplayMode,
     required this.onSettingsChanged,
@@ -681,6 +745,7 @@ class _ReaderSettingsPanel extends StatefulWidget {
 class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
   late _ReaderTheme _currentTheme;
   late double _fontSize;
+  late double _lineHeight;
   late String _fontFamily;
   late DisplayMode _displayMode;
 
@@ -689,63 +754,110 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
     super.initState();
     _currentTheme = widget.initialTheme;
     _fontSize = widget.initialFontSize;
+    _lineHeight = widget.initialLineHeight;
     _fontFamily = widget.initialFontFamily;
     _displayMode = widget.initialDisplayMode;
   }
 
   void _notifyParent() {
-    widget.onSettingsChanged(_currentTheme, _fontSize, _fontFamily, _displayMode);
+    widget.onSettingsChanged(_currentTheme, _fontSize, _fontFamily, _displayMode, _lineHeight);
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20.0),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('阅读设置', style: Theme.of(context).textTheme.titleLarge),
-            const Divider(height: 24),
-
-            _buildSectionTitle('显示模式'),
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<DisplayMode>(
-                segments: const [
-                  ButtonSegment(value: DisplayMode.original, label: Text('原文'), icon: Icon(Icons.menu_book)),
-                  ButtonSegment(value: DisplayMode.translation, label: Text('译文'), icon: Icon(Icons.translate)),
+      padding: EdgeInsets.only(
+        top: 12.0,
+        left: 8.0,
+        right: 8.0,
+        bottom: MediaQuery.of(context).viewPadding.bottom + 16.0,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 5,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSectionTitle(context, '背景主题'),
+                  _buildThemeSelector(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, '字体设置'),
+                  _buildFontSizeControl(),
+                  const SizedBox(height: 16),
+                  _buildLineHeightControl(),
+                  const SizedBox(height: 16),
+                  _buildFontFamilySelector(),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle(context, '内容显示'),
+                  _buildDisplayModeControl(),
+                  const SizedBox(height: 20),
                 ],
-                selected: {_displayMode},
-                onSelectionChanged: (newSelection) {
-                  setState(() => _displayMode = newSelection.first);
-                  _notifyParent();
-                },
               ),
             ),
-            const SizedBox(height: 20),
+          ),
+        ],
+      ),
+    );
+  }
 
-            _buildSectionTitle('背景主题'),
-            Wrap(
-              spacing: 12,
-              children: _ReaderTheme.themes.map((theme) {
-                return ChoiceChip(
-                  label: Text(theme.name),
-                  selected: _currentTheme.name == theme.name,
-                  onSelected: (selected) {
-                    if (selected) {
-                      setState(() => _currentTheme = theme);
-                      _notifyParent();
-                    }
-                  },
-                );
-              }).toList(),
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 12.0, top: 8.0),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 20),
+      ),
+    );
+  }
 
-            _buildSectionTitle('字号大小'),
-            Slider(
+  Widget _buildThemeSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: _ReaderTheme.themes.map((theme) {
+          return _ThemeChip(
+            theme: theme,
+            isSelected: _currentTheme.id == theme.id, // 通过id判断是否选中
+            onSelect: () {
+              setState(() => _currentTheme = theme);
+              _notifyParent();
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFontSizeControl() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          const Text("Aa", style: TextStyle(fontSize: 16, color: Colors.grey)),
+          Expanded(
+            child: Slider(
               value: _fontSize,
               min: 12.0, max: 32.0, divisions: 20,
               label: _fontSize.round().toString(),
@@ -754,33 +866,131 @@ class _ReaderSettingsPanelState extends State<_ReaderSettingsPanel> {
                 _notifyParent();
               },
             ),
-
-            _buildSectionTitle('字体'),
-            DropdownButton<String>(
-              value: _fontFamily,
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(value: 'SystemDefault', child: Text('系统默认')),
-                DropdownMenuItem(value: 'SongTi', child: Text('宋体 (需配置)')),
-                DropdownMenuItem(value: 'KaiTi', child: Text('楷体 (需配置)')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _fontFamily = value);
-                  _notifyParent();
-                }
-              },
-            ),
-          ],
-        ),
+          ),
+          const Text("Aa", style: TextStyle(fontSize: 24, color: Colors.grey)),
+        ],
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildLineHeightControl() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Row(
+        children: [
+          const Icon(Icons.format_line_spacing),
+          Expanded(
+            child: Slider(
+              value: _lineHeight,
+              min: 1.2, max: 2.5, divisions: 13,
+              label: _lineHeight.toStringAsFixed(1),
+              onChanged: (value) {
+                setState(() => _lineHeight = value);
+                _notifyParent();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFontFamilySelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: DropdownButtonFormField<String>(
+        value: _fontFamily,
+        decoration: InputDecoration(
+          labelText: '选用字体',
+          prefixIcon: const Icon(Icons.font_download_outlined),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        ),
+        items: const [
+          DropdownMenuItem(value: 'SystemDefault', child: Text('系统默认')),
+          DropdownMenuItem(value: 'SongTi', child: Text('宋体 (需配置)')),
+          DropdownMenuItem(value: 'KaiTi', child: Text('楷体 (需配置)')),
+        ],
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _fontFamily = value);
+            _notifyParent();
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildDisplayModeControl() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<DisplayMode>(
+          segments: const [
+            ButtonSegment(value: DisplayMode.original, label: Text('原文'), icon: Icon(Icons.menu_book)),
+            ButtonSegment(value: DisplayMode.translation, label: Text('译文'), icon: Icon(Icons.translate)),
+          ],
+          selected: {_displayMode},
+          onSelectionChanged: (newSelection) {
+            setState(() => _displayMode = newSelection.first);
+            _notifyParent();
+          },
+        ),
+      ),
+    );
+  }
+}
+
+// 主题选择的自定义小组件
+class _ThemeChip extends StatelessWidget {
+  final _ReaderTheme theme;
+  final bool isSelected;
+  final VoidCallback onSelect;
+
+  const _ThemeChip({required this.theme, required this.isSelected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onSelect,
+      child: Column(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: theme.background,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? Theme.of(context).colorScheme.primary : theme.font.withOpacity(0.5),
+                width: 2.5,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        blurRadius: 5,
+                        spreadRadius: 2,
+                      )
+                    ]
+                  : [],
+            ),
+            child: isSelected
+                ? Icon(Icons.check, color: theme.font, size: 24)
+                : Center(child: Text('A', style: TextStyle(color: theme.font, fontSize: 20, fontWeight: FontWeight.bold))),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            theme.name, // UI上依然显示中文名
+            style: TextStyle(
+              fontSize: 12,
+              color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -999,7 +1209,7 @@ class _VideoTileState extends State<_VideoTile> {
           if (mounted) {
             setState(() {
               _isInitialized = true;
-              _controller.setVolume(0); // 默认静音
+              _controller.setVolume(0); 
               _controller.setLooping(true);
             });
           }
@@ -1072,7 +1282,7 @@ class _VideoTileState extends State<_VideoTile> {
                 onEnter: (_) => _controller.play(),
                 onExit: (_) => _controller.pause(),
                 child: Container(
-                  color: Colors.transparent, // 透明背景以响应悬浮事件
+                  color: Colors.transparent, 
                   child: Center(
                     child: Icon(Icons.play_circle_outline, color: Colors.white.withOpacity(0.7), size: 50),
                   ),
@@ -1147,7 +1357,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
             ),
             const SizedBox(height: 16),
             GestureDetector(
-              onTap: () {}, // 防止点击控制栏关闭对话框
+              onTap: () {}, // 防止点击视频关闭对话框
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(

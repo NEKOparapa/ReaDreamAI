@@ -7,6 +7,12 @@ const Map<String, dynamic> appDefaultConfigs = {
   'proxy_enabled': false, // 代理开关，默认关闭
   'proxy_port': '7890',  // 代理端口，通用默认值
   
+  // --- 阅读器设置  ---
+  'reader_theme_id': 'default',
+  'reader_font_size': 18.0,
+  'reader_line_height': 1.8,
+  'reader_font_family': 'SystemDefault',
+
   // --- 生图设置 ---
   'image_gen_tokens': 7000, // 生图使用的最大Token数
   'image_gen_scenes_per_chapter': 3, // 每章生成的场景数
