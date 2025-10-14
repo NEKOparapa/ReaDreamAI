@@ -3,7 +3,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../base/api_model.dart';
-import '../../base/log/log_service.dart'; 
+import '../../base/log/log_service.dart';
 
 /// 大语言模型（LLM）服务类
 class LlmService {
@@ -47,13 +47,25 @@ class LlmService {
       'Authorization': 'Bearer ${apiConfig.apiKey}',
       'Content-Type': 'application/json',
     };
+    
+    // 针对 DeepSeek 模型的特殊处理
+    final processedMessages = List<Map<String, String>>.from(messages);
+    // 检查模型名称是否包含 'deepseek' (不区分大小写)
+    if (apiConfig.model.toLowerCase().contains('deepseek')) {
+      // 如果消息列表不为空，并且最后一条消息的角色是 'assistant'
+      if (processedMessages.isNotEmpty &&processedMessages.last['role'] == 'assistant') {
+        // 移除最后一条消息，以防止 DeepSeek 模型返回错误
+        processedMessages.removeLast();
+      }
+    }
 
     // 将 systemPrompt 和 messages 组合成 OpenAI 要求的格式
     final allMessages = <Map<String, String>>[];
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
       allMessages.add({'role': 'system', 'content': systemPrompt});
     }
-    allMessages.addAll(messages);
+    // 使用经过处理的消息列表
+    allMessages.addAll(processedMessages); 
 
     // 构造请求体并进行 JSON 编码
     final body = jsonEncode({
@@ -91,8 +103,7 @@ class LlmService {
         LogService.instance.error(errorMsg);
         throw Exception(errorMsg);
       }
-    } catch (e, s) { // 捕获异常和堆栈跟踪
-      // 2. 将 print 替换为日志系统的 error 方法
+    } catch (e, s) {
       LogService.instance.error('OpenAI 格式请求出错，URL: ${apiConfig.url}', e, s);
       rethrow; // 重新抛出异常，以便上层调用者可以处理
     }
@@ -124,8 +135,7 @@ class LlmService {
         };
       } else {
         // 如果对话历史中没有 user message，则创建一个新的
-        processedMessages.insert(
-            0, {'role': 'user', 'content': systemPrompt});
+        processedMessages.insert(0, {'role': 'user', 'content': systemPrompt});
       }
     }
     

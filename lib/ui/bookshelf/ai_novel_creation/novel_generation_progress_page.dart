@@ -24,11 +24,13 @@ class ChapterGenerationInfo {
   ChapterStatus status;
   String? content;
   int charCount;
+  double progress; // 用于追踪单章节进度
 
   ChapterGenerationInfo({
     this.status = ChapterStatus.pending,
     this.content,
     this.charCount = 0,
+    this.progress = 0.0, // 默认值为0
   });
 }
 
@@ -113,7 +115,7 @@ class _NovelGenerationProgressPageState
 
     final wordsPerChapter = _configService.getSetting<int>(
         'ai_novel_creation_words_per_chapter', 1500);
-    _addLog('目标字数设定为每章约 $wordsPerChapter 字', Icons.format_size);
+    _addLog('目标字数设定为每章约 $wordsPerChapter 字，但以实际生成内容为准', Icons.format_size);
 
     final llmApi = _configService.getActiveLanguageApi();
     final concurrency = llmApi.concurrencyLimit ?? 3;
@@ -148,10 +150,11 @@ class _NovelGenerationProgressPageState
               storyline: storyline,
               chapterIndex: i,
               wordsPerChapter: wordsPerChapter,
-              onProgress: (message) {
+              onProgress: (message, chapterProgress) { // 修改：接收章节进度
                 if (mounted && !_isTerminated) {
                   setState(() {
                     _detailedStatus = '第 ${i + 1} 章: $message';
+                    _chapterInfos[i].progress = chapterProgress; // 更新章节进度
                   });
                 }
               },
@@ -172,6 +175,7 @@ class _NovelGenerationProgressPageState
               setState(() {
                 completedChapters++;
                 _chapterInfos[i].status = ChapterStatus.completed;
+                _chapterInfos[i].progress = 1.0; // 完成后确保进度为100%
                 _progress = completedChapters / storyline.length;
                 _mainStatus = '正在创作 ($completedChapters/${storyline.length})';
                 _detailedStatus = '“${storyline[i]['chapter_title']}” 已完成';
@@ -241,6 +245,7 @@ class _NovelGenerationProgressPageState
       _detailedStatus = '处理第 ${index + 1} 章: "${storyline[index]['chapter_title']}"';
       _chapterInfos[index].status = ChapterStatus.generating;
       _chapterInfos[index].charCount = 0;
+      _chapterInfos[index].progress = 0.0; // 修改：重置进度
       _hasError = _chapterInfos.any((info) => info.status == ChapterStatus.error);
     });
 
@@ -256,10 +261,11 @@ class _NovelGenerationProgressPageState
         storyline: storyline,
         chapterIndex: index,
         wordsPerChapter: wordsPerChapter,
-        onProgress: (message) {
+        onProgress: (message, chapterProgress) { // 修改：接收章节进度
           if (mounted && !_isTerminated) {
             setState(() {
               _detailedStatus = '第 ${index + 1} 章: $message';
+              _chapterInfos[index].progress = chapterProgress; // 更新章节进度
             });
           }
         },
@@ -275,6 +281,7 @@ class _NovelGenerationProgressPageState
           _chapterInfos[index].content = content;
           _chapterInfos[index].charCount = content.length;
           _chapterInfos[index].status = ChapterStatus.completed;
+          _chapterInfos[index].progress = 1.0; // 完成后确保进度为100%
         });
       }
     } catch (e, s) {
@@ -601,9 +608,37 @@ class _NovelGenerationProgressPageState
           break;
         case ChapterStatus.generating:
           statusColor = Theme.of(context).colorScheme.primary;
+          // 显示带百分比的进度圈
           leading = SizedBox(
-            width: 24, height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: statusColor),
+            width: 40,
+            height: 40,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: info.progress),
+              duration: const Duration(milliseconds: 300),
+              builder: (context, value, child) {
+                return Stack(
+                  fit: StackFit.expand,
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 3,
+                      color: statusColor,
+                    ),
+                    Center(
+                      child: Text(
+                        '${(value * 100).round()}%',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: statusColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           );
           statusText = '生成中...';
           break;
