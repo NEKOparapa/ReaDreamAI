@@ -149,4 +149,113 @@ class CacheManager {
     }
     return subDir;
   }
+
+  /// [新增] 更新书籍指定范围内的文本内容
+  /// 此方法会替换指定章节中，从 startLineId 到 endLineId 之间的所有行
+  /// 然后用 newContent 生成新的行来代替。
+  /// 最重要的是，它会重新遍历整本书，为每一行分配一个新的、连续的ID。
+  Future<Book?> updateTextInRange({
+    required String bookId,
+    required String chapterId,
+    required int startLineId,
+    required int endLineId,
+    required String newContent,
+  }) async {
+    final book = await loadBookDetail(bookId);
+    if (book == null) return null;
+
+    try {
+      final newChapters = <ChapterStructure>[];
+      int globalLineIdCounter = 0;
+
+      for (final chapter in book.chapters) {
+        final List<LineStructure> newLinesForChapter;
+
+        if (chapter.id != chapterId) {
+          // A) 如果不是被修改的章节，只需为其所有行重新分配ID
+          newLinesForChapter = chapter.lines.map((line) {
+            return LineStructure(
+              id: globalLineIdCounter++,
+              text: line.text,
+              sourceInfo: line.sourceInfo,
+              originalContent: line.originalContent,
+              illustrationPaths: line.illustrationPaths,
+              videoPaths: line.videoPaths,
+              sceneDescription: line.sceneDescription,
+              translatedText: line.translatedText,
+            );
+          }).toList();
+        } else {
+          // B) 如果是目标章节，执行替换和重新ID分配
+          newLinesForChapter = [];
+          final startIdx = chapter.lines.indexWhere((l) => l.id == startLineId);
+          final endIdx = chapter.lines.indexWhere((l) => l.id == endLineId);
+          if (startIdx == -1 || endIdx == -1) {
+             throw Exception("在章节 ${chapter.title} 中未找到指定的起始或结束行ID。");
+          }
+
+          // 1. 添加划选区域之前的所有行（并重新分配ID）
+          for (int i = 0; i < startIdx; i++) {
+            final line = chapter.lines[i];
+            newLinesForChapter.add(LineStructure(
+              id: globalLineIdCounter++, text: line.text, sourceInfo: line.sourceInfo, originalContent: line.originalContent,
+              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription, translatedText: line.translatedText,
+            ));
+          }
+
+          // 2. 将 newContent 分割成新行并添加（分配新ID）
+          if (newContent.isNotEmpty) {
+            final contentLines = newContent.split('\n');
+            for (final textLine in contentLines) {
+              if (textLine.trim().isNotEmpty) {
+                newLinesForChapter.add(
+                  LineStructure(
+                    id: globalLineIdCounter++,
+                    text: textLine,
+                    originalContent: textLine, // text和originalContent内容一样
+                    sourceInfo: 'edited',
+                    // 其他字段置空
+                    illustrationPaths: [],
+                    videoPaths: [],
+                    sceneDescription: null,
+                    translatedText: null,
+                  ),
+                );
+              }
+            }
+          }
+
+          // 3. 添加划选区域之后的所有行（并重新分配ID）
+          for (int i = endIdx + 1; i < chapter.lines.length; i++) {
+            final line = chapter.lines[i];
+             newLinesForChapter.add(LineStructure(
+              id: globalLineIdCounter++, text: line.text, sourceInfo: line.sourceInfo, originalContent: line.originalContent,
+              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription, translatedText: line.translatedText,
+            ));
+          }
+        }
+        
+        // 用更新后的行列表创建新的章节对象
+        newChapters.add(ChapterStructure(
+          id: chapter.id, title: chapter.title, sourceFile: chapter.sourceFile,
+          chapterSummary: chapter.chapterSummary, lines: newLinesForChapter,
+        ));
+      }
+
+      // 用更新后的章节列表创建新的书籍对象
+      final updatedBook = Book(
+        id: book.id, title: book.title, fileType: book.fileType, originalPath: book.originalPath,
+        cachedPath: book.cachedPath, coverImagePath: book.coverImagePath, backgroundSetting: book.backgroundSetting,
+        writingStyle: book.writingStyle, characters: book.characters, chapters: newChapters,
+      );
+
+      // 保存更新后的书籍到缓存并返回
+      await saveBookDetail(updatedBook);
+      return updatedBook;
+
+    } catch (e, s) {
+      LogService.instance.error('更新书籍 $bookId 文本失败', e, s);
+      return null;
+    }
+  }
 }

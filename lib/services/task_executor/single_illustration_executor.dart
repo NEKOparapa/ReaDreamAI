@@ -419,3 +419,33 @@ class SingleVideoExecutor {
     }
   }
 }
+
+// ==================================================================
+// 文本改写/删除执行器
+// ==================================================================
+class TextModificationExecutor {
+  TextModificationExecutor._();
+  static final TextModificationExecutor instance = TextModificationExecutor._();
+
+  final LlmPromptBuilder _llmPromptBuilder = LlmPromptBuilder(ConfigService());
+  final LlmService _llmService = LlmService.instance;
+  final ConfigService _configService = ConfigService();
+
+  Future<String> rewriteText({
+    required String precedingText,
+    required String selectedText,
+    required String succeedingText,
+    required String userRequirement,
+  }) async {
+    final (systemPrompt, messages) = _llmPromptBuilder.buildForTextRewrite(
+      precedingText: precedingText,
+      selectedText: selectedText,
+      succeedingText: succeedingText,
+      userRequirement: userRequirement,
+    );
+    final activeApi = _configService.getActiveLanguageApi();
+    final llmResponse = await _llmService.requestCompletion(
+        systemPrompt: systemPrompt, messages: messages, apiConfig: activeApi);
+    return llmResponse.trim();
+  }
+}

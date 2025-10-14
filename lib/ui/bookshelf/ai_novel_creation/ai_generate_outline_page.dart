@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../base/api_model.dart';
 import '../../../base/config_service.dart';
 import '../../../base/log/log_service.dart';
 import '../../../models/character_card_model.dart';
@@ -58,8 +59,8 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         'main_characters': (selectedCharacters != null && selectedCharacters.isNotEmpty) ? selectedCharacters : result['main_characters'] ?? [],
         'storyline': result['storyline'] ?? [],
       };
-      
-      LogService.instance.info('正在保存生成的大纲到配置...');
+
+      LogService.instance.info('正在保存生成的大纲到配置。..');
       await _saveOutlineToConfig(finalOutline);
       LogService.instance.info('大纲已保存，准备跳转到编辑页面。');
 
@@ -90,18 +91,28 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
       appBar: AppBar(
         title: const Text('生成大纲'),
         actions: [
+          // 将接口设置按钮放在 AppBar 中
+          IconButton(
+            icon: const Icon(Icons.control_camera),
+            tooltip: '接口设置',
+            onPressed: _isGeneratingOutline
+                ? null
+                : () {
+                    _showApiSettingsDialog(context);
+                  },
+          ),
           TextButton.icon(
             icon: const Icon(Icons.edit_note_outlined),
             label: const Text('编辑大纲'),
             onPressed: _isGeneratingOutline
-              ? null
-              : () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const EditAndGeneratePage(),
-                    ),
-                  );
-                },
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const EditAndGeneratePage(),
+                      ),
+                    );
+                  },
           ),
           const SizedBox(width: 8),
         ],
@@ -110,6 +121,170 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         isLoading: _isGeneratingOutline,
         onGenerate: _handleGenerateAndProceed,
       ),
+    );
+  }
+
+  // 显示API设置对话框
+  void _showApiSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ApiSettingsDialog(),
+    );
+  }
+}
+
+// API设置对话框组件
+class ApiSettingsDialog extends StatefulWidget {
+  const ApiSettingsDialog({super.key});
+
+  @override
+  State<ApiSettingsDialog> createState() => _ApiSettingsDialogState();
+}
+
+class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
+  final _configService = ConfigService();
+  List<ApiModel> _languageApis = [];
+  String? _outlineApiId;
+  String? _planApiId;
+  String? _generateApiId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadApiData();
+  }
+
+  void _loadApiData() {
+    final apisJson = _configService.getSetting<List>('languageApis', []);
+    _languageApis = apisJson.map((json) => ApiModel.fromJson(json as Map<String, dynamic>)).toList();
+
+    _outlineApiId = _configService.getSetting<String?>('ai_novel_creation_outline_api_id', null);
+    _planApiId = _configService.getSetting<String?>('ai_novel_creation_plan_api_id', null);
+    _generateApiId = _configService.getSetting<String?>('ai_novel_creation_generate_api_id', null);
+
+    // 验证已保存的ID是否存在，如果不存在则重置为null（默认）
+    if (_outlineApiId != null && !_languageApis.any((api) => api.id == _outlineApiId)) {
+      _outlineApiId = null;
+    }
+    if (_planApiId != null && !_languageApis.any((api) => api.id == _planApiId)) {
+      _planApiId = null;
+    }
+    if (_generateApiId != null && !_languageApis.any((api) => api.id == _generateApiId)) {
+      _generateApiId = null;
+    }
+
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Row(
+        children: [
+          Icon(Icons.control_camera),
+          SizedBox(width: 8),
+          Text('接口设置'),
+        ],
+      ),
+      content: SingleChildScrollView(
+        // 使用 SizedBox 给内容一个固定的宽度，从而放大整个对话框
+        child: SizedBox(
+          width: 450, // 您可以根据需要调整这个宽度值
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '为不同生成阶段指定语言模型接口',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildApiSelector(
+                title: '生成大纲',
+                icon: Icons.create_new_folder_outlined,
+                selectedApiId: _outlineApiId,
+                onChanged: (id) {
+                  setState(() => _outlineApiId = id);
+                  _configService.modifySetting('ai_novel_creation_outline_api_id', id);
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildApiSelector(
+                title: '章节规划',
+                icon: Icons.view_week_outlined,
+                selectedApiId: _planApiId,
+                onChanged: (id) {
+                  setState(() => _planApiId = id);
+                  _configService.modifySetting('ai_novel_creation_plan_api_id', id);
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildApiSelector(
+                title: '生成正文',
+                icon: Icons.drive_file_rename_outline,
+                selectedApiId: _generateApiId,
+                onChanged: (id) {
+                  setState(() => _generateApiId = id);
+                  _configService.modifySetting('ai_novel_creation_generate_api_id', id);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildApiSelector({
+    required String title,
+    required IconData icon,
+    required String? selectedApiId,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final theme = Theme.of(context);
+    final activeApiId = _configService.getSetting<String?>('activeLanguageApiId', null);
+    String defaultApiName = '未设置默认接口';
+    if (activeApiId != null) {
+      try {
+        final activeApi = _languageApis.firstWhere((api) => api.id == activeApiId);
+        defaultApiName = '默认 (${activeApi.name})';
+      } catch (e) {
+        defaultApiName = '默认 (接口已删除)';
+      }
+    }
+
+    return DropdownButtonFormField<String?>(
+      value: selectedApiId,
+      decoration: InputDecoration(
+        labelText: title,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      ),
+      onChanged: onChanged,
+      items: [
+        DropdownMenuItem<String?>(
+          value: null,
+          child: Text(defaultApiName),
+        ),
+        ..._languageApis.map((api) {
+          return DropdownMenuItem<String?>(
+            value: api.id,
+            child: Text(api.name),
+          );
+        }).toList(),
+      ],
     );
   }
 }
@@ -158,12 +333,12 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
     _addListeners();
     _loadCardData();
   }
-  
+
   void _loadCardData() {
     setState(() {
       _backgroundCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_background_cards', []));
       _styleCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_style_cards', []));
-      
+
       final charList = List<Map<String, dynamic>>.from(_configService.getSetting('drawing_character_cards', []));
       _characterCards = charList.map((e) => CharacterCard.fromJson(e)).toList();
 
@@ -232,7 +407,7 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
       );
     }
   }
-  
+
   @override
   void dispose() {
     _storyPromptController.dispose();
@@ -314,7 +489,7 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                     const ListTile(
+                    const ListTile(
                       leading: Icon(Icons.format_list_numbered),
                       title: Text('篇幅设定'),
                       subtitle: Text('设置章节和字数'),

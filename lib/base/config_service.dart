@@ -209,6 +209,26 @@ class ConfigService {
     return _getActiveApi('activeLanguageApiId', 'languageApis', '语言接口');
   }
 
+  /// 根据ID获取特定的语言接口，如果ID无效或为null，则返回当前激活的接口
+  ApiModel getLanguageApiById(String? apiId) {
+    // 如果ID为null，直接返回激活的接口
+    if (apiId == null) {
+      return getActiveLanguageApi();
+    }
+
+    final apisJson = getSetting<List>('languageApis', []);
+    final apis = apisJson.map((json) => ApiModel.fromJson(json as Map<String, dynamic>)).toList();
+
+    try {
+      // 尝试查找指定ID的接口
+      return apis.firstWhere((api) => api.id == apiId);
+    } catch (e) {
+      // 如果找不到（例如，接口被删除），记录警告并返回当前激活的接口作为后备
+      LogService.instance.warn("未找到ID为 '$apiId' 的语言接口，已回退到当前激活的接口。");
+      return getActiveLanguageApi();
+    }
+  }
+
   /// 获取正在激活的绘画接口
   ApiModel getActiveDrawingApi() {
     return _getActiveApi('activeDrawingApiId', 'drawingApis', '绘画接口');

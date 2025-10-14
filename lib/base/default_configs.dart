@@ -65,6 +65,11 @@ const Map<String, dynamic> appDefaultConfigs = {
   'activeDrawingApiId': null, // 当前激活的绘图接口ID
   'activeVideoApiId': null, // 当前激活的视频接口ID
   
+  // --- AI小说创作接口设置 ---
+  'ai_novel_creation_outline_api_id': null, // 生成大纲的接口ID，null表示使用默认
+  'ai_novel_creation_plan_api_id': null, // 规划章节的接口ID，null表示使用默认
+  'ai_novel_creation_generate_api_id': null, // 生成内容的接口ID，null表示使用默认
+
   // --- AI小说创作 ---
   'ai_novel_creation_prompt': '少年遇见少女的开篇故事', // 创作提示词
   'ai_novel_creation_chapter_count': 2, // 章节数

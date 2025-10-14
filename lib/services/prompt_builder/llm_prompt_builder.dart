@@ -233,4 +233,40 @@ class LlmPromptBuilder {
 
     return (systemPrompt, messages);
   }
+
+  /// 为文本改写功能构建提示词（需要破限）
+  (String, List<Map<String, String>>) buildForTextRewrite({
+    required String precedingText,
+    required String selectedText,
+    required String succeedingText,
+    required String userRequirement,
+  }) {
+    const systemPrompt = "You are an expert editor. Rewrite the 'TEXT TO REWRITE' based on the user's instructions and the surrounding context. Output ONLY the rewritten text, without any additional explanations, introductions, or markdown formatting.";
+
+    // 限制上下文长度，避免超出限制
+    final precedingContext = precedingText.length > 2000 ? precedingText.substring(precedingText.length - 2000) : precedingText;
+    final succeedingContext = succeedingText.length > 2000 ? succeedingText.substring(0, 2000) : succeedingText;
+
+    final userPrompt = """
+    ### User's Rewrite Instruction:
+    $userRequirement
+
+    ### Preceding Context:
+    ...$precedingContext
+
+    ### TEXT TO REWRITE:
+    $selectedText
+
+    ### Succeeding Context:
+    $succeedingContext...
+
+    Please provide the rewritten text now.
+    """;
+
+    final messages = [
+      {'role': 'user', 'content': userPrompt}
+    ];
+
+    return (systemPrompt, messages);
+  }
 }
