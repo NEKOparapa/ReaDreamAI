@@ -12,12 +12,11 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
-        // 注释掉或者删掉原来的 google() 和 mavenCentral()
-        // google()
-        // mavenCentral()
-        
+        google()
+        mavenCentral()
         gradlePluginPortal()
-        // 添加阿里云镜像 (Kotlin DSL 语法)
+
+        // 添加阿里云镜像
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
@@ -28,18 +27,21 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+
         // 添加阿里云镜像
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
-        // 如果有用到 jitpack 的库，也可以加上（可选）
         maven { url = uri("https://jitpack.io") }
     }
 }
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.4.1" apply false 
-    id("org.jetbrains.kotlin.android") version "1.9.23" apply false
+    id("com.android.application") version "8.7.0" apply false 
+    id("org.jetbrains.kotlin.android") version "1.8.10" apply false
 }
 
 include(":app")
