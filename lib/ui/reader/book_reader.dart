@@ -448,7 +448,46 @@ class _BookReaderPageState extends State<BookReaderPage> {
     return null;
   }
   
-  // 文本上下文菜单，替换为新的三个功能按钮
+  // 创建一个自定义的上下文菜单项
+  Widget _buildContextMenuItem({
+    required BuildContext context,
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    // 使用 TextButton 来获得点击效果和正确的 Material 状态
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        // 设置合适的内边距，拉开上下间距
+        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        // 设置形状，以便与菜单卡片融合
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(4.0)),
+        ),
+        // 让按钮内容左对齐
+        alignment: Alignment.centerLeft,
+        // 确保前景色（文本和图标颜色）能适应主题
+        foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+      ),
+      child: Row(
+        // MainAxisSize.max 是 Row 的默认值，它会尝试占据所有可用宽度
+        children: [
+          Icon(icon, size: 22.0),
+          const SizedBox(width: 16.0), // 图标和文本之间的间距
+          // Expanded 确保文本部分在需要时可以换行，并且整个 Row 会占满宽度
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 改进后的文本上下文菜单
   Widget _buildTextContextMenu(
       BuildContext context,
       EditableTextState state,
@@ -481,29 +520,32 @@ class _BookReaderPageState extends State<BookReaderPage> {
     return AdaptiveTextSelectionToolbar(
       anchors: state.contextMenuAnchors,
       children: [
-        // 删除文本按钮
-        TextButton(
-          onPressed: () {
-            state.hideToolbar(true);
-            _performDelete(lineInfo.firstLine, lineInfo.lastLine, lineInfo.chapter);
-          },
-          child: const Text('删除文本'),
-        ),
-        // 改写文本按钮
-        TextButton(
+        _buildContextMenuItem(
+          context: context,
+          icon: Icons.edit_note_outlined,
+          label: 'AI改写文本',
           onPressed: () {
             state.hideToolbar(true);
             _showRewriteDialog(selectedText, lineInfo.firstLine, lineInfo.lastLine, lineInfo.chapter);
           },
-          child: const Text('改写文本'),
         ),
-        // 生成插图按钮
-        TextButton(
+        _buildContextMenuItem(
+          context: context,
+          icon: Icons.image_outlined,
+          label: 'AI生成插图',
           onPressed: () {
             state.hideToolbar(true);
             _generateIllustrationForSelection(selectedText, lineInfo.lastLine, lineInfo.chapter);
           },
-          child: const Text('生成插图'),
+        ),
+        _buildContextMenuItem(
+          context: context,
+          icon: Icons.delete_outline,
+          label: '删除选取文本',
+          onPressed: () {
+            state.hideToolbar(true);
+            _performDelete(lineInfo.firstLine, lineInfo.lastLine, lineInfo.chapter);
+          },
         ),
       ],
     );
@@ -846,7 +888,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
 }
 
 
-// 设置面板 (保持不变)
+// 设置面板
 class _ReaderSettingsPanel extends StatefulWidget {
   final _ReaderTheme initialTheme;
   final double initialFontSize;
@@ -1126,7 +1168,7 @@ class _ThemeChip extends StatelessWidget {
   }
 }
 
-// 插图/视频画廊组件 (保持不变)
+// 插图/视频画廊组件
 class _IllustrationGallery extends StatelessWidget {
   final List<String> imagePaths;
   final List<String> videoPaths;

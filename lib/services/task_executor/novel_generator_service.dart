@@ -202,7 +202,7 @@ $presetPrompts
 
     LogService.instance.info('[小说生成服务] 开始生成第 ${chapterIndex + 1} 章内容...');
     
-    final segmentCount = max(1, (wordsPerChapter / 1200).ceil()); 
+    final segmentCount = max(1, (wordsPerChapter / 1500).ceil()); 
     LogService.instance.info('第 ${chapterIndex + 1} 章目标字数 $wordsPerChapter, 将分为 $segmentCount 段生成。');
 
     onProgress?.call('规划章节结构 (共 $segmentCount 段)...', 0.0); // 传递初始进度

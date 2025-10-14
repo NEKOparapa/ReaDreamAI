@@ -72,8 +72,8 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   // --- AI小说创作 ---
   'ai_novel_creation_prompt': '少年遇见少女的开篇故事', // 创作提示词
-  'ai_novel_creation_chapter_count': 2, // 章节数
-  'ai_novel_creation_words_per_chapter': 1500, // 每章字数
+  'ai_novel_creation_chapter_count': 3, // 章节数
+  'ai_novel_creation_words_per_chapter': 4000, // 每章字数
   'ai_novel_creation_title': '艾瑞多之心', // 小说标题
   // 背景设定预设内容
   'ai_novel_creation_background_setting': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。', 
@@ -145,7 +145,7 @@ const Map<String, dynamic> appDefaultConfigs = {
       'isSystemPreset': true,
     },
   ],
-  'active_writing_style_card_id': null,
+  'active_writing_style_card_id': 'system_blunt_style',
 
   // --- 绘图标签设置 ---
   // 绘画风格
