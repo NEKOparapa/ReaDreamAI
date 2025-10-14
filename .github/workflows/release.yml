@@ -38,14 +38,23 @@ jobs:
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：将构建产物打包成 ZIP
-      - name: Package release assets
+      # 步骤5：(新增) 构建无签名的 Android APK
+      - name: Build unsigned Android APK
+        run: flutter build apk --no-sign
+
+      # 步骤6：将 Windows 构建产物打包成 ZIP
+      - name: Package Windows assets
         shell: pwsh
         run: |
-          # 使用正确的构建输出路径
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
-      # 步骤6：删除旧的预览版
+      # 步骤7：(新增) 重命名 APK 文件以便识别
+      - name: Rename APK file
+        shell: pwsh
+        run: |
+          Rename-Item -Path "build\app\outputs\flutter-apk\app-release.apk" -NewName "ReaDreamAI-beta-android.apk"
+
+      # 步骤8：删除旧的预览版
       - name: Delete old pre-releases
         uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
@@ -54,7 +63,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
           
-      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
+      # 步骤9：(修改) 创建 GitHub Pre-release 并上传所有产物
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -63,5 +72,8 @@ jobs:
           draft: false
           prerelease: true
           generate_release_notes: true 
-          files: ReaDreamAI-beta-windows.zip
+          # 修改此处，上传 Windows 和 Android 两个文件
+          files: |
+            ReaDreamAI-beta-windows.zip
+            ReaDreamAI-beta-android.apk
           token: ${{ secrets.GITHUB_TOKEN }}
