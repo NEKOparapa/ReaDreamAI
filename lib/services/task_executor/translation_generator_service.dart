@@ -103,7 +103,6 @@ class TranslationGeneratorService {
   /// 处理单个翻译任务块（Chunk）
   Future<bool> _processChunk(Book book, TranslationTaskChunk chunk, CancellationToken cancellationToken) async {
     // 根据任务块中的章节ID和行ID范围，找到对应的文本行
-    // 将 c.title 修改为 c.id
     final chapter = book.chapters.firstWhere((c) => c.id == chunk.chapterId, orElse: () => throw Exception('Chapter not found')); 
     final lines = chapter.lines.where((l) => l.id >= chunk.startLineId && l.id <= chunk.endLineId).toList();
 

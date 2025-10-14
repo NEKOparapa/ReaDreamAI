@@ -1,3 +1,5 @@
+// lib/ui/bookshelf/ai_novel_creation/novel_generation_progress_page.dart
+
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -16,6 +18,19 @@ import '../../../services/task_executor/novel_generator_service.dart';
 
 // 定义章节状态
 enum ChapterStatus { pending, generating, completed, error }
+
+// 定义章节生成信息的模型
+class ChapterGenerationInfo {
+  ChapterStatus status;
+  String? content;
+  int charCount;
+
+  ChapterGenerationInfo({
+    this.status = ChapterStatus.pending,
+    this.content,
+    this.charCount = 0,
+  });
+}
 
 // 定义日志模型
 class GenerationLog {
@@ -39,7 +54,8 @@ class NovelGenerationProgressPage extends StatefulWidget {
       _NovelGenerationProgressPageState();
 }
 
-class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPage> {
+class _NovelGenerationProgressPageState
+    extends State<NovelGenerationProgressPage> {
   final _configService = ConfigService();
   double _progress = 0.0;
   String _mainStatus = '准备就绪...';
@@ -48,16 +64,17 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
   bool _isFinished = false;
   bool _hasError = false;
   bool _isTerminated = false;
-
-  late List<ChapterStatus> _chapterStatuses;
+  bool _isSaving = false;
+  
+  late List<ChapterGenerationInfo> _chapterInfos;
   final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _chapterStatuses = List.generate(
+    _chapterInfos = List.generate(
       widget.outline['storyline'].length,
-      (_) => ChapterStatus.pending,
+      (_) => ChapterGenerationInfo(),
     );
     Future.microtask(() => startGeneration());
   }
@@ -85,6 +102,7 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
     }
   }
 
+  /// 开始初次生成所有章节
   Future<void> startGeneration() async {
     LogService.instance.info('开始并行生成小说正文...');
     _addLog('生成任务已启动', Icons.play_circle_outline);
@@ -92,20 +110,21 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
       _mainStatus = '正在并行生成所有章节...';
       _detailedStatus = '任务已分发';
     });
-    
-    final wordsPerChapter = _configService.getSetting<int>('ai_novel_creation_words_per_chapter', 1500);
-    LogService.instance.info('获取到用户设定的每章字数: $wordsPerChapter');
+
+    final wordsPerChapter = _configService.getSetting<int>(
+        'ai_novel_creation_words_per_chapter', 1500);
     _addLog('目标字数设定为每章约 $wordsPerChapter 字', Icons.format_size);
 
     final llmApi = _configService.getActiveLanguageApi();
-    final concurrency = llmApi.concurrencyLimit ?? 3; // 默认并发数为3
+    final concurrency = llmApi.concurrencyLimit ?? 3;
     final pool = Pool(concurrency);
     LogService.instance.info('启动小说生成任务池，最大并发数: $concurrency');
 
     try {
-      final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
-      final characters = List<Map<String, dynamic>>.from(widget.outline['main_characters']);
-      final chapterContents = List<String?>.filled(storyline.length, null);
+      final storyline =
+          List<Map<String, dynamic>>.from(widget.outline['storyline']);
+      final characters =
+          List<Map<String, dynamic>>.from(widget.outline['main_characters']);
       final futures = <Future>[];
       int completedChapters = 0;
 
@@ -114,38 +133,45 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
           if (_isTerminated || !mounted) return;
 
           setState(() {
-            _chapterStatuses[i] = ChapterStatus.generating;
+            _chapterInfos[i].status = ChapterStatus.generating;
           });
-          _addLog('开始生成第 ${i + 1} 章: "${storyline[i]['chapter_title']}"...', Icons.cloud_upload_outlined);
+          _addLog('开始生成第 ${i + 1} 章: "${storyline[i]['chapter_title']}"...',
+              Icons.cloud_upload_outlined);
 
           try {
-            final content = await NovelGeneratorService.instance.generateChapterContent(
+            final content =
+                await NovelGeneratorService.instance.generateChapterContent(
               title: widget.outline['title'],
               backgroundSetting: widget.outline['background_setting'],
               writingStyle: widget.outline['writing_style'],
               mainCharacters: characters,
               storyline: storyline,
               chapterIndex: i,
-              wordsPerChapter: wordsPerChapter, 
+              wordsPerChapter: wordsPerChapter,
               onProgress: (message) {
-                // 当服务层有新的进度时，更新UI
                 if (mounted && !_isTerminated) {
                   setState(() {
                     _detailedStatus = '第 ${i + 1} 章: $message';
                   });
                 }
               },
+              isTerminated: () => _isTerminated,
             );
-            
+
             if (_isTerminated || !mounted) return;
-            
-            chapterContents[i] = content;
+
+            if (content.isEmpty) {
+              throw Exception("内容生成被跳过或终止");
+            }
+
+            _chapterInfos[i].content = content;
+            _chapterInfos[i].charCount = content.length;
             _addLog('第 ${i + 1} 章内容已成功接收', Icons.cloud_download_outlined);
 
             if (mounted) {
               setState(() {
                 completedChapters++;
-                _chapterStatuses[i] = ChapterStatus.completed;
+                _chapterInfos[i].status = ChapterStatus.completed;
                 _progress = completedChapters / storyline.length;
                 _mainStatus = '正在创作 ($completedChapters/${storyline.length})';
                 _detailedStatus = '“${storyline[i]['chapter_title']}” 已完成';
@@ -157,7 +183,7 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
             _addLog('第 ${i + 1} 章生成失败: $e', Icons.error_outline);
             if (mounted) {
               setState(() {
-                _chapterStatuses[i] = ChapterStatus.error;
+                _chapterInfos[i].status = ChapterStatus.error;
                 _hasError = true;
               });
             }
@@ -177,48 +203,18 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
         return;
       }
       
-      if (_hasError) {
-        throw Exception('一个或多个章节生成失败。');
-      }
-
       if (!mounted) return;
-      _addLog('所有章节已生成，正在整理成书...', Icons.menu_book_outlined);
+
       setState(() {
-        _mainStatus = '正在保存书籍';
-        _detailedStatus = '编译章节内容...';
+        _isFinished = true;
+        if (_hasError) {
+          _mainStatus = '部分章节生成失败';
+          _detailedStatus = '您可以尝试重新生成失败的章节';
+        } else {
+          _mainStatus = '所有章节已生成！';
+          _detailedStatus = '请检查内容，然后点击“完成并保存”';
+        }
       });
-      
-      // 按顺序组装书籍
-      final List<ChapterStructure> finalChapters = [];
-      final fullTextBuilder = StringBuffer();
-      int globalLineIdCounter = 0;
-
-      for (int i = 0; i < storyline.length; i++) {
-        final content = chapterContents[i]!;
-        fullTextBuilder.write("## ${storyline[i]['chapter_title']}\n\n$content\n\n---\n\n");
-        
-        final chapterLines = _createLines(content, 'content.txt', globalLineIdCounter);
-        final newChapter = ChapterStructure(
-          id: const Uuid().v4(),
-          title: storyline[i]['chapter_title'],
-          sourceFile: 'content.txt',
-          lines: chapterLines,
-          chapterSummary: storyline[i]['chapter_summary'], // 保留原有简述
-        );
-        finalChapters.add(newChapter);
-        globalLineIdCounter += chapterLines.length;
-      }
-
-      await _saveBook(finalChapters, fullTextBuilder.toString());
-
-      if (mounted) {
-        _addLog('《${widget.outline['title']}》已成功保存到书架！', Icons.check_circle_outline);
-        setState(() {
-          _mainStatus = '生成成功！';
-          _detailedStatus = '您的新书已在书架上等您';
-          _isFinished = true;
-        });
-      }
     } catch (e, s) {
       LogService.instance.error('小说正文生成过程中发生错误', e, s);
       if (!_hasError) _addLog('发生严重错误: $e', Icons.error_outline);
@@ -228,6 +224,148 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
           _detailedStatus = '请检查日志或网络连接后重试';
           _hasError = true;
           _isFinished = true;
+        });
+      }
+    }
+  }
+
+  /// 重新生成指定章节
+  Future<void> _regenerateChapter(int index) async {
+    if (_isTerminated || _isSaving) return;
+
+    final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
+    _addLog('开始重新生成第 ${index + 1} 章...', Icons.refresh);
+    setState(() {
+      _isFinished = false;
+      _mainStatus = '正在重新生成...';
+      _detailedStatus = '处理第 ${index + 1} 章: "${storyline[index]['chapter_title']}"';
+      _chapterInfos[index].status = ChapterStatus.generating;
+      _chapterInfos[index].charCount = 0;
+      _hasError = _chapterInfos.any((info) => info.status == ChapterStatus.error);
+    });
+
+    final characters = List<Map<String, dynamic>>.from(widget.outline['main_characters']);
+    final wordsPerChapter = _configService.getSetting<int>('ai_novel_creation_words_per_chapter', 1500);
+
+    try {
+      final content = await NovelGeneratorService.instance.generateChapterContent(
+        title: widget.outline['title'],
+        backgroundSetting: widget.outline['background_setting'],
+        writingStyle: widget.outline['writing_style'],
+        mainCharacters: characters,
+        storyline: storyline,
+        chapterIndex: index,
+        wordsPerChapter: wordsPerChapter,
+        onProgress: (message) {
+          if (mounted && !_isTerminated) {
+            setState(() {
+              _detailedStatus = '第 ${index + 1} 章: $message';
+            });
+          }
+        },
+        isTerminated: () => _isTerminated,
+      );
+
+      if (_isTerminated || !mounted) return;
+      if (content.isEmpty) throw Exception("内容生成被跳过或为空");
+
+      _addLog('第 ${index + 1} 章已成功重新生成', Icons.check_circle_outline);
+      if (mounted) {
+        setState(() {
+          _chapterInfos[index].content = content;
+          _chapterInfos[index].charCount = content.length;
+          _chapterInfos[index].status = ChapterStatus.completed;
+        });
+      }
+    } catch (e, s) {
+      if (_isTerminated || !mounted) return;
+      LogService.instance.error('重新生成第 ${index + 1} 章时失败', e, s);
+      _addLog('第 ${index + 1} 章重新生成失败: $e', Icons.error_outline);
+      if (mounted) {
+        setState(() {
+          _chapterInfos[index].status = ChapterStatus.error;
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        final isStillGenerating = _chapterInfos.any((info) => info.status == ChapterStatus.generating);
+        if (!isStillGenerating) {
+          _isFinished = true;
+          _hasError = _chapterInfos.any((info) => info.status == ChapterStatus.error);
+          if (_hasError) {
+            _mainStatus = '部分章节生成失败';
+            _detailedStatus = '您可以尝试重新生成失败的章节';
+          } else {
+            _mainStatus = '所有章节已生成！';
+            _detailedStatus = '请检查内容，然后点击“完成并保存”';
+          }
+          final completedCount = _chapterInfos.where((c) => c.status == ChapterStatus.completed).length;
+          _progress = completedCount / _chapterInfos.length;
+          setState(() {});
+        }
+      }
+    }
+  }
+
+  /// 最终保存书籍
+  Future<void> _saveGeneratedBook() async {
+    if (_chapterInfos.any((info) => info.content == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('存在未成功生成的章节，无法保存。')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _mainStatus = '正在保存书籍';
+      _detailedStatus = '编译章节内容...';
+    });
+    _addLog('所有章节已检查完毕，正在整理成书...', Icons.menu_book_outlined);
+
+    try {
+      final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
+      final List<ChapterStructure> finalChapters = [];
+      final fullTextBuilder = StringBuffer();
+      int globalLineIdCounter = 0;
+
+      for (int i = 0; i < storyline.length; i++) {
+        final content = _chapterInfos[i].content!;
+        fullTextBuilder.write("## ${storyline[i]['chapter_title']}\n\n$content\n\n---\n\n");
+        
+        final chapterLines = _createLines(content, 'content.txt', globalLineIdCounter);
+        final newChapter = ChapterStructure(
+          id: const Uuid().v4(),
+          title: storyline[i]['chapter_title'],
+          sourceFile: 'content.txt',
+          lines: chapterLines,
+          chapterSummary: storyline[i]['chapter_summary'],
+        );
+        finalChapters.add(newChapter);
+        globalLineIdCounter += chapterLines.length;
+      }
+
+      await _saveBook(finalChapters, fullTextBuilder.toString());
+      
+      _addLog('《${widget.outline['title']}》已成功保存到书架！', Icons.check_circle_outline);
+      if (mounted) {
+        setState(() {
+          _mainStatus = '保存成功！';
+          _detailedStatus = '您的新书已在书架上等您';
+        });
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.of(context).pop(true);
+      }
+    } catch (e, s) {
+      LogService.instance.error('保存书籍时发生错误', e, s);
+      _addLog('保存失败: $e', Icons.error_outline);
+      if (mounted) {
+        setState(() {
+          _mainStatus = '保存失败';
+          _detailedStatus = '请检查日志后重试';
+          _hasError = true;
+          _isSaving = false;
         });
       }
     }
@@ -349,12 +487,11 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
     final progressColor = _hasError ? colorScheme.error : colorScheme.primary;
 
     return WillPopScope(
-      onWillPop: () async => _isFinished,
+      onWillPop: () async => _isFinished || _isTerminated,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_isFinished ? '生成完成' : '正在生成小说...'),
-          // 终止或完成后，显示返回按钮
-          automaticallyImplyLeading: _isFinished,
+          automaticallyImplyLeading: _isFinished || _isTerminated,
         ),
         body: SafeArea(
           child: Padding(
@@ -362,35 +499,41 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Center(child: _buildProgressIndicator(progressColor, theme)),
-                const SizedBox(height: 16),
-                Text(
-                  _mainStatus,
-                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _buildProgressIndicator(progressColor, theme),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildMonitoringCards(theme)),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Text(
-                    _detailedStatus,
-                    key: ValueKey<String>(_detailedStatus),
-                    style: theme.textTheme.bodyLarge?.copyWith(color: colorScheme.onSurfaceVariant),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildChapterStatusTracker(),
                 const SizedBox(height: 16),
                 const Divider(),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('生成日志', style: theme.textTheme.titleMedium),
+                Expanded(
+                  child: ListView(
+                    controller: _scrollController,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                        child: Text(
+                          '章节状态',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      ..._buildChapterStatusList(),
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: Text('生成日志', style: theme.textTheme.titleMedium),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildLogView(theme),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                _buildLogView(theme),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 _buildActionButtons(),
               ],
             ),
@@ -400,80 +543,140 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
     );
   }
 
-  Widget _buildChapterStatusTracker() {
+  Widget _buildMonitoringCards(ThemeData theme) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-          child: Text(
-            '章节进度',
-            style: Theme.of(context).textTheme.titleMedium,
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading: Icon(Icons.info_outline, color: theme.colorScheme.primary),
+            title: Center(
+              child: Text(
+                _mainStatus,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            dense: true,
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: List.generate(_chapterStatuses.length, (index) {
-              final status = _chapterStatuses[index];
-              IconData icon;
-              Color color;
-
-              switch (status) {
-                case ChapterStatus.pending:
-                  icon = Icons.hourglass_empty;
-                  color = Theme.of(context).colorScheme.onSurface.withOpacity(0.5);
-                  break;
-                case ChapterStatus.generating:
-                  icon = Icons.autorenew;
-                  color = Theme.of(context).colorScheme.primary;
-                  break;
-                case ChapterStatus.completed:
-                  icon = Icons.check_circle;
-                  color = Colors.green.shade600;
-                  break;
-                case ChapterStatus.error:
-                  icon = Icons.error;
-                  color = Theme.of(context).colorScheme.error;
-                  break;
-              }
-
-              return Chip(
-                avatar: status == ChapterStatus.generating 
-                  ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: color,))
-                  : Icon(icon, color: color, size: 18),
-                label: Text('第 ${index + 1} 章'),
-                labelStyle: TextStyle(color: color),
-                side: BorderSide(color: color.withOpacity(0.5)),
-                backgroundColor: color.withOpacity(0.1),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              );
-            }),
+        const SizedBox(height: 8),
+        Card(
+          margin: EdgeInsets.zero,
+          child: ListTile(
+            leading: Icon(Icons.history_toggle_off, color: theme.colorScheme.secondary),
+            title: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (child, animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: Text(
+                _detailedStatus,
+                key: ValueKey<String>(_detailedStatus),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            dense: true,
           ),
         ),
       ],
     );
   }
+  
+  List<Widget> _buildChapterStatusList() {
+    final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
+    return List.generate(_chapterInfos.length, (index) {
+      final info = _chapterInfos[index];
+      final chapterTitle = storyline[index]['chapter_title'] ?? '未命名章节';
+      
+      Widget leading;
+      Color statusColor;
+      String statusText;
+
+      switch (info.status) {
+        case ChapterStatus.pending:
+          statusColor = Theme.of(context).colorScheme.onSurface.withOpacity(0.6);
+          leading = Icon(Icons.hourglass_empty, color: statusColor);
+          statusText = '等待中';
+          break;
+        case ChapterStatus.generating:
+          statusColor = Theme.of(context).colorScheme.primary;
+          leading = SizedBox(
+            width: 24, height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: statusColor),
+          );
+          statusText = '生成中...';
+          break;
+        case ChapterStatus.completed:
+          statusColor = Colors.green.shade600;
+          leading = Icon(Icons.check_circle, color: statusColor);
+          statusText = '已完成';
+          break;
+        case ChapterStatus.error:
+          statusColor = Theme.of(context).colorScheme.error;
+          leading = Icon(Icons.error, color: statusColor);
+          statusText = '失败';
+          break;
+      }
+      
+      return Card(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: statusColor.withOpacity(0.1),
+            child: leading,
+          ),
+          title: Text('第 ${index + 1} 章: $chapterTitle', maxLines: 1, overflow: TextOverflow.ellipsis,),
+          subtitle: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: statusText, style: TextStyle(color: statusColor, fontWeight: FontWeight.bold)),
+                if (info.status == ChapterStatus.completed)
+                  TextSpan(text: ' - 约 ${info.charCount} 字', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          trailing: (info.status == ChapterStatus.completed || info.status == ChapterStatus.error) && !_isSaving && !_isTerminated
+            ? IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: '重新生成本章',
+                onPressed: () => _regenerateChapter(index),
+              )
+            : null,
+          dense: true,
+        ),
+      );
+    });
+  }
 
   Widget _buildActionButtons() {
+    if (_isSaving) {
+      return FilledButton.icon(
+        onPressed: null,
+        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+        icon: const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+        label: const Text('保存中...'),
+      );
+    }
+    
     if (_isFinished) {
+      final canSave = !_hasError && !_isTerminated && !_chapterInfos.any((c) => c.status != ChapterStatus.completed);
       return SizedBox(
         width: double.infinity,
         child: FilledButton.icon(
-          icon: Icon(_hasError || _isTerminated ? Icons.arrow_back : Icons.done_all),
-          label: Text(_hasError || _isTerminated ? '返回' : '完成'),
+          icon: Icon(canSave ? Icons.check_circle_outline : Icons.arrow_back),
+          label: Text(canSave ? '完成并保存' : '返回'),
           style: FilledButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: _hasError ? Theme.of(context).colorScheme.error : null
+            backgroundColor: canSave ? null : Theme.of(context).colorScheme.errorContainer,
+            foregroundColor: canSave ? null : Theme.of(context).colorScheme.onErrorContainer,
           ),
           onPressed: () {
-            Navigator.of(context).pop(!_hasError && !_isTerminated);
+            if (canSave) {
+              _saveGeneratedBook();
+            } else {
+              Navigator.of(context).pop(false);
+            }
           },
         ),
       );
@@ -499,7 +702,7 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
       width: 120,
       height: 120,
       child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(begin: _progress, end: _progress), // Use _progress for both to avoid re-animating
+        tween: Tween<double>(begin: 0.0, end: _progress),
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeInOut,
         builder: (context, value, child) {
@@ -539,34 +742,29 @@ class _NovelGenerationProgressPageState extends State<NovelGenerationProgressPag
   }
 
   Widget _buildLogView(ThemeData theme) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: ListView.builder(
-          controller: _scrollController,
-          itemCount: _logs.length,
-          itemBuilder: (context, index) {
-            final log = _logs[index];
-            final time = '${log.timestamp.hour.toString().padLeft(2,'0')}:${log.timestamp.minute.toString().padLeft(2,'0')}:${log.timestamp.second.toString().padLeft(2,'0')}';
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(log.icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(width: 8),
-                  Text('[$time]', style: theme.textTheme.bodySmall),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(log.message, style: theme.textTheme.bodyMedium)),
-                ],
-              ),
-            );
-          },
-        ),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: _logs.map((log) {
+          final time = '${log.timestamp.hour.toString().padLeft(2,'0')}:${log.timestamp.minute.toString().padLeft(2,'0')}:${log.timestamp.second.toString().padLeft(2,'0')}';
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(log.icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 8),
+                Text('[$time]', style: theme.textTheme.bodySmall),
+                const SizedBox(width: 8),
+                Expanded(child: Text(log.message, style: theme.textTheme.bodyMedium)),
+              ],
+            ),
+          );
+        }).toList(),
       ),
     );
   }

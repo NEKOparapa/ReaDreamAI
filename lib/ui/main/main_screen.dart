@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../bookshelf/bookshelf_page.dart';
 import '../api/api_management_page.dart';
 import '../settings/settings_page.dart';
@@ -24,7 +25,6 @@ class _MainScreenState extends State<MainScreen> {
     const SettingsPage(),        // 3: 设置页
   ];
 
-  // 导航项数据
   final List<NavigationItem> _navigationItems = const [
     NavigationItem(
       icon: Icon(Icons.book_outlined),
@@ -47,23 +47,35 @@ class _MainScreenState extends State<MainScreen> {
       label: '设置',
     ),
   ];
+  
+  // 定义打开 GitHub 的方法
+  Future<void> _launchGitHubUrl() async {
+    final Uri url = Uri.parse('https://github.com/NEKOparapa/ReaDreamAI'); 
+    if (!await launchUrl(url)) {
+      // 如果无法启动 URL，可以在这里给用户一些提示
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('无法打开链接')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 检查是否运行在安卓设备上
-    final bool isAndroid = Platform.isAndroid;
+    // 根据平台判断是否为桌面端（非Android、iOS），以决定是否显示侧边栏
+    final bool isDesktop = !Platform.isAndroid && !Platform.isIOS;
     
     return Scaffold(
-      body: isAndroid ? _buildAndroidLayout() : _buildDesktopLayout(),
-      bottomNavigationBar: isAndroid ? _buildBottomNavigationBar() : null,
+      body: isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+      bottomNavigationBar: isDesktop ? null : _buildBottomNavigationBar(),
     );
   }
 
-  // 构建桌面端布局（侧边导航栏）
+  // 修改：将原 _buildDesktopLayout 重命名并添加 GitHub 按钮
   Widget _buildDesktopLayout() {
     return Row(
       children: <Widget>[
-        // 侧边导航栏
         NavigationRail(
           selectedIndex: _selectedIndex,
           onDestinationSelected: (int index) {
@@ -72,6 +84,20 @@ class _MainScreenState extends State<MainScreen> {
             });
           },
           labelType: NavigationRailLabelType.all,
+          // 使用 trailing 属性在导航栏底部添加自定义小部件
+          trailing: Expanded(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20.0),
+                child: IconButton(
+                  icon: const Icon(Icons.star_border), // 使用一个代码相关的图标代表GitHub
+                  tooltip: 'GitHub 仓库', // 鼠标悬停时显示提示
+                  onPressed: _launchGitHubUrl, // 点击时调用已有的方法
+                ),
+              ),
+            ),
+          ),
           destinations: _navigationItems.map((item) {
             return NavigationRailDestination(
               icon: item.icon,
@@ -80,9 +106,7 @@ class _MainScreenState extends State<MainScreen> {
             );
           }).toList(),
         ),
-        // 分隔线
         const VerticalDivider(thickness: 1, width: 0.8),
-        // 内容区域
         Expanded(
           child: _pages[_selectedIndex],
         ),
@@ -90,12 +114,10 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  // 构建安卓端布局（底部导航栏）
-  Widget _buildAndroidLayout() {
+  Widget _buildMobileLayout() {
     return _pages[_selectedIndex];
   }
 
-  // 构建底部导航栏（安卓端）
   Widget _buildBottomNavigationBar() {
     return BottomNavigationBar(
       currentIndex: _selectedIndex,
@@ -116,7 +138,6 @@ class _MainScreenState extends State<MainScreen> {
   }
 }
 
-// 导航项数据类
 class NavigationItem {
   final Icon icon;
   final Icon selectedIcon;

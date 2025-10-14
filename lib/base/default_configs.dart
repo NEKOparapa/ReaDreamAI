@@ -64,9 +64,9 @@ const Map<String, dynamic> appDefaultConfigs = {
   'ai_novel_creation_chapter_count': 2, // 章节数
   'ai_novel_creation_words_per_chapter': 1500, // 每章字数
   'ai_novel_creation_title': '艾瑞多之心', // 小说标题
-  // 背景设定预设内容 (保留旧字段以兼容可能存在的直接调用)
+  // 背景设定预设内容
   'ai_novel_creation_background_setting': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。', 
-  // 写作风格预设内容 (保留旧字段以兼容可能存在的直接调用)
+  // 写作风格预设内容
   'ai_novel_creation_writing_style': '采用第三人称有限视角，文笔细腻，注重角色心理活动的描写和环境氛围的渲染。节奏快慢结合，在紧张的动作场面中穿插宁静的思考时刻，语言风格偏向史诗感与诗意。',
   // 主要角色预设内容
   'ai_novel_creation_main_characters': [
@@ -89,28 +89,52 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
 
-  // --- 写作预设 ---
+// --- 写作预设 ---
   // 背景设定
   'writing_background_cards': [
     {
-      'id': 'system_default_background',
-      'name': '预设-艾瑞多世界',
-      'content': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
+      'id': 'system_modern_campus',
+      'name': '现代校园',
+      'content': '故事发生在当代一所综合性大学。校园里有现代化的教学楼、图书馆、实验室和宿舍楼。学生们使用智能手机、笔记本电脑，在食堂、操场、社团活动室之间穿梭。有考试压力、恋爱烦恼、实习就业等现实问题，也有青春的活力与梦想。',
+      'isSystemPreset': true,
+    },
+    {
+      'id': 'system_magic_world',
+      'name': '魔法世界',
+      'content': '这是一个纯粹的魔法世界。魔法学院矗立在云端，学生们骑着飞天扫帚上课。魔杖、咒语、魔药是日常生活的一部分。有光明魔法与黑暗魔法的对抗，古老的预言和神秘的魔法生物。巫师、法师们研究着各种魔法体系，从元素魔法到时空魔法，从召唤术到变形术。',
+      'isSystemPreset': true,
+    },
+    {
+      'id': 'system_cyber_future',
+      'name': '赛博科技',
+      'content': '2077年的超级都市，霓虹灯照亮永不停歇的夜晚。人体改造司空见惯，神经接口直连网络。巨型企业控制一切，街头帮派在阴影中生存。虚拟现实与现实边界模糊，AI与人类共存。飞行汽车穿梭在摩天大楼间，地下城充斥着改造人和黑客。',
       'isSystemPreset': true,
     }
   ],
-  'active_writing_background_card_id': 'system_default_background',
+  'active_writing_background_card_id': null,
 
   // 写作风格
   'writing_style_cards': [
     {
-      'id': 'system_default_style',
-      'name': '预设-史诗与诗意',
-      'content': '采用第三人称有限视角，文笔细腻，注重角色心理活动的描写和环境氛围的渲染。节奏快慢结合，在紧张的动作场面中穿插宁静的思考时刻，语言风格偏向史诗感与诗意。',
+      'id': 'system_blunt_style',
+      'name': '简单直白',
+      'content': '句式简单，语言直白，注重动作和对白，节奏紧凑，对各类器官的描写毫不避讳。',
       'isSystemPreset': true,
-    }
+    },
+    {
+      'id': 'system_extreme_sensory',
+      'name': '夸张狂放',
+      'content': '极度夸张的感官描写，直白粗暴描写之中又带有夸张修辞，将细微的触感、声响、气味都放大到极致，每个场景都充满强烈的视觉冲击和感官直接的刺激，对各类器官的描写毫不避讳。',
+      'isSystemPreset': true,
+    },
+    {
+      'id': 'system_japanese_light_novel',
+      'name': '日式轻小说',
+      'content': '日式轻小说风格，轻松活泼的叙事，大量使用内心独白和吐槽，人物对话充满个性。擅长用夸张的反应和表情描写来增强戏剧效果，节奏明快，画面感强，对各类器官的描写毫不避讳。',
+      'isSystemPreset': true,
+    },
   ],
-  'active_writing_style_card_id': 'system_default_style',
+  'active_writing_style_card_id': null,
 
   // --- 绘图标签设置 ---
   // 绘画风格

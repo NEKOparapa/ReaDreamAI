@@ -62,6 +62,7 @@ flutter:
     - assets/reference_images/
     - assets/drawing_style_example/
     - assets/character_example/
+    - assets/logo/
 
   # 添加字体声明
   fonts:
