@@ -72,7 +72,7 @@ class VideoGenerationTaskChunk {
   final String id;
   final String chapterId;
   final int lineId;
-  final String sourceImagePath; // 关键字段：源图片路径
+  final String sourceImagePath; // 源图片路径
   ChunkStatus status;
 
   VideoGenerationTaskChunk({
@@ -143,7 +143,7 @@ class BookshelfEntry {
     this.translationErrorMessage,
     this.translationCreatedAt,
     this.translationUpdatedAt,
-    // [新增] 视频任务
+    // 视频任务
     this.videoGenerationStatus = TaskStatus.notStarted,
     this.videoGenerationTaskChunks = const [],
     this.videoGenerationErrorMessage,

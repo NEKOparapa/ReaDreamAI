@@ -67,8 +67,14 @@ class LineStructure {
 class ChapterStructure {
   final String id;
   final String title;
+  @JsonKey(name: 'sourceFile') //这个用来灵活映射的，方便更换字段名
   final String sourceFile;
-  final String? chapterSummary; // 新增：章节简述
+  @JsonKey(name: 'chapterSummary')
+  final String? chapterSummary;
+  @JsonKey(name: 'timeSpan')
+  final String? timeSpan;
+  @JsonKey(name: 'settingUpdate')
+  final String? settingUpdate;
   final List<LineStructure> lines;
 
   ChapterStructure({
@@ -76,7 +82,9 @@ class ChapterStructure {
     required this.title,
     required this.sourceFile,
     required this.lines,
-    this.chapterSummary, // 新增
+    this.chapterSummary,
+    this.timeSpan,
+    this.settingUpdate,
   });
 
   /// 为指定行添加插图，并保存包含提示词和登场角色的JSON
@@ -135,7 +143,7 @@ class Book {
   final String cachedPath; // 书籍缓存文件的绝对路径
   final String? coverImagePath; // 封面图片路径字段
 
-  // --- 新增AI小说特有字段 ---
+  // --- AI小说特有字段 ---
   final String? backgroundSetting; // 背景设定
   final String? writingStyle; // 写作风格
 
@@ -152,7 +160,6 @@ class Book {
     required this.cachedPath,
     this.coverImagePath,
 
-    // 新增
     this.backgroundSetting,
     this.writingStyle,
     this.characters,

@@ -348,6 +348,8 @@ class _NovelGenerationProgressPageState
           sourceFile: 'content.txt',
           lines: chapterLines,
           chapterSummary: storyline[i]['chapter_summary'],
+          timeSpan: storyline[i]['time_span'], 
+          settingUpdate: storyline[i]['setting_update'],
         );
         finalChapters.add(newChapter);
         globalLineIdCounter += chapterLines.length;

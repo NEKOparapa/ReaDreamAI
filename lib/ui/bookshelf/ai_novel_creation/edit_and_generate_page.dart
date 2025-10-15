@@ -7,6 +7,7 @@ import '../../../base/config_service.dart';
 import '../../../base/default_configs.dart';
 import '../../../base/log/log_service.dart';
 import '../../../models/character_card_model.dart';
+import '../../../services/task_executor/novel_generator_service.dart';
 import 'novel_generation_progress_page.dart';
 
 class EditAndGeneratePage extends StatefulWidget {
@@ -20,8 +21,11 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   final _configService = ConfigService();
   late Map<String, dynamic> _outline;
   bool _isLoading = true;
+  bool _isRegeneratingChapters = false;
 
   late TextEditingController _titleController;
+
+  final Set<int> _selectedChapterIndices = {};
 
   @override
   void initState() {
@@ -34,6 +38,15 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  void _resyncChapterIds() {
+    final chapters = _outline['storyline'] as List;
+    for (int i = 0; i < chapters.length; i++) {
+      if (chapters[i] is Map<String, dynamic>) {
+        (chapters[i] as Map<String, dynamic>)['chapter_id'] = i + 1;
+      }
+    }
   }
 
   void loadOutlineFromConfig() {
@@ -68,12 +81,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'storyline': loadedStoryline,
       };
     }
+    _resyncChapterIds();
     _titleController.text = _outline['title'];
     if (mounted) setState(() => _isLoading = false);
   }
 
   void navigateToGenerationPage() {
-    // 在导航前，确保所有最新的修改都已保存（尽管我们的实现是实时保存的）
     _configService.modifySetting(
         'ai_novel_creation_title', _titleController.text);
     _outline['title'] = _titleController.text;
@@ -83,7 +96,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         builder: (context) => NovelGenerationProgressPage(outline: _outline),
       ),
     ).then((success) {
-      // 当生成页面关闭后，如果返回的是 true (代表成功)，则关闭当前编辑页，返回书架
       if (success == true && mounted) {
         Navigator.of(context).pop();
       }
@@ -171,10 +183,14 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   void _addChapter() {
     setState(() {
       final newChapter = {
+        "chapter_id": 0,
         "chapter_title": "新章节",
         "chapter_summary": "请填写本章的简要描述...",
+        "time_span": "",
+        "setting_update": "",
       };
       (_outline['storyline'] as List).add(newChapter);
+      _resyncChapterIds();
     });
     _configService.modifySetting(
         'ai_novel_creation_storyline', _outline['storyline']);
@@ -186,11 +202,9 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   void _moveChapter(int oldIndex, int newIndex) {
     setState(() {
       final chapters = _outline['storyline'] as List;
-      // 从列表中移除要移动的章节
       final chapter = chapters.removeAt(oldIndex);
-      // 将章节插入到新位置
       chapters.insert(newIndex, chapter);
-      // 保存更改
+      _resyncChapterIds();
       _configService.modifySetting(
           'ai_novel_creation_storyline', _outline['storyline']);
     });
@@ -216,6 +230,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               onPressed: () {
                 setState(() {
                   (_outline['storyline'] as List).removeAt(index);
+                  _resyncChapterIds();
                 });
                 _configService.modifySetting(
                     'ai_novel_creation_storyline', _outline['storyline']);
@@ -232,11 +247,136 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     );
   }
 
+  void _toggleChapterSelection(int index) {
+    setState(() {
+      if (_selectedChapterIndices.contains(index)) {
+        _selectedChapterIndices.remove(index);
+      } else {
+        _selectedChapterIndices.add(index);
+      }
+    });
+  }
+
+  void _handleRegenerateSelectedChapters() async {
+    if (_selectedChapterIndices.isEmpty) return;
+
+    final modificationPromptController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('重新生成 ${_selectedChapterIndices.length} 个章节'),
+        content: TextField(
+          controller: modificationPromptController,
+          decoration: const InputDecoration(
+            labelText: '修改要求',
+            hintText: '例如：让主角在这里遇到一个老朋友...',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+          maxLines: 3,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (modificationPromptController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('请填写修改要求！')),
+                );
+                return;
+              }
+              Navigator.of(context).pop(true);
+            },
+            child: const Text('开始生成'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (mounted) setState(() => _isRegeneratingChapters = true);
+
+    try {
+      final chapterIdsToRegen = _selectedChapterIndices
+          .map((index) => _outline['storyline'][index]['chapter_id'] as int)
+          .toList();
+
+      final updatedChapters = await NovelGeneratorService.instance
+          .regenerateChapterContentInOutline(
+        currentOutline: _outline,
+        chapterIdsToRegenerate: chapterIdsToRegen,
+        modificationPrompt: modificationPromptController.text,
+      );
+
+      setState(() {
+        for (var updatedChapter in updatedChapters) {
+          final chapterId = updatedChapter['chapter_id'];
+          final indexToUpdate = (_outline['storyline'] as List)
+              .indexWhere((ch) => ch['chapter_id'] == chapterId);
+
+          if (indexToUpdate != -1) {
+            final oldChapter = _outline['storyline'][indexToUpdate] as Map<String, dynamic>;
+            _outline['storyline'][indexToUpdate] = {
+              ...oldChapter,
+              ...updatedChapter,
+            };
+          }
+        }
+        _selectedChapterIndices.clear();
+      });
+
+      _configService.modifySetting(
+          'ai_novel_creation_storyline', _outline['storyline']);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('所选章节已成功重新生成！')),
+        );
+      }
+    } catch (e, s) {
+      LogService.instance.error('重新生成章节失败', e, s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('操作失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRegeneratingChapters = false);
+      }
+      modificationPromptController.dispose();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('故事大纲'),
+        actions: [
+          if (_selectedChapterIndices.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: TextButton.icon(
+                icon: _isRegeneratingChapters
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2.5),
+                      )
+                    : const Icon(Icons.auto_fix_high_rounded),
+                label: const Text('重新生成'),
+                onPressed: _isRegeneratingChapters
+                    ? null
+                    : _handleRegenerateSelectedChapters,
+              ),
+            ),
+        ],
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
@@ -336,74 +476,138 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             int idx = entry.key;
             var chapter = entry.value;
             final storylineList = _outline['storyline'] as List;
+            final isSelected = _selectedChapterIndices.contains(idx);
 
             return Card(
-              key: ObjectKey(chapter), // 为Card提供一个唯一的Key
+              key: ObjectKey(chapter),
               margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: CircleAvatar(child: Text('${idx + 1}')),
-                      title: TextFormField(
-                        initialValue: chapter['chapter_title'] ?? '',
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                        decoration:
-                            const InputDecoration.collapsed(hintText: '章节标题'),
-                        onChanged: (val) {
-                          _outline['storyline'][idx]['chapter_title'] = val;
-                          _configService.modifySetting(
-                              'ai_novel_creation_storyline',
-                              _outline['storyline']);
-                        },
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.arrow_upward),
-                            tooltip: '上移',
-                            onPressed:
-                                idx == 0 ? null : () => _moveChapter(idx, idx - 1),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.arrow_downward),
-                            tooltip: '下移',
-                            onPressed: idx == storylineList.length - 1
-                                ? null
-                                : () => _moveChapter(idx, idx + 1),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline),
-                            tooltip: '删除本章',
-                            onPressed: () => _deleteChapter(idx),
-                          ),
-                        ],
-                      ),
-                      contentPadding: const EdgeInsets.only(left: 4),
-                    ),
-                    const Divider(height: 24, endIndent: 12),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12.0),
-                      child: TextFormField(
-                        initialValue: chapter['chapter_summary'] ?? '',
-                        decoration: const InputDecoration(
-                          labelText: '章节简述',
-                          border: OutlineInputBorder(),
-                          filled: true,
+              color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.3) : null,
+              shape: isSelected
+                  ? RoundedRectangleBorder(
+                      side: BorderSide(
+                          color: theme.colorScheme.primary, width: 2.0),
+                      borderRadius: BorderRadius.circular(12.0),
+                    )
+                  : null,
+              child: InkWell(
+                onTap: () => _toggleChapterSelection(idx),
+                borderRadius: BorderRadius.circular(12.0),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: CircleAvatar(child: Text('${idx + 1}')),
+                        title: TextFormField(
+                          initialValue: chapter['chapter_title'] ?? '',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          decoration:
+                              const InputDecoration.collapsed(hintText: '章节标题'),
+                          onChanged: (val) {
+                            _outline['storyline'][idx]['chapter_title'] = val;
+                            _configService.modifySetting(
+                                'ai_novel_creation_storyline',
+                                _outline['storyline']);
+                          },
                         ),
-                        maxLines: 3,
-                        onChanged: (val) {
-                          _outline['storyline'][idx]['chapter_summary'] = val;
-                          _configService.modifySetting(
-                              'ai_novel_creation_storyline',
-                              _outline['storyline']);
-                        },
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Checkbox(
+                              value: isSelected,
+                              onChanged: (bool? value) {
+                                _toggleChapterSelection(idx);
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_upward),
+                              tooltip: '上移',
+                              onPressed:
+                                  idx == 0 ? null : () => _moveChapter(idx, idx - 1),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_downward),
+                              tooltip: '下移',
+                              onPressed: idx == storylineList.length - 1
+                                  ? null
+                                  : () => _moveChapter(idx, idx + 1),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline),
+                              tooltip: '删除本章',
+                              onPressed: () => _deleteChapter(idx),
+                            ),
+                          ],
+                        ),
+                        contentPadding: const EdgeInsets.only(left: 4),
                       ),
-                    ),
-                  ],
+                      const Divider(height: 24, endIndent: 12),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            TextFormField(
+                              initialValue: chapter['chapter_summary'] ?? '',
+                              decoration: const InputDecoration(
+                                labelText: '章节简述',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                              ),
+                              maxLines: 3,
+                              onChanged: (val) {
+                                _outline['storyline'][idx]['chapter_summary'] = val;
+                                _configService.modifySetting(
+                                    'ai_novel_creation_storyline',
+                                    _outline['storyline']);
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              initialValue: chapter['time_span'] ?? '',
+                              style: theme.textTheme.bodyMedium,
+                              decoration: InputDecoration(
+                                labelText: '时间跨度',
+                                hintText: '例如: 半天内、黄昏到午夜...',
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                isDense: true,
+                              ),
+                              maxLines: 1,
+                              onChanged: (val) {
+                                _outline['storyline'][idx]['time_span'] = val;
+                                _configService.modifySetting(
+                                    'ai_novel_creation_storyline',
+                                    _outline['storyline']);
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              initialValue: chapter['setting_update'] ?? '',
+                              style: theme.textTheme.bodyMedium,
+                              decoration: InputDecoration(
+                                labelText: '设定更新',
+                                hintText: '例如: 新角色[某某]登场...',
+                                border: const OutlineInputBorder(),
+                                filled: true,
+                                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                isDense: true,
+                              ),
+                              maxLines: 2,
+                              onChanged: (val) {
+                                _outline['storyline'][idx]['setting_update'] = val;
+                                _configService.modifySetting(
+                                    'ai_novel_creation_storyline',
+                                    _outline['storyline']);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -462,7 +666,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       }
 
       return Card(
-        key: ObjectKey(char), // 同样，为角色卡片也加上Key，是个好习惯
+        key: ObjectKey(char),
         margin: const EdgeInsets.symmetric(vertical: 8),
         child: ExpansionTile(
           leading: const Icon(Icons.person_outline),
