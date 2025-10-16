@@ -7,7 +7,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/book.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../base/config_service.dart';
-import '../../base/log/log_service.dart'; 
+import '../../base/log/log_service.dart';
 
 /// 缓存管理器
 class CacheManager {
@@ -149,11 +149,11 @@ class CacheManager {
     }
     return subDir;
   }
-
-  /// [新增] 更新书籍指定范围内的文本内容
+  
+  /// 更新书籍指定范围内的文本内容
   /// 此方法会替换指定章节中，从 startLineId 到 endLineId 之间的所有行
   /// 然后用 newContent 生成新的行来代替。
-  /// 最重要的是，它会重新遍历整本书，为每一行分配一个新的、连续的ID。
+  /// 重新遍历整本书，为每一行分配一个新的、连续的ID。
   Future<Book?> updateTextInRange({
     required String bookId,
     required String chapterId,
@@ -255,6 +255,95 @@ class CacheManager {
 
     } catch (e, s) {
       LogService.instance.error('更新书籍 $bookId 文本失败', e, s);
+      return null;
+    }
+  }
+
+  /// 更新指定章节的标题和全部内容
+  /// 此方法会替换目标章节的标题和所有行，同时为了保持ID连续性，会重新为整本书的行分配ID。
+  Future<Book?> updateChapterContent({
+    required String bookId,
+    required String chapterId,
+    required String newTitle,
+    required String newContent,
+  }) async {
+    final book = await loadBookDetail(bookId);
+    if (book == null) return null;
+
+    try {
+      final newChapters = <ChapterStructure>[];
+      int globalLineIdCounter = 0;
+
+      for (final oldChapter in book.chapters) {
+        final List<LineStructure> newLinesForChapter;
+        final String updatedTitle;
+
+        if (oldChapter.id == chapterId) {
+          // 是目标章节：使用新标题，并根据新内容生成全新的行列表
+          updatedTitle = newTitle;
+          newLinesForChapter = [];
+          final contentLines = newContent.split('\n');
+          for (final textLine in contentLines) {
+            // 过滤掉纯空白行
+            if (textLine.trim().isNotEmpty) {
+              newLinesForChapter.add(
+                LineStructure(
+                  id: globalLineIdCounter++,
+                  text: textLine,
+                  originalContent: textLine,
+                  sourceInfo: 'rewritten', // 标记为重写
+                  // 其他字段使用默认空值
+                  illustrationPaths: [],
+                  videoPaths: [],
+                  sceneDescription: null,
+                  translatedText: null,
+                ),
+              );
+            }
+          }
+        } else {
+          // 不是目标章节：沿用旧标题，并为旧行重新分配ID
+          updatedTitle = oldChapter.title;
+          newLinesForChapter = oldChapter.lines.map((line) {
+            // 复制旧行，但赋予新的连续ID
+            return LineStructure(
+              id: globalLineIdCounter++,
+              text: line.text,
+              sourceInfo: line.sourceInfo,
+              originalContent: line.originalContent,
+              illustrationPaths: line.illustrationPaths,
+              videoPaths: line.videoPaths,
+              sceneDescription: line.sceneDescription,
+              translatedText: line.translatedText,
+            );
+          }).toList();
+        }
+        
+        // 使用更新后的信息创建新的章节对象
+        newChapters.add(ChapterStructure(
+          id: oldChapter.id,
+          title: updatedTitle,
+          sourceFile: oldChapter.sourceFile,
+          chapterSummary: oldChapter.chapterSummary,
+          timeSpan: oldChapter.timeSpan,
+          settingUpdate: oldChapter.settingUpdate,
+          lines: newLinesForChapter,
+        ));
+      }
+
+      // 用更新后的章节列表创建新的书籍对象
+      final updatedBook = Book(
+        id: book.id, title: book.title, fileType: book.fileType, originalPath: book.originalPath,
+        cachedPath: book.cachedPath, coverImagePath: book.coverImagePath, backgroundSetting: book.backgroundSetting,
+        writingStyle: book.writingStyle, characters: book.characters, chapters: newChapters,
+      );
+
+      // 保存更新后的书籍到缓存并返回
+      await saveBookDetail(updatedBook);
+      return updatedBook;
+
+    } catch (e, s) {
+      LogService.instance.error('更新章节 $chapterId in book $bookId 失败', e, s);
       return null;
     }
   }

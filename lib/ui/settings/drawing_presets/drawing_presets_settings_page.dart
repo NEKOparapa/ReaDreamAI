@@ -19,6 +19,17 @@ class DrawingTagsSettingsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.only(top: 8.0),
         children: [
+          // 生图设置卡片
+          SettingEntryCard(
+            icon: Icons.image_outlined,
+            title: '生图设置',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ImageGenSettingsPage()),
+              );
+            },
+          ),
           SettingEntryCard(
             icon: Icons.style_outlined,
             title: '绘画风格',
@@ -39,9 +50,25 @@ class DrawingTagsSettingsPage extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const TagCategoryPage(
-                    title: '追加固定的绘画标签',
+                    title: '追加正面的绘画标签',
                     cardsConfigKey: 'drawing_other_tags',
                     activeIdConfigKey: 'active_drawing_other_tag_id',
+                  ),
+                ),
+              );
+            },
+          ),
+          SettingEntryCard(
+            icon: Icons.mood_bad_outlined,
+            title: '负面绘画标签',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TagCategoryPage(
+                    title: '负面标签',
+                    cardsConfigKey: 'drawing_negative_tags',
+                    activeIdConfigKey: 'active_drawing_negative_tag_id',
                   ),
                 ),
               );
@@ -55,17 +82,6 @@ class DrawingTagsSettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const PromptSettingsPage()),
-              );
-            },
-          ),
-          // 生图设置卡片
-          SettingEntryCard(
-            icon: Icons.image_outlined,
-            title: '生图设置',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ImageGenSettingsPage()),
               );
             },
           ),

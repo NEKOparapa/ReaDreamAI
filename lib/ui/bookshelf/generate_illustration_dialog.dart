@@ -1,6 +1,7 @@
 // lib/ui/bookshelf/generate_illustration_dialog.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:io';
 import '../../base/config_service.dart';
 import '../../models/book.dart';
@@ -28,6 +29,10 @@ class GenerateIllustrationDialog extends StatefulWidget {
 class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog> {
   final ConfigService _configService = ConfigService();
 
+  // 控制器
+  late final TextEditingController _scenesController;
+  late final TextEditingController _imagesController;
+
   // 角色设定
   List<CharacterCard> _characterCards = [];
   List<String> _selectedCharacterIds = [];
@@ -54,7 +59,18 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
   void initState() {
     super.initState();
     _loadConfigurations();
+    _setupControllers();
     _loadDataAndCalculate();
+  }
+
+  @override
+  void dispose() {
+    // 释放控制器资源
+    _scenesController.removeListener(_onScenesChanged);
+    _imagesController.removeListener(_onImagesChanged);
+    _scenesController.dispose();
+    _imagesController.dispose();
+    super.dispose();
   }
 
   void _loadConfigurations() {
@@ -99,6 +115,37 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
           .toList();
       _selectedOtherTagId = activeOtherTagId;
     });
+  }
+
+  /// 初始化并设置控制器和监听器
+  void _setupControllers() {
+    _scenesController = TextEditingController(text: _scenesPerChapter.toString());
+    _imagesController = TextEditingController(text: _imagesPerScene.toString());
+
+    _scenesController.addListener(_onScenesChanged);
+    _imagesController.addListener(_onImagesChanged);
+  }
+  
+  /// 场景数输入框变化监听
+  void _onScenesChanged() {
+    final value = int.tryParse(_scenesController.text);
+    if (value != null && value > 0 && value != _scenesPerChapter) {
+      setState(() {
+        _scenesPerChapter = value;
+      });
+      _recalculateEstimation();
+    }
+  }
+
+  /// 图片数输入框变化监听
+  void _onImagesChanged() {
+    final value = int.tryParse(_imagesController.text);
+    if (value != null && value > 0 && value != _imagesPerScene) {
+      setState(() {
+        _imagesPerScene = value;
+      });
+      _recalculateEstimation();
+    }
   }
 
   /// 动态计算预计图片数量
@@ -359,43 +406,33 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
     );
   }
 
-  // 构建数字步进器控件
-  Widget _buildNumberStepperControl({
+  // [MODIFIED] 构建新的数字输入框控件
+  Widget _buildNumberInputControl({
     required String title,
-    required int value,
-    required ValueChanged<int> onChanged,
+    required TextEditingController controller,
   }) {
     return Row(
       children: [
         Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
         const Spacer(),
-        IconButton(
-          icon: const Icon(Icons.remove, size: 20),
-          onPressed: value > 1 ? () => onChanged(value - 1) : null,
-          style: IconButton.styleFrom(
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-        ),
         SizedBox(
-            width: 40,
-            child: Text(
-              value.toString(),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            )),
-        IconButton(
-          icon: const Icon(Icons.add, size: 20),
-          onPressed: () => onChanged(value + 1),
-          style: IconButton.styleFrom(
-            backgroundColor:
-                Theme.of(context).colorScheme.surfaceContainerHighest,
+          width: 80, // 限制输入框宽度
+          child: TextField(
+            controller: controller,
+            textAlign: TextAlign.center,
+            keyboardType: TextInputType.number,
+            // 只允许输入数字
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              isDense: true,
+            ),
           ),
         ),
       ],
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -455,22 +492,16 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
                               ],
                             ),
                             const Divider(height: 24),
-                            _buildNumberStepperControl(
+                            // [MODIFIED] 使用新的输入框控件
+                            _buildNumberInputControl(
                               title: '每章节场景数',
-                              value: _scenesPerChapter,
-                              onChanged: (newValue) {
-                                setState(() => _scenesPerChapter = newValue);
-                                _recalculateEstimation();
-                              },
+                              controller: _scenesController,
                             ),
                             const SizedBox(height: 8),
-                            _buildNumberStepperControl(
+                            // [MODIFIED] 使用新的输入框控件
+                            _buildNumberInputControl(
                               title: '每场景图片数',
-                              value: _imagesPerScene,
-                              onChanged: (newValue) {
-                                setState(() => _imagesPerScene = newValue);
-                                _recalculateEstimation();
-                              },
+                              controller: _imagesController,
                             ),
                           ],
                         ),
@@ -499,11 +530,9 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
                         ),
                       )
                     else
-                      // 使用 Wrap 布局代替水平 ListView
-                      // 这将使卡片在空间不足时自动换行，避免水平溢出
                       Wrap(
-                        spacing: 12.0, // 水平间距
-                        runSpacing: 12.0, // 垂直间距（换行后）
+                        spacing: 12.0,
+                        runSpacing: 12.0,
                         children: _characterCards.map((card) => _buildCharacterCard(card)).toList(),
                       ),
                     const SizedBox(height: 24),
@@ -529,7 +558,6 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
                         ),
                       )
                     else
-                      // 同样使用 Wrap 布局
                       Wrap(
                         spacing: 12.0,
                         runSpacing: 12.0,

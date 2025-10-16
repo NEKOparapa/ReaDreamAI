@@ -125,7 +125,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
           children: [
             const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
             const SizedBox(width: 16),
-            Text(processingMessage),
+            Expanded(child: Text(processingMessage, overflow: TextOverflow.ellipsis)),
           ],
         ),
         duration: const Duration(days: 1),
@@ -144,6 +144,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
         messenger.showSnackBar(SnackBar(content: Text('操作失败: $e'), backgroundColor: Colors.red));
       }
     } finally {
+      messenger.hideCurrentSnackBar();
       _isTaskRunning = false;
     }
   }
@@ -189,8 +190,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
       }
     }, '正在处理文本...');
   }
-
-
   //  删除插图逻辑
   Future<void> _deleteIllustration(String imagePath, LineStructure line) async {
     final confirmed = await showDialog<bool>(
@@ -550,7 +549,76 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ],
     );
   }
+  /// 显示章节重写要求对话框
+  Future<void> _showRewriteChapterDialog() async {
+    // 1. 检查书籍类型
+    if (_currentBook.fileType != 'txt') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('只有 TXT 格式的书籍才支持整章重写。'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
 
+    final requirementController = TextEditingController();
+    final userRequirement = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('重写本章'),
+        content: TextField(
+          controller: requirementController,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: '重写要求',
+            hintText: '例如：增加更多心理描写，让节奏更紧张...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(requirementController.text),
+            child: const Text('开始重写'),
+          ),
+        ],
+      ),
+    );
+
+    if (userRequirement != null && userRequirement.trim().isNotEmpty) {
+      await _performChapterRewrite(userRequirement);
+    }
+  }
+
+  /// 执行章节重写
+  Future<void> _performChapterRewrite(String requirement) async {
+    final currentChapter = _currentBook.chapters[_currentChapterIndex];
+    final originalContent = currentChapter.lines.map((l) => l.text).join('\n');
+
+    await _handleGenericTask(() async {
+      // 调用执行器完成AI重写
+      final result = await _textModificationExecutor.rewriteChapter(
+        originalContent: originalContent,
+        userRequirement: requirement,
+      );
+
+      // 使用新的缓存管理器方法更新数据
+      final updatedBook = await CacheManager().updateChapterContent(
+        bookId: _currentBook.id,
+        chapterId: currentChapter.id,
+        newTitle: result.newTitle,
+        newContent: result.newContent,
+      );
+
+      if (updatedBook != null && mounted) {
+        setState(() {
+          _currentBook = updatedBook;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('章节重写成功！')));
+      } else {
+        throw Exception("未能成功更新书籍内容。");
+      }
+    }, '正在重写章节，可能需要几分钟...');
+  }
 
   @override
   void dispose() {
@@ -675,7 +743,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
                 ),
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 56, right: 96),
+                    // 调整内边距以适应右侧更多的按钮
+                    padding: const EdgeInsets.only(left: 56, right: 144),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -707,6 +776,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // ✨ MODIFICATION: 交换了 "目录" 和 "重写本章" 按钮的位置
                       Builder(builder: (context) {
                         return IconButton(
                           icon: const Icon(Icons.menu_book_outlined),
@@ -714,6 +784,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
                           onPressed: () => Scaffold.of(context).openEndDrawer(),
                         );
                       }),
+                      IconButton(
+                        icon: const Icon(Icons.auto_fix_high_outlined),
+                        tooltip: 'AI重写本章',
+                        onPressed: _showRewriteChapterDialog,
+                      ),
                       IconButton(
                         icon: const Icon(Icons.settings_outlined),
                         tooltip: '阅读设置',
@@ -729,7 +804,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
     );
   }
-
   // 构建阅读器主体
   Widget _buildReaderBody() {
     if (_currentBook.chapters.isEmpty) {
@@ -890,6 +964,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
 // 设置面板
 class _ReaderSettingsPanel extends StatefulWidget {
+
   final _ReaderTheme initialTheme;
   final double initialFontSize;
   final double initialLineHeight;

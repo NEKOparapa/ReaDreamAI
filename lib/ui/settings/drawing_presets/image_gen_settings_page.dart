@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../base/config_service.dart';
 import '../../../base/default_configs.dart';
-import '../widgets/settings_widgets.dart'; // 导入新的组件
+import '../widgets/settings_widgets.dart';
 
 class ImageGenSettingsPage extends StatefulWidget {
   const ImageGenSettingsPage({super.key});
@@ -17,6 +17,9 @@ class _ImageGenSettingsPageState extends State<ImageGenSettingsPage> {
   final ConfigService _configService = ConfigService();
 
   late final TextEditingController _tokensController;
+  late final TextEditingController _scenesController;
+  late final TextEditingController _imagesController;
+  
   late int _scenesPerChapter;
   late int _imagesPerScene;
   late String _selectedSize;
@@ -25,17 +28,41 @@ class _ImageGenSettingsPageState extends State<ImageGenSettingsPage> {
   @override
   void initState() {
     super.initState();
-    _tokensController = TextEditingController(
-      text: _configService.getSetting('image_gen_tokens', appDefaultConfigs['image_gen_tokens']).toString(),
-    );
+    // 加载配置
     _scenesPerChapter = _configService.getSetting('image_gen_scenes_per_chapter', appDefaultConfigs['image_gen_scenes_per_chapter']);
     _imagesPerScene = _configService.getSetting('image_gen_images_per_scene', appDefaultConfigs['image_gen_images_per_scene']);
     _selectedSize = _configService.getSetting('image_gen_size', appDefaultConfigs['image_gen_size']);
 
+    // 初始化控制器
+    _tokensController = TextEditingController(
+      text: _configService.getSetting('image_gen_tokens', appDefaultConfigs['image_gen_tokens']).toString(),
+    );
+    _scenesController = TextEditingController(text: _scenesPerChapter.toString());
+    _imagesController = TextEditingController(text: _imagesPerScene.toString());
+
+    // 添加监听器
     _tokensController.addListener(() {
       final value = int.tryParse(_tokensController.text);
       if (value != null) {
         _configService.modifySetting<int>('image_gen_tokens', value);
+      }
+    });
+
+    _scenesController.addListener(() {
+      final value = int.tryParse(_scenesController.text);
+      // 检查值是否有效且已更改
+      if (value != null && value > 0 && value != _scenesPerChapter) {
+        setState(() => _scenesPerChapter = value);
+        _configService.modifySetting<int>('image_gen_scenes_per_chapter', value);
+      }
+    });
+
+    _imagesController.addListener(() {
+      final value = int.tryParse(_imagesController.text);
+      // 检查值是否有效且已更改
+      if (value != null && value > 0 && value != _imagesPerScene) {
+        setState(() => _imagesPerScene = value);
+        _configService.modifySetting<int>('image_gen_images_per_scene', value);
       }
     });
   }
@@ -43,39 +70,20 @@ class _ImageGenSettingsPageState extends State<ImageGenSettingsPage> {
   @override
   void dispose() {
     _tokensController.dispose();
+    _scenesController.dispose();
+    _imagesController.dispose();
     super.dispose();
-  }
-
-  Widget _buildNumberStepperControl({
-    required int value,
-    required ValueChanged<int> onChanged,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          icon: Icon(Icons.remove, size: 20),
-          onPressed: value > 1 ? () => onChanged(value - 1) : null,
-          style: IconButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-        ),
-        SizedBox(width: 16),
-        Text(value.toString(), style: Theme.of(context).textTheme.titleMedium),
-        SizedBox(width: 16),
-        IconButton(
-          icon: Icon(Icons.add, size: 20),
-          onPressed: () => onChanged(value + 1),
-          style: IconButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-          ),
-        ),
-      ],
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // 统一样式，避免重复代码
+    final inputDecoration = InputDecoration(
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      isDense: true,
+    );
+
     return SettingsPageLayout(
       title: '生图设置',
       children: [
@@ -92,10 +100,7 @@ class _ImageGenSettingsPageState extends State<ImageGenSettingsPage> {
                   textAlign: TextAlign.center,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
+                  decoration: inputDecoration.copyWith(
                     hintText: '${appDefaultConfigs['image_gen_tokens']}',
                   ),
                 ),
@@ -104,23 +109,30 @@ class _ImageGenSettingsPageState extends State<ImageGenSettingsPage> {
             SettingsCard(
               title: '每章节场景数',
               subtitle: 'AI 从每个章节中提取的场景数量',
-              control: _buildNumberStepperControl(
-                value: _scenesPerChapter,
-                onChanged: (newValue) {
-                  setState(() => _scenesPerChapter = newValue);
-                  _configService.modifySetting<int>('image_gen_scenes_per_chapter', newValue);
-                },
+              // 直接使用 TextField
+              control: SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _scenesController,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: inputDecoration,
+                ),
               ),
             ),
             SettingsCard(
               title: '每场景图片数',
               subtitle: '为每个场景描述生成的图片数量',
-              control: _buildNumberStepperControl(
-                value: _imagesPerScene,
-                onChanged: (newValue) {
-                  setState(() => _imagesPerScene = newValue);
-                  _configService.modifySetting<int>('image_gen_images_per_scene', newValue);
-                },
+              control: SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _imagesController,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: inputDecoration,
+                ),
               ),
             ),
           ],

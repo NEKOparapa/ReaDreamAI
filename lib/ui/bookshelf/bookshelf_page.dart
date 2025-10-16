@@ -716,7 +716,16 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       Colors.indigo,
       Colors.brown,
       Colors.blueGrey,
-      Colors.redAccent
+      Colors.red,
+      Colors.green,
+      Colors.orange,
+      Colors.blue,
+      Colors.pink,
+      Colors.amber,
+      Colors.cyan,
+      Colors.deepOrange,
+      Colors.lightGreen,
+      Colors.purple,
     ];
     final color = colors[entry.id.hashCode % colors.length];
 

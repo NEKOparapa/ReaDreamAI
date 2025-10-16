@@ -179,7 +179,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     },
     {
       'id': 'system_ghibli_style',
-      'name': '吉普力',
+      'name': '吉卜力',
       'content': 'Studio Ghibli style, Hayao Miyazaki style, Ghibli anime',
       "exampleImage": 'assets/drawing_style_example/ghibli_style.jpeg',
       'isSystemPreset': true,
@@ -201,6 +201,18 @@ const Map<String, dynamic> appDefaultConfigs = {
   ],
 
   'active_drawing_style_tag_id': 'system_anime_style', 
+
+  // 负面标签
+  'drawing_negative_tags': [
+    {
+      'id': 'system_negative',
+      'name': '通用负面',
+      'content': 'worst quality, bad quality, worst detail, bad anatomy, bad hands, extra digits, fewer, extra, missing, error, watermark, unfinished, displeasing, chromatic aberration, signature, artistic error, username, scan',
+      'isSystemPreset': true,
+    }
+  ],
+  'active_drawing_negative_tag_id': 'system_negative', // 负面标签通常默认激活
+
 
   // 其他标签
   'drawing_other_tags': [

@@ -419,7 +419,6 @@ class SingleVideoExecutor {
     }
   }
 }
-
 // ==================================================================
 // 文本改写/删除执行器
 // ==================================================================
@@ -430,6 +429,7 @@ class TextModificationExecutor {
   final LlmPromptBuilder _llmPromptBuilder = LlmPromptBuilder(ConfigService());
   final LlmService _llmService = LlmService.instance;
   final ConfigService _configService = ConfigService();
+  final LogService _logger = LogService.instance;
 
   Future<String> rewriteText({
     required String precedingText,
@@ -447,5 +447,117 @@ class TextModificationExecutor {
     final llmResponse = await _llmService.requestCompletion(
         systemPrompt: systemPrompt, messages: messages, apiConfig: activeApi);
     return llmResponse.trim();
+  }
+
+  /// 重写整个章节
+  Future<({String newTitle, String newContent})> rewriteChapter({
+    required String originalContent,
+    required String userRequirement,
+  }) async {
+    final activeApi = _configService.getActiveLanguageApi();
+
+    // 1. 计算段落数
+    final int paragraphCount = (originalContent.length / 1500).ceil();
+    _logger.info('[章节重写] 原始字数: ${originalContent.length}, 计划生成 $paragraphCount 个段落。');
+
+    // 2. 获取写作规划 (带重试机制)
+    _logger.info('[章节重写] 正在向AI请求写作规划...');
+    String newTitle = '';
+    List<String> writingPlan = [];
+    const maxPlanRetries = 2; // 总共尝试2次 (1次初始 + 1次重试)
+
+    for (int i = 0; i < maxPlanRetries; i++) {
+      try {
+        final (planSys, planMsg) = _llmPromptBuilder.buildForChapterRewritePlan(
+          originalContent: originalContent,
+          userRequirement: userRequirement,
+          paragraphCount: paragraphCount,
+        );
+        final planResponse = await _llmService.requestCompletion(
+            systemPrompt: planSys, messages: planMsg, apiConfig: activeApi);
+
+        String jsonString = planResponse;
+        final match = RegExp(r'```json\s*([\s\S]+?)\s*```').firstMatch(planResponse);
+        if (match != null) {
+          jsonString = match.group(1)!;
+        }
+        final decoded = jsonDecode(jsonString);
+        newTitle = decoded['new_title'] as String;
+        writingPlan = (decoded['writing_plan'] as List).cast<String>();
+
+        if (writingPlan.length != paragraphCount) {
+          _logger.info('[章节重写] AI返回的规划段落数 (${writingPlan.length}) 与请求数 ($paragraphCount) 不符，将按返回的规划执行。');
+        }
+        _logger.info('[章节重写] 获取规划成功。新标题: "$newTitle", 大纲共 ${writingPlan.length} 条。');
+        break; // 成功，跳出重试循环
+      } catch (e, s) {
+        _logger.error('[章节重写] 解析写作规划失败 (尝试 ${i + 1}/$maxPlanRetries)。原始响应：$e', e, s);
+        if (i == maxPlanRetries - 1) { // 如果是最后一次尝试
+          throw Exception('解析写作规划失败，请检查AI响应。');
+        }
+      }
+    }
+    
+    // 如果规划为空，则无法继续
+    if (writingPlan.isEmpty) {
+      throw Exception('写作规划为空，无法继续重写章节。');
+    }
+
+    // 3. 线性续写 (带重试机制)
+    final rewrittenContent = StringBuffer();
+    const maxContentRetries = 3; // 总共尝试3次 (1次初始 + 2次重试)
+
+    for (int i = 0; i < writingPlan.length; i++) {
+      _logger.info('[章节重写] 正在续写第 ${i + 1}/${writingPlan.length} 段...');
+      
+      bool success = false;
+      for (int j = 0; j < maxContentRetries; j++) {
+        try {
+          final (contSys, contMsg) = _llmPromptBuilder.buildForChapterContinuation(
+            previouslyWrittenText: rewrittenContent.toString(),
+            fullWritingPlan: writingPlan, // 传入完整大纲
+            currentPlanIndex: i,         // 传入当前索引
+          );
+          final paragraphResponse = await _llmService.requestCompletion(
+              systemPrompt: contSys, messages: contMsg, apiConfig: activeApi);
+
+          final match = RegExp(r'<textarea>([\s\S]*?)</textarea>', multiLine: true).firstMatch(paragraphResponse);
+          String content;
+
+          if (match != null && match.group(1) != null) {
+            content = match.group(1)!.trim();
+          } else {
+            // 备用方案：如果未找到标签，则使用原始响应并清理可能的残留标签
+            _logger.warn('[章节重写] LLM 未按预期的 <textarea> 格式返回，将使用原始响应。');
+            content = paragraphResponse.trim().replaceAll(RegExp(r'</?textarea>', multiLine: true), '').trim();
+          }
+
+          if (content.isEmpty) {
+            throw Exception("AI返回了空内容或解析后内容为空。");
+          }
+          
+          rewrittenContent.writeln(content);
+
+          _logger.info('[章节重写] 第 ${i + 1} 段完成。当前总字数: ${rewrittenContent.length}');
+          success = true;
+          break; // 成功，跳出内部重试循环
+
+        } catch (e, s) {
+          _logger.error('[章节重写] 续写第 ${i + 1} 段失败 (尝试 ${j + 1}/$maxContentRetries)。', e, s);
+          if (j == maxContentRetries - 1) { // 如果是最后一次尝试
+            throw Exception('续写章节失败，请重试。');
+          }
+        }
+      }
+      if (!success) {
+          // 如果一个段落最终失败，则停止整个过程 (理论上不会执行到这里，因为内循环会抛出异常)
+          throw Exception('续写章节时发生严重错误。');
+      }
+    }
+
+
+    // 4. 返回结果
+    _logger.success('[章节重写] 全部段落已完成。');
+    return (newTitle: newTitle, newContent: rewrittenContent.toString().trim());
   }
 }

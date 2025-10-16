@@ -68,6 +68,7 @@ class ConfigService {
     const List<String> presetListKeys = [
       'prompt_cards',
       'drawing_style_tags',
+      'drawing_negative_tags',
       'drawing_other_tags',
       'drawing_character_cards',
       'writing_background_cards', // 新增
