@@ -65,12 +65,13 @@ class LlmService {
       allMessages.add({'role': 'system', 'content': systemPrompt});
     }
     // 使用经过处理的消息列表
-    allMessages.addAll(processedMessages); 
+    allMessages.addAll(processedMessages);
 
     // 构造请求体并进行 JSON 编码
     final body = jsonEncode({
       'model': apiConfig.model,
       'messages': allMessages,
+      'temperature': 1.3,
       // 可在此处添加 temperature, top_p 等更多参数
     });
 
@@ -122,36 +123,41 @@ class LlmService {
       'Content-Type': 'application/json',
     };
 
-    // Gemini API 没有独立的 system prompt 字段，需要将其内容附加到第一条 user message 前
-    final processedMessages = List<Map<String, String>>.from(messages);
-    if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      final firstUserMessageIndex =
-          processedMessages.indexWhere((m) => m['role'] == 'user');
-      if (firstUserMessageIndex != -1) {
-        final userMessage = processedMessages[firstUserMessageIndex];
-        processedMessages[firstUserMessageIndex] = {
-          'role': 'user',
-          'content': '$systemPrompt\n\n${userMessage['content']}',
-        };
-      } else {
-        // 如果对话历史中没有 user message，则创建一个新的
-        processedMessages.insert(0, {'role': 'user', 'content': systemPrompt});
-      }
-    }
-    
     // 将标准消息格式转换为 Google Gemini 的 'contents' 格式
-    final contents = processedMessages.map((msg) {
+    // 注意: Gemini API 要求 user 和 model 角色交替出现，且不能有连续的相同角色消息
+    final contents = messages.map((msg) {
       final role = msg['role'] == 'assistant' ? 'model' : 'user';
       return {
         'role': role,
-        'parts': [{'text': msg['content']}]
+        'parts': [
+          {'text': msg['content']}
+        ]
       };
     }).toList();
 
+    // 构建请求体
+    final bodyMap = <String, dynamic>{
+      'contents': contents,
+      'generationConfig': {
+        'temperature': 1.3,
+        // 可以在此处添加 topP, topK 等其他生成参数
+      },
+    };
 
-    final body = jsonEncode({'contents': contents});
+    // 根据官方示例，如果存在 systemPrompt，则添加 system_instruction 字段
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      bodyMap['system_instruction'] = {
+        'parts': [
+          {'text': systemPrompt}
+        ]
+      };
+    }
+
+    // 将 Map 编码为 JSON 字符串
+    final body = jsonEncode(bodyMap);
 
     LogService.instance.info('正在使用 Google 格式向 ${apiConfig.url} 发起请求...');
+    // LogService.instance.debug('Google 请求体: $body'); // 可选：用于调试请求体内容
 
     try {
       final response = await _client
@@ -160,10 +166,27 @@ class LlmService {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
+        
+        // 检查是否有错误字段
+        if (responseBody['error'] != null) {
+          final errorMsg = 'Google API 返回错误: ${response.body}';
+          LogService.instance.error(errorMsg);
+          throw Exception(errorMsg);
+        }
+
         if (responseBody['candidates'] != null &&
             responseBody['candidates'].isNotEmpty) {
-          // Gemini 的响应结构略有不同
-          return responseBody['candidates'][0]['content']['parts'][0]['text'] ?? '';
+          // 检查 content 是否存在
+          final content = responseBody['candidates'][0]['content'];
+          if (content != null &&
+              content['parts'] != null &&
+              content['parts'].isNotEmpty) {
+            return content['parts'][0]['text'] ?? '';
+          } else {
+             // 可能是因为安全设置或其他原因被阻止，返回空内容
+            LogService.instance.warn('Google API 响应的 candidates 中没有 content 或 parts。响应体: ${response.body}');
+            return ''; // 或者可以抛出异常，取决于业务需求
+          }
         } else {
           final errorMsg =
               'LLM 响应不包含 "candidates" 字段。响应体: ${response.body}';
@@ -197,10 +220,11 @@ class LlmService {
     };
 
     // 构造请求体
-    final bodyMap = {
+    final bodyMap = <String, dynamic>{
       'model': apiConfig.model,
+      "max_tokens": 60000, // 最大令牌数，具体值可根据需要调整
+      'temperature': 1.3,
       'messages': messages, // Anthropic 的 messages 格式与 OpenAI 兼容
-      'max_tokens': 20000, // Anthropic API 要求此参数, 设置一个较高的值
     };
 
     // Anthropic 直接支持独立的 'system' 字段
@@ -236,7 +260,8 @@ class LlmService {
         throw Exception(errorMsg);
       }
     } catch (e, s) {
-      LogService.instance.error('Anthropic 格式请求出错，URL: ${apiConfig.url}', e, s);
+      LogService.instance
+          .error('Anthropic 格式请求出错，URL: ${apiConfig.url}', e, s);
       rethrow;
     }
   }

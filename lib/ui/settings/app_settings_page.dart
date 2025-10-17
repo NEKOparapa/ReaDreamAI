@@ -194,7 +194,7 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                           Text('版本：$_version'),
                           Text('Build：$_buildNumber'),
                           const SizedBox(height: 8),
-                          const Text('基于AI的阅读助手应用'),
+                          const Text('基于AI的阅读应用'),
                         ],
                       ),
                       actions: [

@@ -72,10 +72,9 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         );
       }
     } catch (e, s) {
-      LogService.instance.error('AI 生成大纲失败', e, s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('生成大纲失败: $e')),
+          SnackBar(content: Text('AI生成大纲失败,请检查接口是否正常工作中...')),
         );
       }
     } finally {
@@ -444,7 +443,7 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                       autofocus: true,
                       maxLines: 5,
                       decoration: const InputDecoration(
-                        hintText: '例如：一个关于赛博朋克侦探在反乌托邦城市中寻找失落机器人的故事...',
+                        hintText: '例如：一个关于少年遇见少女的爱情故事...',
                         border: OutlineInputBorder(),
                         filled: true,
                       ),

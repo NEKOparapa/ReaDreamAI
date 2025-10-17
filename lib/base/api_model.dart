@@ -136,7 +136,7 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: '谷歌', icon: Icons.bubble_chart_outlined,
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    defaultModel: 'veo-3.0-generate-001',
+    defaultModel: 'veo-3.1-generate-preview',
     defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
   ),
   const ApiPlatformPreset(
