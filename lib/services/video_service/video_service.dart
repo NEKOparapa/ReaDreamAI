@@ -8,6 +8,7 @@ import 'platforms/volcengine_platform.dart';
 import 'platforms/google_platform.dart';
 import 'platforms/comfyui_video_platform.dart';
 import 'video_platform.dart';
+import 'platforms/fal_video_platform.dart';
 
 /// 视频服务
 class VideoService {
@@ -31,6 +32,8 @@ class VideoService {
       ApiProvider.google: GooglePlatform(client: _client),
       // 注册ComfyUI平台
       ApiProvider.comfyui: ComfyUiVideoPlatform(client: _client),
+      // 注册Fal.ai平台
+      ApiProvider.fal: FalVideoPlatform(),
     };
   }
 

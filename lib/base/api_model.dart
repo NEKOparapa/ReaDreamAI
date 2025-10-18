@@ -16,6 +16,7 @@ enum ApiProvider {
   dashscope, 
   comfyui,
   novelai,
+  fal,
   // 视频模型
   bailian, 
   // 通用
@@ -118,6 +119,12 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
   const ApiPlatformPreset(
+    provider: ApiProvider.fal, name: 'Fal', icon: Icons.flash_on_outlined, 
+    defaultUrl: 'https://fal.ai', // URL 仅作标识，实际由客户端库处理
+    defaultModel: 'fal-ai/bytedance/seedream/v4/edit', // 推荐的默认模型
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
     provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined, 
     defaultUrl: 'http://127.0.0.1:8188', defaultModel: 'none',
     defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
@@ -150,6 +157,12 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', 
     defaultModel: 'wan2.2-t2v-plus', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.fal, name: 'Fal', icon: Icons.flash_on_outlined, 
+    defaultUrl: 'https://fal.ai', // URL 仅作标识
+    defaultModel: 'fal-ai/veo3.1/fast/first-last-frame-to-video', // 推荐的视频模型
+    defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
   ),
   const ApiPlatformPreset(
     provider: ApiProvider.comfyui, name: 'ComfyUI', icon: Icons.account_tree_outlined,

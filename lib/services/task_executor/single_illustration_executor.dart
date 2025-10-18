@@ -431,6 +431,37 @@ class TextModificationExecutor {
   final ConfigService _configService = ConfigService();
   final LogService _logger = LogService.instance;
 
+  // 改进后的 <textarea> 文本提取方法
+  String _extractTextareaContent(String llmResponse) {
+    // 优先匹配 <textarea> 标签
+    final match = RegExp(r'<textarea>([\s\S]*?)</textarea>', multiLine: true).firstMatch(llmResponse);
+
+    if (match != null && match.group(1) != null) {
+      // 成功匹配，返回标签内的内容
+      return match.group(1)!.trim();
+    }
+    
+    // 匹配失败，执行备用逻辑
+    _logger.warn('LLM 未按预期的 <textarea> 格式返回，启用备用检查逻辑。');
+    
+    final trimmedResponse = llmResponse.trim();
+    final isLongEnough = trimmedResponse.length > 500;
+    final containsTag = trimmedResponse.contains(RegExp(r'</?textarea>'));
+
+    // 必须同时满足长度超过500且包含标签残留
+    if (isLongEnough && containsTag) {
+      _logger.warn('响应内容超过500字符且包含<textarea>标签残留，将视为有效内容并进行清理。');
+      // 剔除任何可能存在的 <textarea> 或 </textarea> 标签并返回
+      return llmResponse.replaceAll(RegExp(r'</?textarea>', multiLine: true), '').trim();
+    } else {
+      // 任何一个条件不满足，都视为错误响应
+      _logger.error(
+        'LLM响应不符合格式。检查失败: [内容长度 > 500: $isLongEnough, 包含标签残留: $containsTag]。响应原文: $llmResponse',
+      );
+      throw Exception('LLM响应不符合预期格式或内容过短。');
+    }
+  }
+
   Future<String> rewriteText({
     required String precedingText,
     required String selectedText,
@@ -521,18 +552,11 @@ class TextModificationExecutor {
           final paragraphResponse = await _llmService.requestCompletion(
               systemPrompt: contSys, messages: contMsg, apiConfig: activeApi);
 
-          final match = RegExp(r'<textarea>([\s\S]*?)</textarea>', multiLine: true).firstMatch(paragraphResponse);
-          String content;
-
-          if (match != null && match.group(1) != null) {
-            content = match.group(1)!.trim();
-          } else {
-            // 备用方案：如果未找到标签，则使用原始响应并清理可能的残留标签
-            _logger.warn('[章节重写] LLM 未按预期的 <textarea> 格式返回，将使用原始响应。');
-            content = paragraphResponse.trim().replaceAll(RegExp(r'</?textarea>', multiLine: true), '').trim();
-          }
+          // 使用新的提取方法
+          final String content = _extractTextareaContent(paragraphResponse);
 
           if (content.isEmpty) {
+            // 这个异常现在主要由 _extractTextareaContent 内部抛出
             throw Exception("AI返回了空内容或解析后内容为空。");
           }
           

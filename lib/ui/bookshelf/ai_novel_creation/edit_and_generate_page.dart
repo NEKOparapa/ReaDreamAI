@@ -1,5 +1,6 @@
-//lib/ui/bookshelf/ai_novel_creation/edit_and_generate_page.dart
+// lib/ui/bookshelf/ai_novel_creation/edit_and_generate_page.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -24,8 +25,9 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   bool _isRegeneratingChapters = false;
 
   late TextEditingController _titleController;
-
   final Set<int> _selectedChapterIndices = {};
+
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -37,7 +39,16 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   @override
   void dispose() {
     _titleController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  // 防抖保存的辅助方法
+  void _debounceSave(VoidCallback saveAction) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      saveAction();
+    });
   }
 
   void _resyncChapterIds() {
@@ -87,6 +98,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   }
 
   void navigateToGenerationPage() {
+    // 确保在跳转前，任何待处理的保存都已完成
+    _debounce?.cancel();
     _configService.modifySetting(
         'ai_novel_creation_title', _titleController.text);
     _outline['title'] = _titleController.text;
@@ -417,9 +430,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 2.0),
                     ),
                     onChanged: (newValue) {
-                      _outline['title'] = newValue;
-                      _configService.modifySetting(
-                          'ai_novel_creation_title', newValue);
+                      // <--- 核心改动：用 setState 更新 UI
+                      setState(() {
+                        _outline['title'] = newValue;
+                      });
+                      _debounceSave(() => _configService.modifySetting(
+                          'ai_novel_creation_title', newValue));
                     },
                   ),
                 ),
@@ -440,9 +456,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 ),
                 maxLines: 5,
                 onChanged: (newValue) {
-                  _outline['background_setting'] = newValue;
-                  _configService.modifySetting(
-                      'ai_novel_creation_background_setting', newValue);
+                  // <--- 核心改动：用 setState 更新 UI
+                  setState(() {
+                    _outline['background_setting'] = newValue;
+                  });
+                  _debounceSave(() => _configService.modifySetting(
+                      'ai_novel_creation_background_setting', newValue));
                 },
               ),
             ),
@@ -460,9 +479,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 ),
                 maxLines: 3,
                 onChanged: (newValue) {
-                  _outline['writing_style'] = newValue;
-                  _configService.modifySetting(
-                      'ai_novel_creation_writing_style', newValue);
+                  // <--- 核心改动：用 setState 更新 UI
+                  setState(() {
+                    _outline['writing_style'] = newValue;
+                  });
+                  _debounceSave(() => _configService.modifySetting(
+                      'ai_novel_creation_writing_style', newValue));
                 },
               ),
             ),
@@ -505,10 +527,13 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                           decoration:
                               const InputDecoration.collapsed(hintText: '章节标题'),
                           onChanged: (val) {
-                            _outline['storyline'][idx]['chapter_title'] = val;
-                            _configService.modifySetting(
+                            // <--- 核心改动：用 setState 更新 UI
+                            setState(() {
+                              _outline['storyline'][idx]['chapter_title'] = val;
+                            });
+                            _debounceSave(() => _configService.modifySetting(
                                 'ai_novel_creation_storyline',
-                                _outline['storyline']);
+                                _outline['storyline']));
                           },
                         ),
                         trailing: Row(
@@ -557,10 +582,13 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               ),
                               maxLines: 3,
                               onChanged: (val) {
-                                _outline['storyline'][idx]['chapter_summary'] = val;
-                                _configService.modifySetting(
+                                // <--- 核心改动：用 setState 更新 UI
+                                setState(() {
+                                  _outline['storyline'][idx]['chapter_summary'] = val;
+                                });
+                                _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',
-                                    _outline['storyline']);
+                                    _outline['storyline']));
                               },
                             ),
                             const SizedBox(height: 12),
@@ -577,10 +605,13 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               ),
                               maxLines: 1,
                               onChanged: (val) {
-                                _outline['storyline'][idx]['time_span'] = val;
-                                _configService.modifySetting(
+                                // <--- 核心改动：用 setState 更新 UI
+                                setState(() {
+                                  _outline['storyline'][idx]['time_span'] = val;
+                                });
+                                _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',
-                                    _outline['storyline']);
+                                    _outline['storyline']));
                               },
                             ),
                             const SizedBox(height: 12),
@@ -597,10 +628,13 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               ),
                               maxLines: 2,
                               onChanged: (val) {
-                                _outline['storyline'][idx]['setting_update'] = val;
-                                _configService.modifySetting(
+                                // <--- 核心改动：用 setState 更新 UI
+                                setState(() {
+                                  _outline['storyline'][idx]['setting_update'] = val;
+                                });
+                                _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',
-                                    _outline['storyline']);
+                                    _outline['storyline']));
                               },
                             ),
                           ],
@@ -657,9 +691,13 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             ),
             maxLines: maxLines,
             onChanged: (val) {
-              _outline['main_characters'][idx][key] = val;
-              _configService.modifySetting('ai_novel_creation_main_characters',
-                  _outline['main_characters']);
+              // <--- 核心改动：用 setState 更新 UI
+              setState(() {
+                _outline['main_characters'][idx][key] = val;
+              });
+              _debounceSave(() => _configService.modifySetting(
+                  'ai_novel_creation_main_characters',
+                  _outline['main_characters']));
             },
           ),
         );
@@ -669,10 +707,11 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         key: ObjectKey(char),
         margin: const EdgeInsets.symmetric(vertical: 8),
         child: ExpansionTile(
-          leading: const Icon(Icons.person_outline),
-          title: Text(char['name'] ?? '未命名角色',
+          // 在标题变化时也能即时更新
+          title: Text(_outline['main_characters'][idx]['name'] ?? '未命名角色',
               style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text(char['characterName'] ?? ''),
+          subtitle: Text(_outline['main_characters'][idx]['characterName'] ?? ''),
+          leading: const Icon(Icons.person_outline),
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

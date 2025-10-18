@@ -375,6 +375,8 @@ class _ApiCard extends StatelessWidget {
       // 绘画模型
       case ApiProvider.dashscope:
         return Icons.whatshot_outlined;
+      case ApiProvider.fal:
+        return Icons.flash_on_outlined;
       case ApiProvider.comfyui:
         return Icons.account_tree_outlined;
       case ApiProvider.novelai:

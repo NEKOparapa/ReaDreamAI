@@ -11,6 +11,7 @@ import 'platforms/google_drawing_platform.dart';
 import 'platforms/openai_platform.dart';
 import 'platforms/volcengine_platform.dart';
 import 'platforms/novelai_platform.dart';
+import 'platforms/fal_platform.dart';
 
 /// 绘图服务，作为所有绘图平台的统一分发器。
 class DrawingService {
@@ -54,6 +55,9 @@ class DrawingService {
           break;
         case ApiProvider.novelai: // NovelAI 平台
           platform = NovelaiPlatform(client: _client);
+          break;
+        case ApiProvider.fal: // Fal.ai 平台
+          platform = FalPlatform();
           break;
         default:
           throw UnimplementedError('[DrawingService] ❌ 绘图平台 "${apiConfig.provider.name}" 尚未实现。');

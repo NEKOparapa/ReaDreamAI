@@ -47,7 +47,7 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         chapterCount: chapterCount,
         wordsPerChapter: wordsPerChapter,
         backgroundSetting: selectedBackground,
-        writingStyle: selectedStyle,
+        writingStyle: null, // 传 null，避免给AI任何文风参考
         mainCharacters: selectedCharacters,
       );
       LogService.instance.success('AI 小说大纲生成成功。');
@@ -55,7 +55,9 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
       final finalOutline = {
         'title': result['title'] ?? '未命名小说',
         'background_setting': selectedBackground ?? result['background_setting'] ?? '',
-        'writing_style': selectedStyle ?? result['writing_style'] ?? '',
+        // 如果用户选择了文风 (`selectedStyle` 非空)，则直接使用它。
+        // 否则 (用户选了AI生成, `selectedStyle` 为空)，使用AI返回的文风。
+        'writing_style': selectedStyle ?? (result['writing_style'] ?? ''),
         'main_characters': (selectedCharacters != null && selectedCharacters.isNotEmpty) ? selectedCharacters : result['main_characters'] ?? [],
         'storyline': result['storyline'] ?? [],
       };
@@ -74,7 +76,7 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
     } catch (e, s) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('AI生成大纲失败,请检查接口是否正常工作中...')),
+          const SnackBar(content: Text('AI生成大纲失败,请检查接口是否正常工作中...')),
         );
       }
     } finally {
@@ -97,8 +99,8 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
             onPressed: _isGeneratingOutline
                 ? null
                 : () {
-                    _showApiSettingsDialog(context);
-                  },
+              _showApiSettingsDialog(context);
+            },
           ),
           TextButton.icon(
             icon: const Icon(Icons.edit_note_outlined),
@@ -106,12 +108,12 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
             onPressed: _isGeneratingOutline
                 ? null
                 : () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const EditAndGeneratePage(),
-                      ),
-                    );
-                  },
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const EditAndGeneratePage(),
+                ),
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
@@ -291,12 +293,12 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
 class GenerateOutlineForm extends StatefulWidget {
   final bool isLoading;
   final Future<void> Function({
-    required String storyPrompt,
-    required int chapterCount,
-    required int wordsPerChapter,
-    String? selectedBackground,
-    String? selectedStyle,
-    List<Map<String, dynamic>>? selectedCharacters,
+  required String storyPrompt,
+  required int chapterCount,
+  required int wordsPerChapter,
+  String? selectedBackground,
+  String? selectedStyle,
+  List<Map<String, dynamic>>? selectedCharacters,
   }) onGenerate;
 
   const GenerateOutlineForm({
@@ -441,7 +443,7 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                     TextFormField(
                       controller: _storyPromptController,
                       autofocus: true,
-                      maxLines: 5,
+                      maxLines: 10,
                       decoration: const InputDecoration(
                         hintText: '例如：一个关于少年遇见少女的爱情故事...',
                         border: OutlineInputBorder(),

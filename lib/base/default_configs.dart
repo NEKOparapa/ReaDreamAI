@@ -14,7 +14,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'reader_font_family': 'SystemDefault',
 
   // --- 生图设置 ---
-  'image_gen_tokens': 7000, // 生图使用的最大Token数
+  'image_gen_tokens': 9000, // 生图使用的最大Token数
   'image_gen_scenes_per_chapter': 3, // 每章生成的场景数
   'image_gen_images_per_scene': 2, // 每个场景生成的图片数
   'image_gen_max_workers': 1, // 最大并发数
@@ -147,7 +147,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_japanese_light_novel',
       'name': '日式轻小说',
-      'content': '日式轻小说风格，轻松活泼的叙事，大量使用内心独白和吐槽，人物对话充满个性。擅长用夸张的反应和表情描写来增强戏剧效果，节奏明快，画面感强，对各类器官的描写毫不避讳。',
+      'content': '日式轻小说风格，大量使用内心独白和吐槽，人物对话充满个性。擅长用夸张的反应和表情描写来增强戏剧效果，节奏明快，画面感强，对各类器官的描写毫不避讳。',
       'isSystemPreset': true,
     },
   ],
@@ -234,8 +234,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, student',
       'appearance': 'long hair, straight hair, black hair, bangs, black eyes, fair skin, beautiful face',
       'clothing': 'school uniform, sailor uniform, blue sailor collar, red necktie, white shirt, blue pleated skirt, black stockings, school shoes',
-      'personality': '文静, 内向', // 新增
-      'status': '', // 新增
+      'personality': '文静, 内向',
+      'status': '',
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/student_girl.png',
@@ -248,8 +248,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, loli',
       'appearance': 'blonde hair, golden hair, twintails, long twintails, big eyes, round eyes, blue eyes, sparkly eyes, blush, cute face, small stature, childlike',
       'clothing': 'frilly dress, white dress, pink ribbons, bow, knee-high socks, mary janes, hair ribbons',
-      'personality': '活泼, 开朗, 天真', // 新增
-      'status': '开心', // 新增
+      'personality': '活泼, 开朗, 天真',
+      'status': '开心',
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/cute_loli.png',
@@ -262,8 +262,8 @@ const Map<String, dynamic> appDefaultConfigs = {
       'identity': '1girl, solo, catgirl, maid',
       'appearance': 'medium hair, fluffy hair, silver hair, cat ears, cat tail, yellow eyes, slit pupils, cute face',
       'clothing': 'maid outfit, frilly apron, maid headdress, puffy sleeves, black dress, white apron, bell collar, paw gloves',
-      'personality': ' mischievous, loyal', // 新增
-      'status': '', // 新增
+      'personality': ' mischievous, loyal',
+      'status': '',
       'other': '',
       'referenceImageUrl': null,
       'referenceImagePath': 'assets/character_example/catgirl_mid.png',
