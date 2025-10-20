@@ -34,6 +34,11 @@ dependencyResolutionManagement {
         maven { url = uri("https://maven.aliyun.com/repository/google") }
         maven { url = uri("https://maven.aliyun.com/repository/public") }
         maven { url = uri("https://jitpack.io") }
+
+        // 添加 Flutter 引擎的本地 Maven 仓库
+        maven {
+            url = uri(File(settings.pluginManagement.resolutionStrategy.resolvePlugin("dev.flutter.flutter-gradle-plugin", "1.0.0").get().plugin.uri).parentFile.parentFile, "outputs/repo")
+        }
     }
 }
 
