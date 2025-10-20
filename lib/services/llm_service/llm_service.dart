@@ -71,7 +71,7 @@ class LlmService {
     final body = jsonEncode({
       'model': apiConfig.model,
       'messages': allMessages,
-      'temperature': 1.3,
+      'temperature': 1,
       // 可在此处添加 temperature, top_p 等更多参数
     });
 
@@ -139,7 +139,7 @@ class LlmService {
     final bodyMap = <String, dynamic>{
       'contents': contents,
       'generationConfig': {
-        'temperature': 1.3,
+        'temperature': 1,
         // 可以在此处添加 topP, topK 等其他生成参数
       },
     };
@@ -223,7 +223,7 @@ class LlmService {
     final bodyMap = <String, dynamic>{
       'model': apiConfig.model,
       "max_tokens": 60000, // 最大令牌数，具体值可根据需要调整
-      'temperature': 1.3,
+      'temperature': 1,
       'messages': messages, // Anthropic 的 messages 格式与 OpenAI 兼容
     };
 
