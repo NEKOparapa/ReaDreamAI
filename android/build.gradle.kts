@@ -1,4 +1,4 @@
-// android/settings.gradle.kts
+// android/build.gradle.kts
 
 pluginManagement {
     repositories {
