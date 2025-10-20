@@ -1,51 +1,75 @@
 name: Build and Deploy Pre-release
 
 on:
-  workflow_dispatch: # 允许你从 Actions 选项卡手动运行此工作流
+  workflow_dispatch: # Allows manual triggering from the Actions tab
   push:
-    # 只有当推送到 main 分支时才触发
     branches:
-      - main # 如果你的主分支是 master，请修改为 master
+      - main # Change to 'master' if your main branch is named differently
 
-# 授予写入仓库内容的权限，以便创建和删除 Release
 permissions:
-  contents: write
+  contents: write # Grants permission to write to repository contents for creating releases
 
 jobs:
   build-and-release:
-    # 任务的名称
     name: Build and Release Pre-release
-    # 指定运行此任务的虚拟机环境
-    runs-on: windows-latest
+    runs-on: ubuntu-latest # Use Ubuntu for better Android build compatibility
 
-    # 任务的执行步骤
     steps:
-      # 步骤1：检出代码
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 步骤2：设置 Flutter 环境
+      # Step 2: Set up Flutter
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true # Enable caching to speed up builds
 
-      # 步骤3：安装项目依赖
+      # Step 3: Set up JDK for Android
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17' # Compatible with Android Gradle plugin
+
+      # Step 4: Install project dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 步骤4：构建 Windows release 版本的应用
+      # Step 5: Build Android APK
+      - name: Build APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          # Create key.properties file for signing
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore.jks
+          echo "storePassword=$KEYSTORE_PASSWORD" > android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEY_ALIAS" >> android/key.properties
+          echo "storeFile=keystore.jks" >> android/key.properties
+          # Build the APK
+          flutter build apk --release
+
+      # Step 6: Build Windows executable
       - name: Build Windows executable
         run: flutter build windows --release
+        if: runner.os == 'Windows' # Conditional for Windows build (optional if keeping Windows)
 
-      # 步骤5：将构建产物打包成 ZIP
+      # Step 7: Package release assets
       - name: Package release assets
-        shell: pwsh
         run: |
-          # 使用正确的构建输出路径
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
+          # Package APK
+          cp build/app/outputs/flutter-apk/app-release.apk ReaDreamAI-beta-android.apk
+          # Package Windows ZIP (optional if keeping Windows)
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell -Command "Compress-Archive -Path build\\windows\\x64\\runner\\Release\\* -DestinationPath ReaDreamAI-beta-windows.zip -Force"
+          fi
 
-      # 步骤6：删除旧的预览版
+      # Step 8: Delete old pre-releases
       - name: Delete old pre-releases
         uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
@@ -53,15 +77,17 @@ jobs:
           delete_release: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
-          
-      # 步骤7：创建 GitHub Pre-release 并上传 ZIP 包
+
+      # Step 9: Create GitHub Pre-release and upload assets
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: Beta
-          name: ReaDreamAI 开发测试版本，由最新源码自动打包 
+          name: ReaDreamAI Beta (Android & Windows)
           draft: false
           prerelease: true
-          generate_release_notes: true 
-          files: ReaDreamAI-beta-windows.zip
+          generate_release_notes: true
+          files: |
+            ReaDreamAI-beta-android.apk
+            ReaDreamAI-beta-windows.zip
           token: ${{ secrets.GITHUB_TOKEN }}
