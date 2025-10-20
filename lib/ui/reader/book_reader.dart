@@ -706,21 +706,33 @@ class _BookReaderPageState extends State<BookReaderPage> {
         ),
       ),
       endDrawer: Drawer(
-        child: ListView.builder(
-          itemCount: _currentBook.chapters.length,
-          itemBuilder: (context, index) {
-            final chapter = _currentBook.chapters[index];
-            return ListTile(
-              title: Text(chapter.title, style: TextStyle(
-                fontWeight: _currentChapterIndex == index ? FontWeight.bold : FontWeight.normal,
-                color: _currentChapterIndex == index ? Theme.of(context).colorScheme.primary : null,
-              )),
-              onTap: () {
-                Navigator.pop(context);
-                _jumpToChapter(index);
-              },
-            );
-          },
+        // 使用 Center 组件将列表垂直居中
+        child: Center(
+          child: ListView.builder(
+            // 让 ListView 的高度包裹其内容，这是居中的关键
+            shrinkWrap: true, 
+            // 为列表添加一些垂直内边距，避免内容紧贴边缘
+            padding: const EdgeInsets.symmetric(vertical: 20.0), 
+            itemCount: _currentBook.chapters.length,
+            itemBuilder: (context, index) {
+              final chapter = _currentBook.chapters[index];
+              return ListTile(
+                title: Text(
+                  chapter.title,
+                  // 将每个章节标题的文本也居中显示
+                  textAlign: TextAlign.center, 
+                  style: TextStyle(
+                    fontWeight: _currentChapterIndex == index ? FontWeight.bold : FontWeight.normal,
+                    color: _currentChapterIndex == index ? Theme.of(context).colorScheme.primary : null,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _jumpToChapter(index);
+                },
+              );
+            },
+          ),
         ),
       ),
     );

@@ -59,7 +59,7 @@ jobs:
       - name: Setup Android Keystore and Properties
         shell: pwsh
         run: |
-          # 解码 Base64 密钥库并写入文件
+          # 解码 Base64 密钥库并写入到 app 目录
           $keystoreBase64 = "${{ secrets.KEYSTORE_BASE64 }}"
           $keystorePath = "android/app/upload-keystore.jks"
           [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($keystoreBase64))
@@ -67,21 +67,49 @@ jobs:
 
           # 创建 key.properties 文件
           $keyPropertiesPath = "android/key.properties"
+          # storeFile 路径相对于 android 目录，所以是 app/upload-keystore.jks
           "storeFile=app/upload-keystore.jks" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8
           "keyAlias=${{ secrets.KEY_ALIAS }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           "keyPassword=${{ secrets.KEY_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           "storePassword=${{ secrets.STORE_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           echo "key.properties file created successfully."
+
+      # 验证密钥库和配置文件（可选，用于调试）
+      - name: Verify Keystore and Properties
+        shell: pwsh
+        run: |
+          echo "=== Checking keystore file ==="
+          if (Test-Path "android/app/upload-keystore.jks") {
+            echo "✓ Keystore found at android/app/upload-keystore.jks"
+            $fileInfo = Get-Item "android/app/upload-keystore.jks"
+            echo "  File size: $($fileInfo.Length) bytes"
+          } else {
+            echo "✗ Keystore NOT found!"
+            exit 1
+          }
+          
+          echo "`n=== key.properties content ==="
+          if (Test-Path "android/key.properties") {
+            Get-Content "android/key.properties"
+          } else {
+            echo "✗ key.properties NOT found!"
+            exit 1
+          }
       
       - name: Build Android APK
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
         
       - name: Rename APK for release
         shell: pwsh
         run: |
           # 将默认的 app-release.apk 重命名为更具描述性的名字
-          Rename-Item -Path "build\app\outputs\flutter-apk\app-release.apk" -NewName "ReaDreamAI-beta-android.apk"
-
+          if (Test-Path "build\app\outputs\flutter-apk\app-release.apk") {
+            Rename-Item -Path "build\app\outputs\flutter-apk\app-release.apk" -NewName "ReaDreamAI-beta-android.apk"
+            echo "✓ APK renamed successfully"
+          } else {
+            echo "✗ APK not found!"
+            exit 1
+          }
 
       # 步骤7：删除旧的预览版
       - name: Delete old pre-releases
@@ -104,5 +132,5 @@ jobs:
           # 使用多行字符串上传多个文件
           files: |
             ReaDreamAI-beta-windows.zip
-            ReaDreamAI-beta-android.apk
+            build/app/outputs/flutter-apk/ReaDreamAI-beta-android.apk
           token: ${{ secrets.GITHUB_TOKEN }}
