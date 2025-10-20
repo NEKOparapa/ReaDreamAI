@@ -129,7 +129,12 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
   Widget _buildImageAvatar(CharacterCard card) {
     ImageProvider? imageProvider;
     if (card.referenceImagePath != null && card.referenceImagePath!.isNotEmpty) {
-      imageProvider = FileImage(File(card.referenceImagePath!));
+      // 判断是 assets 路径还是本地文件路径
+      if (card.referenceImagePath!.startsWith('assets/')) {
+        imageProvider = AssetImage(card.referenceImagePath!);  // ✅ 使用 AssetImage
+      } else {
+        imageProvider = FileImage(File(card.referenceImagePath!));
+      }
     } else if (card.referenceImageUrl != null && card.referenceImageUrl!.isNotEmpty) {
       imageProvider = NetworkImage(card.referenceImageUrl!);
     }
@@ -140,6 +145,7 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
       child: imageProvider == null ? const Icon(Icons.person, color: Colors.grey) : null,
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

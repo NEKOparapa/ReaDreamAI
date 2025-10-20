@@ -127,7 +127,12 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
   Widget _buildImagePreview() {
     ImageProvider? imageProvider;
     if (_referenceImagePath != null && _referenceImagePath!.isNotEmpty) {
-      imageProvider = FileImage(File(_referenceImagePath!));
+      // 判断是 assets 路径还是本地文件路径
+      if (_referenceImagePath!.startsWith('assets/')) {
+        imageProvider = AssetImage(_referenceImagePath!);  // ✅ 使用 AssetImage
+      } else {
+        imageProvider = FileImage(File(_referenceImagePath!));
+      }
     } else if (_referenceImageUrlController.text.isNotEmpty) {
       imageProvider = NetworkImage(_referenceImageUrlController.text);
     }
@@ -163,6 +168,7 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
             ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

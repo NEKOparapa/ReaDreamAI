@@ -113,12 +113,20 @@ class _BookReaderPageState extends State<BookReaderPage> {
   // 通用任务处理逻辑，接收一个返回 Future 的函数
   Future<void> _handleGenericTask(Future<dynamic> Function() taskFunction, String processingMessage) async {
     if (_isTaskRunning) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有任务在运行中，请稍候...')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有任务在运行中,请稍候...')));
       return;
     }
     _isTaskRunning = true;
     final messenger = ScaffoldMessenger.of(context);
 
+    // 使用更安全的定位方式
+    final screenHeight = MediaQuery.of(context).size.height;
+    final safeTopPadding = MediaQuery.of(context).padding.top;
+    final toolbarHeight = kToolbarHeight;
+    
+    // 计算安全的底部边距，确保 SnackBar 不会超出屏幕
+    final safeBottomMargin = screenHeight - toolbarHeight - safeTopPadding - 100;
+    
     messenger.showSnackBar(
       SnackBar(
         content: Row(
@@ -130,13 +138,17 @@ class _BookReaderPageState extends State<BookReaderPage> {
         ),
         duration: const Duration(days: 1),
         behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.only(bottom: MediaQuery.of(context).size.height - 120, left: 20, right: 20),
+        // 使用更安全的边距计算
+        margin: EdgeInsets.only(
+          bottom: safeBottomMargin.clamp(80.0, screenHeight - 150), // 限制在安全范围内
+          left: 20, 
+          right: 20
+        ),
       ),
     );
 
     try {
-      await taskFunction(); // 调用函数以执行任务
-      // 成功提示由各自的调用者处理
+      await taskFunction();
     } catch (e) {
       print("任务执行失败: $e");
       messenger.hideCurrentSnackBar();
@@ -147,19 +159,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
       messenger.hideCurrentSnackBar();
       _isTaskRunning = false;
     }
-  }
-
-  // 插图任务处理逻辑
-  Future<void> _handleIllustrationTask(Future<void> Function() taskFunction) async {
-    await _handleGenericTask(() async {
-      await taskFunction();
-      await CacheManager().saveBookDetail(_currentBook);
-      if (mounted) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('插图生成成功！正在刷新...')));
-        await _refreshBookState();
-      }
-    }, '正在生成插图...');
   }
 
   // 视频任务处理逻辑
@@ -173,6 +172,19 @@ class _BookReaderPageState extends State<BookReaderPage> {
         await _refreshBookState();
       }
     }, '正在生成视频...');
+  }
+
+  // 插图任务处理逻辑
+  Future<void> _handleIllustrationTask(Future<void> Function() taskFunction) async {
+    await _handleGenericTask(() async {
+      await taskFunction();
+      await CacheManager().saveBookDetail(_currentBook);
+      if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('插图生成成功！正在刷新...')));
+        await _refreshBookState();
+      }
+    }, '正在生成插图...');
   }
 
   // 文本修改任务处理逻辑
@@ -1313,6 +1325,7 @@ class _ImageTile extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
+        // 这个外层的 GestureDetector 负责处理点击空白区域返回
         return GestureDetector(
           onTap: () => Navigator.of(context).pop(),
           child: Dialog(
@@ -1322,15 +1335,13 @@ class _ImageTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Expanded(
-                  child: GestureDetector(
-                    onTap: () {},
-                    child: InteractiveViewer(
-                      clipBehavior: Clip.none,
-                      child: Image.file(File(imagePath)),
-                    ),
+                  child: InteractiveViewer(
+                    clipBehavior: Clip.none,
+                    child: Image.file(File(imagePath)),
                   ),
                 ),
                 const SizedBox(height: 16),
+                // 这个 GestureDetector 是有用的，它防止点击按钮区域时关闭弹窗
                 GestureDetector(
                   onTap: () {},
                   child: Container(
@@ -1339,30 +1350,31 @@ class _ImageTile extends StatelessWidget {
                       color: Colors.black.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(30),
                     ),
+                    // ✨ MODIFICATION START: 将 IconButton 替换为带文本的 _ViewerButton
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.refresh, color: Colors.white),
-                          tooltip: '重新生成',
+                        _ViewerButton(
+                          icon: Icons.refresh,
+                          label: '重新生成',
                           onPressed: () {
                             Navigator.of(context).pop();
                             onRegenerate();
                           },
                         ),
                         const SizedBox(width: 16),
-                        IconButton(
-                          icon: const Icon(Icons.movie_creation_outlined, color: Colors.white),
-                          tooltip: '图生视频',
+                        _ViewerButton(
+                          icon: Icons.movie_creation_outlined,
+                          label: '图生视频',
                           onPressed: () {
                             Navigator.of(context).pop();
                             onGenerateVideo();
                           },
                         ),
                         const SizedBox(width: 16),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.white),
-                          tooltip: '删除',
+                        _ViewerButton(
+                          icon: Icons.delete_outline,
+                          label: '删除',
                           onPressed: () {
                             Navigator.of(context).pop();
                             onDelete();
@@ -1370,6 +1382,7 @@ class _ImageTile extends StatelessWidget {
                         ),
                       ],
                     ),
+                    // ✨ MODIFICATION END
                   ),
                 ),
               ],
@@ -1459,6 +1472,13 @@ class _VideoTileState extends State<_VideoTile> {
               _controller.setLooping(true);
             });
           }
+        }).catchError((error) { // 添加错误处理
+            print("视频初始化失败: $error");
+            if (mounted) {
+              setState(() {
+                _isInitialized = false;
+              });
+            }
         });
     } else {
       _isInitialized = false;
@@ -1473,16 +1493,30 @@ class _VideoTileState extends State<_VideoTile> {
     super.dispose();
   }
 
-  void _showEnlargedVideo(BuildContext context) {
-    showDialog(
+  void _showEnlargedVideo(BuildContext context) async {
+    if (!_isInitialized) return;
+
+    // 暂停预览
+    _controller.pause();
+
+    // 等待Dialog关闭
+    await showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
+        // 传递已有的控制器
         return _VideoPlayerDialog(
-          videoPath: widget.videoPath,
+          controller: _controller,
           onDelete: widget.onDelete,
         );
       },
     );
+
+    // Dialog关闭后，恢复预览状态
+    if (mounted) {
+      _controller.setVolume(0);
+      _controller.pause();
+    }
   }
 
   @override
@@ -1525,8 +1559,12 @@ class _VideoTileState extends State<_VideoTile> {
                 child: VideoPlayer(_controller),
               ),
               MouseRegion(
-                onEnter: (_) => _controller.play(),
-                onExit: (_) => _controller.pause(),
+                onEnter: (_) {
+                  if(_isInitialized) _controller.play();
+                },
+                onExit: (_) {
+                  if(_isInitialized) _controller.pause();
+                },
                 child: Container(
                   color: Colors.transparent, 
                   child: Center(
@@ -1543,38 +1581,57 @@ class _VideoTileState extends State<_VideoTile> {
 }
 
 class _VideoPlayerDialog extends StatefulWidget {
-  final String videoPath;
+  final VideoPlayerController controller;
   final VoidCallback onDelete;
 
-  const _VideoPlayerDialog({required this.videoPath, required this.onDelete});
+  const _VideoPlayerDialog({required this.controller, required this.onDelete});
 
   @override
   _VideoPlayerDialogState createState() => _VideoPlayerDialogState();
 }
 
 class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
-  late VideoPlayerController _controller;
-  bool _isInitialized = false;
+  bool _isPlaying = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.file(File(widget.videoPath))
-      ..initialize().then((_) {
-        if (mounted) {
-          setState(() {
-            _isInitialized = true;
-          });
-          _controller.setLooping(true);
-          _controller.play();
-        }
+    // 使用传入的 controller
+    // 确保视频从头开始播放，并且有声音
+    widget.controller.seekTo(Duration.zero);
+    widget.controller.setVolume(1.0);
+    widget.controller.setLooping(true);
+    widget.controller.play();
+    _isPlaying = true;
+    // 添加监听器以响应播放状态变化
+    widget.controller.addListener(_videoListener);
+  }
+
+  void _videoListener() {
+    if (mounted && _isPlaying != widget.controller.value.isPlaying) {
+      setState(() {
+        _isPlaying = widget.controller.value.isPlaying;
       });
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    // Dialog 不负责 dispose 控制器
+    widget.controller.removeListener(_videoListener);
     super.dispose();
+  }
+
+  void _togglePlayPause() {
+    setState(() {
+      if (widget.controller.value.isPlaying) {
+        widget.controller.pause();
+        _isPlaying = false;
+      } else {
+        widget.controller.play();
+        _isPlaying = true;
+      }
+    });
   }
 
   @override
@@ -1583,20 +1640,30 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
       onTap: () => Navigator.of(context).pop(),
       child: Dialog(
         backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
+        insetPadding: const EdgeInsets.all(10),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
+            Flexible(
               child: GestureDetector(
-                onTap: () {},
+                onTap: _togglePlayPause, // 点击视频区域切换播放/暂停
                 child: Center(
-                  child: _isInitialized
-                      ? AspectRatio(
-                          aspectRatio: _controller.value.aspectRatio,
-                          child: VideoPlayer(_controller),
-                        )
-                      : const CircularProgressIndicator(color: Colors.white),
+                  child: AspectRatio(
+                    aspectRatio: widget.controller.value.aspectRatio,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        VideoPlayer(widget.controller),
+                        if (!_isPlaying)
+                          Icon(
+                            Icons.play_arrow,
+                            color: Colors.white.withOpacity(0.8),
+                            size: 80,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1609,15 +1676,53 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.white),
-                  tooltip: '删除视频',
+                // ✨ MODIFICATION START: 将 IconButton 替换为带文本的 _ViewerButton
+                child: _ViewerButton(
+                  icon: Icons.delete_outline,
+                  label: '删除视频',
                   onPressed: () {
                     Navigator.of(context).pop();
                     widget.onDelete();
                   },
                 ),
+                // ✨ MODIFICATION END
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ViewerButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  const _ViewerButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 使用 InkWell 来提供点击时的水波纹效果
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        // 为按钮提供一些内边距，使其更易于点击
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 28),
+            const SizedBox(height: 4), // 图标和文本之间的间距
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
             ),
           ],
         ),

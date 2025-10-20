@@ -384,14 +384,16 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
+
   void _showContextMenu(
-      BuildContext context, BookshelfEntry entry, TapDownDetails details) {
+      BuildContext context, BookshelfEntry entry, Offset globalPosition) {
     final RenderBox overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu(
       context: context,
+      // 使用传入的 globalPosition 来定位菜单
       position: RelativeRect.fromRect(
-          details.globalPosition & const Size(40, 40), Offset.zero & overlay.size),
+          globalPosition & const Size(40, 40), Offset.zero & overlay.size),
       items: <PopupMenuEntry>[
         PopupMenuItem(
           enabled: entry.status == TaskStatus.notStarted ||
@@ -663,14 +665,19 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     );
   }
 
-  /// 构建单个书籍封面的UI 
+  /// 构建单个书籍封面的UI
   Widget _buildBookItem(BookshelfEntry entry) {
     final hasCover =
         entry.coverImagePath != null && File(entry.coverImagePath!).existsSync();
 
     return GestureDetector(
       onTap: () => _openBook(entry),
-      onSecondaryTapDown: (details) => _showContextMenu(context, entry, details),
+      // for Windows/Desktop: 响应右键点击
+      onSecondaryTapDown: (details) =>
+          _showContextMenu(context, entry, details.globalPosition),
+      // for Android/Mobile: 响应长按
+      onLongPressStart: (details) =>
+          _showContextMenu(context, entry, details.globalPosition),
       child: Card(
         elevation: 4.0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
