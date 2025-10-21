@@ -29,7 +29,6 @@ dependencies:
   tiktoken: ^1.0.3        # 用于计算token数
   pool: ^1.5.1 # 用于处理并发任务池
   web_socket_channel: ^3.0.3  # 用于ComfyUI的WebSocket通信
-  dart_jsonwebtoken: ^2.11.0  # 用于Kling的JWT Token生成
   cupertino_icons: ^1.0.8 # iOS风格的图标
   url_launcher: ^6.1.14 # 用于打开外部链接
   video_player: ^2.8.6  # 用于视频播放
@@ -39,7 +38,7 @@ dependencies:
   image: ^4.5.4       # 用于图像处理和转换
   window_manager: ^0.5.1 # 用于管理桌面窗口
   screen_retriever: ^0.2.0 # 用于获取屏幕信息
-  fal_client: ^0.3.0
+  fal_client: ^0.3.0 # fal客户端
 
 dev_dependencies:
   flutter_test:

@@ -3,9 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../base/version/version.dart';
-import '../../base/config_service.dart';
-import 'widgets/settings_widgets.dart';
+import '../../../base/version/version.dart';
+import '../../../base/config_service.dart';
+import '../widgets/settings_widgets.dart';
+import 'version_check_dialog.dart'; // 1. 导入新的对话框
 
 class AppSettingsPage extends StatefulWidget {
   const AppSettingsPage({super.key});
@@ -93,6 +94,7 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     return SettingsPageLayout(
       title: '应用设置',
       children: [
+        // ... 其他 SettingsGroup 不变 ...
         SettingsGroup(
           title: '外观',
           children: [
@@ -181,28 +183,14 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
               subtitle: '版本 $_version (Build $_buildNumber)',
               control: const Icon(Icons.info_outline),
               onTap: () {
-                // 可选：点击显示更多版本信息
+                // 2. 将旧的 AlertDialog 替换为新的 VersionCheckDialog
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text(_appName),
-                      content: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('版本：$_version'),
-                          Text('Build：$_buildNumber'),
-                          const SizedBox(height: 8),
-                          const Text('基于AI的阅读应用'),
-                        ],
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('确定'),
-                        ),
-                      ],
+                    return VersionCheckDialog(
+                      appName: _appName,
+                      currentVersion: _version,
+                      buildNumber: _buildNumber,
                     );
                   },
                 );

@@ -1,3 +1,5 @@
+//lib//ui//settings//log_history_page.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -95,11 +97,13 @@ class _LogHistoryPageState extends State<LogHistoryPage> {
       appBar: AppBar(
         title: const Text('日志历史'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.archive_outlined),
-            tooltip: '导出日志压缩包',
-            onPressed: _exportLogs,
-          ),
+          // 如果当前平台不是安卓，则显示导出按钮
+          if (!Platform.isAndroid)
+            IconButton(
+              icon: const Icon(Icons.archive_outlined),
+              tooltip: '导出日志包',
+              onPressed: _exportLogs,
+            ),
         ],
       ),
       body: ValueListenableBuilder<List<LogEntry>>(

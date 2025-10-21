@@ -362,11 +362,11 @@ class _ApiCard extends StatelessWidget {
     switch (provider) {
       // 语言模型
       case ApiProvider.openai:
-        return Icons.cloud_outlined;
+        return Icons.sports_soccer;
       case ApiProvider.deepseek:
-        return Icons.search;
+        return Icons.view_in_ar;
       case ApiProvider.google:
-        return Icons.bubble_chart_outlined;
+        return Icons.data_usage;
       case ApiProvider.anthropic:
         return Icons.hub_outlined;
       // 绘画、视频与语言模型
@@ -374,7 +374,7 @@ class _ApiCard extends StatelessWidget {
         return Icons.filter_hdr_outlined;
       // 绘画模型
       case ApiProvider.dashscope:
-        return Icons.whatshot_outlined;
+        return Icons.sports_volleyball;
       case ApiProvider.fal:
         return Icons.flash_on_outlined;
       case ApiProvider.comfyui:
@@ -383,7 +383,7 @@ class _ApiCard extends StatelessWidget {
         return Icons.palette_outlined;
       // 视频模型
       case ApiProvider.bailian:
-        return Icons.whatshot_outlined;
+        return Icons.sports_volleyball;
       // 通用
       case ApiProvider.custom:
         return Icons.settings_ethernet;

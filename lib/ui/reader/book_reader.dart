@@ -561,6 +561,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ],
     );
   }
+  
   /// 显示章节重写要求对话框
   Future<void> _showRewriteChapterDialog() async {
     // 1. 检查书籍类型
@@ -828,6 +829,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
     );
   }
+  
   // 构建阅读器主体
   Widget _buildReaderBody() {
     if (_currentBook.chapters.isEmpty) {
@@ -844,6 +846,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
       },
       itemBuilder: (context, chapterIndex) {
         return SingleChildScrollView(
+          // 仅在 Android 上应用页面滚动效果
+          physics: Platform.isAndroid ? const PageScrollPhysics() : null,
           child: _buildChapterContent(chapterIndex),
         );
       },
@@ -855,7 +859,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final chapter = _currentBook.chapters[chapterIndex];
     
     return Padding(
-      padding: EdgeInsets.fromLTRB(24.0, 48.0 + kToolbarHeight + MediaQuery.of(context).padding.top, 24.0, 48.0 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.fromLTRB(24.0, 48.0 + MediaQuery.of(context).padding.top, 24.0, 48.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -873,7 +877,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
             ),
           ),
           ..._buildContentWidgets(chapter),
-          _buildChapterNavigation(chapterIndex),
         ],
       ),
     );
@@ -938,49 +941,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
       textAlign: TextAlign.justify,
       contextMenuBuilder: (context, state) => _buildTextContextMenu(context, state, linesInfo),
-    );
-  }
-
-  // 构建章节导航
-  Widget _buildChapterNavigation(int chapterIndex) {
-    final bool hasPrevious = chapterIndex > 0;
-    final bool hasNext = chapterIndex < _currentBook.chapters.length - 1;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 64.0, bottom: 24.0),
-      child: Column(
-        children: [
-          Divider(color: _currentTheme.font.withOpacity(0.2)),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Opacity(
-                opacity: hasPrevious ? 1.0 : 0.3,
-                child: OutlinedButton(
-                  onPressed: hasPrevious ? () => _jumpToChapter(chapterIndex - 1) : null,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: _currentTheme.font.withOpacity(0.5)),
-                    foregroundColor: _currentTheme.font,
-                  ),
-                  child: const Icon(Icons.arrow_back),
-                ),
-              ),
-              Opacity(
-                opacity: hasNext ? 1.0 : 0.3,
-                child: OutlinedButton(
-                  onPressed: hasNext ? () => _jumpToChapter(chapterIndex + 1) : null,
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: _currentTheme.font.withOpacity(0.5)),
-                    foregroundColor: _currentTheme.font,
-                  ),
-                  child: const Icon(Icons.arrow_forward),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1688,7 +1648,6 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
                   color: Colors.black.withOpacity(0.6),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                // ✨ MODIFICATION START: 将 IconButton 替换为带文本的 _ViewerButton
                 child: _ViewerButton(
                   icon: Icons.delete_outline,
                   label: '删除视频',
@@ -1697,7 +1656,6 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
                     widget.onDelete();
                   },
                 ),
-                // ✨ MODIFICATION END
               ),
             ),
           ],

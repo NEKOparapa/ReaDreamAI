@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'widgets/setting_entry_card.dart'; // 引入一级入口卡片
-import 'app_settings_page.dart'; // 引入应用设置页
+import 'app_settings/app_settings_page.dart'; // 引入应用设置页
 import 'comfyui_settings_page.dart'; // 引入ComfyUI设置页
 import 'drawing_presets/drawing_presets_settings_page.dart'; // 引入绘图预设设置页
 import 'translation_settings_page.dart'; // 引入翻译设置页

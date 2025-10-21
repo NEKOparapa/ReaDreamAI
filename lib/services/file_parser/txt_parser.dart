@@ -8,23 +8,53 @@ import '../../models/book.dart';
 /// TXT 文件专属解析器。
 class TxtParser {
   // 章节标题的核心正则表达式，匹配多种常见的章节格式。
-  // 例如 "第一章", "第100回", "序章", "楔子" 等。
   static final _chapterRegex = RegExp(
     r'^\s*(?:'
-    r'第\s*[零〇一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟\d]+\s*[章节回集卷部篇]' // 匹配 "第...章/回" 等
+    // 中文章节格式
+    r'第\s*[零〇○一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟\d]+\s*[章节回集卷部篇话]'
     r'|'
-    r'[第]*\s*[一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]+\s*[章节回集卷部篇]' // 匹配 "第...章/回"（中文数字）
+    r'[第]*\s*[零〇○一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟]+\s*[章节回集卷部篇话]'
     r'|'
-    r'[一二三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟\d]+[．、.]' // 匹配 "1." 或 "一、" 等
+    // 数字格式 (1. 一、 等)
+    r'[一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟\d]+[．、.:：]'
     r'|'
-    r'序章|楔子|前言|序言|序|引子|后记|尾声|番外|锲子|终章|结语|附录' // 匹配特殊章节名
+    // 括号数字格式 [1] (1) （1）
+    r'\[\s*\d+\s*\]|\(\s*\d+\s*\)|（\s*\d+\s*）'
+    r'|'
+    // 英文章节格式
+    r'[Cc]hapter\s*\d+|CHAPTER\s*\d+'
+    r'|'
+    r'[Cc]hapter\s*[IVXLCDM]+|CHAPTER\s*[IVXLCDM]+'
+    r'|'
+    r'ACT\s*\d+|Act\s*\d+|Scene\s*\d+|Day\s*\d+'
+    r'|'
+    r'[Pp]rologue|[Ee]pilogue'
+    r'|'
+    // 特殊章节 - 开头部分
+    r'序章|楔子|前言|序言|序|引子|引言|导言|开篇|正文|本文'
+    r'|'
+    // 特殊章节 - 结尾部分
+    r'后记|尾声|尾章|终章|终篇|完结篇|结语|附录'
+    r'|'
+    // 番外相关
+    r'番外|锲子|外传|幕间|间章|后日谈|Side\s*Story|番外篇'
     r')\s*.*?$',
     caseSensitive: false,
     multiLine: false,
   );
 
   // 用于识别分隔符的正则表达式，例如 "---" 或 "==="。
-  static final _separatorRegex = RegExp(r'^[\-=*~]{3,}$');
+  static final _separatorRegex = RegExp(
+    r'^[\-=*~#·•□■◆◇※]{3,}$'
+    r'|^[=\-]{2,}\s*.+?\s*[=\-]{2,}$' // == 标题 == 格式
+  );
+
+  // 日期格式识别（可选，用于日记体小说）
+  static final _dateRegex = RegExp(
+    r'^\s*\d{4}[年/-]\d{1,2}[月/-]\d{1,2}日?'
+    r'|^\s*\d{1,2}/\d{1,2}/\d{2,4}'
+    r'|^\s*Day\s*\d+'
+  );
 
   /// 解析 TXT 文件，返回章节结构列表。
   /// [cachedPath] 是 TXT 文件在缓存区的路径。
@@ -82,6 +112,15 @@ class TxtParser {
           endIndex: i,
         ));
       }
+      
+      // 检查日期格式（用于日记体小说）
+      else if (_dateRegex.hasMatch(lineText) && lineText.length < 30) {
+        candidates.add(_ChapterCandidate(
+          title: lineText,
+          startIndex: i,
+          endIndex: i,
+        ));
+      }
     }
     
     // 对找到的候选进行过滤，去除可能是误判的标题
@@ -99,6 +138,7 @@ class TxtParser {
     final line2 = lines[index + 1].trim();
     final line3 = lines[index + 2].trim();
     
+    // 模式1: 分隔符-标题-分隔符
     if (_separatorRegex.hasMatch(line1) && 
         _separatorRegex.hasMatch(line3) &&
         line2.isNotEmpty && 
@@ -110,6 +150,16 @@ class TxtParser {
       );
     }
     
+    // 模式2: == 标题 == 单行格式
+    final match = RegExp(r'^[=\-]{2,}\s*(.+?)\s*[=\-]{2,}$').firstMatch(line1);
+    if (match != null && match.group(1)!.length < 50) {
+      return _ChapterCandidate(
+        title: match.group(1)!,
+        startIndex: index,
+        endIndex: index,
+      );
+    }
+    
     return null;
   }
 
@@ -118,11 +168,23 @@ class TxtParser {
     if (text.length > 100) return false; // 标题太长，可能是普通段落
     if (text.length < 2) return false;   // 标题太短，也可能是误判
     
+    // 排除纯标点符号的行
+    if (RegExp(r'^[^\w\u4e00-\u9fa5]+$').hasMatch(text)) return false;
+    
+    // 排除疑似正文的句子（包含过多常见标点）
+    final punctCount = RegExp(r'[,。,!?;:！?;:""''《》【】（）()]').allMatches(text).length;
+    if (punctCount > 3) return false;
+    
+    // 排除明显的对话行
+    if (text.startsWith('"') || text.startsWith('"') || text.startsWith('「')) {
+      return false;
+    }
+    
     return _chapterRegex.hasMatch(text);
   }
 
   /// 过滤章节候选列表，去除无效的候选。
-  /// 主要逻辑是检查章节之间是否有足够的内容，如果两个“标题”之间内容过少，则可能其中一个是误判。
+  /// 主要逻辑是检查章节之间是否有足够的内容，如果两个"标题"之间内容过少，则可能其中一个是误判。
   static List<_ChapterCandidate> _filterValidCandidates(
     List<_ChapterCandidate> candidates, 
     List<String> lines
@@ -146,9 +208,15 @@ class TxtParser {
       );
       
       // 如果章节间内容行数太少（少于3行），则可能是一个误判的标题，予以丢弃
-      if (contentLines >= 3 || i == candidates.length - 1) { // 最后一个候选总是保留
+      // 但最后一个候选和第一个候选总是保留
+      if (contentLines >= 3 || i == 0 || i == candidates.length - 1) {
         filtered.add(candidate);
       }
+    }
+    
+    // 如果过滤后只剩下第一个和最后一个，说明可能过滤过度，恢复原候选
+    if (filtered.length == 2 && candidates.length > 2) {
+      return candidates;
     }
     
     return filtered;
@@ -174,7 +242,7 @@ class TxtParser {
     final List<ChapterStructure> chapters = [];
     int globalLineIdCounter = 0;
     
-    // 处理第一个章节标题之前的内容，将其作为“前言”
+    // 处理第一个章节标题之前的内容，将其作为"前言"
     if (candidates.first.startIndex > 0) {
       final preChapterLines = _extractLinesFromRange(
         lines, 0, candidates.first.startIndex, sourceFilename, globalLineIdCounter
@@ -205,15 +273,14 @@ class TxtParser {
         globalLineIdCounter
       );
       
-      if (chapterLines.isNotEmpty) {
-        chapters.add(ChapterStructure(
-          id: const Uuid().v4(),
-          title: candidate.title,
-          sourceFile: sourceFilename,
-          lines: chapterLines,
-        ));
-        globalLineIdCounter += chapterLines.length;
-      }
+      // 即使内容为空也创建章节（保留所有标题）
+      chapters.add(ChapterStructure(
+        id: const Uuid().v4(),
+        title: candidate.title,
+        sourceFile: sourceFilename,
+        lines: chapterLines,
+      ));
+      globalLineIdCounter += chapterLines.length;
     }
     
     return chapters;
@@ -265,6 +332,31 @@ class TxtParser {
       )
     ];
   }
+  
+  /// 检测并学习文档中的章节模式（可选功能，用于提高准确率）
+  /// 分析前几个章节标题的共同特征，返回更精确的模式
+  static String? _detectChapterPattern(List<_ChapterCandidate> candidates) {
+    if (candidates.length < 3) return null;
+    
+    final titleSamples = candidates.take(5).map((c) => c.title).toList();
+    
+    // 检测是否都以"第"开头
+    if (titleSamples.every((t) => t.startsWith('第'))) {
+      return '第.*章';
+    }
+    
+    // 检测是否都是纯数字格式
+    if (titleSamples.every((t) => RegExp(r'^\d+[\.、:]').hasMatch(t))) {
+      return r'^\d+[．、:]';
+    }
+    
+    // 检测是否都是Chapter格式
+    if (titleSamples.every((t) => t.toLowerCase().startsWith('chapter'))) {
+      return r'[Cc]hapter\s*\d+';
+    }
+    
+    return null;
+  }
 }
 
 /// 内部数据结构，用于暂存章节标题候选及其在文件中的位置信息。
@@ -278,4 +370,7 @@ class _ChapterCandidate {
     required this.startIndex,
     required this.endIndex,
   });
+  
+  @override
+  String toString() => 'Chapter("$title", lines: $startIndex-$endIndex)';
 }

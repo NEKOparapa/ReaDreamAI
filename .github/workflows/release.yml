@@ -84,26 +84,27 @@ jobs:
           echo "`n=== key.properties content ==="
           Get-Content "android/key.properties"
       
+          
       - name: Build Android APK (ARM64)
-        # 优化：只构建目前主流的 64位 ARM 版本，输出文件名固定，便于后续处理
         run: flutter build apk --release --target-platform android-arm64
         
       - name: Rename APK for release
         shell: pwsh
         run: |
-          # 修复：源文件名应为带架构的版本，因为你的 gradle 配置了分包
+          # 修改为正确的带架构后缀的文件名
           $sourceApkPath = "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
-          $destinationApkName = "ReaDreamAI-beta-android.apk"
+          $destinationPath = "build\app\outputs\flutter-apk\ReaDreamAI-beta-android.apk"
 
           if (Test-Path $sourceApkPath) {
-            Rename-Item -Path $sourceApkPath -NewName $destinationApkName
-            echo "✓ APK renamed to $destinationApkName"
+            Copy-Item -Path $sourceApkPath -Destination $destinationPath
+            echo "✓ APK copied to $destinationPath"
           } else {
-            echo "✗ APK not found at $sourceApkPath! Checking for other APKs..."
-            # 添加调试信息，如果找不到文件，列出目录内容
-            Get-ChildItem -Path "build\app\outputs\flutter-apk" -Recurse
+            echo "✗ APK not found at $sourceApkPath!"
+            echo "Available files:"
+            Get-ChildItem -Path "build\app\outputs\flutter-apk" | Format-Table Name, Length
             exit 1
           }
+
 
       # 步骤6：删除旧的预览版，以便发布同名新版
       - name: Delete old pre-releases

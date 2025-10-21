@@ -96,43 +96,43 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     if (_isProcessing) return; // 如果正在处理，则直接返回
     setState(() => _isProcessing = true);
 
-    // 显示一个顶部的处理中提示条
-    final controller = _showTopMessage('正在处理文件...',
-        leading: const SizedBox(
-            width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-        duration: const Duration(minutes: 5)); // 持续时间设为5分钟，处理完后会手动关闭
-
     int newBookCount = 0;
-    for (final path in paths) {
-      final fileExtension = p.extension(path).toLowerCase();
-      // 只处理 .txt 和 .epub 文件
-      if (['.txt', '.epub'].contains(fileExtension)) {
-        // 解析文件并创建缓存
-        final newEntry = await FileParser.parseAndCreateCache(path);
-        if (newEntry != null) {
-          // 如果书架中不存在这本书，则添加
-          if (!_entries.any((e) => e.id == newEntry.id)) {
-            _entries.add(newEntry);
-            newBookCount++;
+    try {
+      for (final path in paths) {
+        final fileExtension = p.extension(path).toLowerCase();
+        // 只处理 .txt 和 .epub 文件
+        if (['.txt', '.epub'].contains(fileExtension)) {
+          // 解析文件并创建缓存
+          final newEntry = await FileParser.parseAndCreateCache(path);
+          if (newEntry != null) {
+            // 如果书架中不存在这本书，则添加
+            if (!_entries.any((e) => e.id == newEntry.id)) {
+              _entries.add(newEntry);
+              newBookCount++;
+            }
           }
         }
       }
-    }
 
-    // 如果有新书添加，则保存书架并更新UI
-    if (newBookCount > 0) {
-      await _saveBookshelf();
-      setState(() {});
-    }
+      // 如果有新书添加，则保存书架并更新UI
+      if (newBookCount > 0) {
+        await _saveBookshelf();
+        setState(() {});
+      }
 
-    controller.close(); // 关闭顶部的处理中提示条
-    setState(() => _isProcessing = false);
-
-    // 如果组件挂载且有新书添加，显示成功提示
-    if (mounted && newBookCount > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('成功添加 $newBookCount 本书')),
-      );
+      // 如果组件挂载且有新书添加，显示成功提示
+      if (mounted && newBookCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('成功添加 $newBookCount 本书')),
+        );
+      }
+    } finally {
+      // 确保处理标志在操作完成后被重置
+      if(mounted) {
+        setState(() => _isProcessing = false);
+      } else {
+        _isProcessing = false;
+      }
     }
   }
 

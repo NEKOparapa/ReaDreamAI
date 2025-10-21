@@ -61,12 +61,12 @@ class ApiPlatformPreset {
 // =================================================================
 final List<ApiPlatformPreset> languagePlatformPresets = [
   const ApiPlatformPreset(
-    provider: ApiProvider.openai, name: 'OpenAI', icon: Icons.cloud_outlined, 
+    provider: ApiProvider.openai, name: 'OpenAI', icon: Icons.sports_soccer, 
     defaultUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o-mini', 
     defaultFormat: ApiFormat.openai, defaultConcurrency: 10, defaultRpm: 300
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.google, name: 'Google', icon: Icons.bubble_chart_outlined, 
+    provider: ApiProvider.google, name: 'Google', icon: Icons.data_usage, 
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-2.5-flash', 
     defaultFormat: ApiFormat.google, defaultConcurrency: 3, defaultRpm: 60
   ),
@@ -81,7 +81,7 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
     defaultFormat: ApiFormat.openai, defaultConcurrency: 30, defaultRpm: 3000
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.deepseek, name: 'DeepSeek', icon: Icons.search, 
+    provider: ApiProvider.deepseek, name: 'DeepSeek', icon: Icons.view_in_ar, 
     defaultUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-chat', 
     defaultFormat: ApiFormat.openai, defaultConcurrency: 30, defaultRpm: 3000
   ),
@@ -97,7 +97,7 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
 // =================================================================
 final List<ApiPlatformPreset> drawingPlatformPresets = [
   const ApiPlatformPreset(
-    provider: ApiProvider.google, name: '谷歌', icon: Icons.bubble_chart_outlined, 
+    provider: ApiProvider.google, name: '谷歌', icon: Icons.data_usage, 
     // 这是谷歌的绘画模型预设
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'imagen-4.0-generate-001', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 3, defaultRpm: 30
@@ -109,7 +109,7 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
     defaultFormat: ApiFormat.none, defaultConcurrency: 10, defaultRpm: 60
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.dashscope, name: '百炼', icon: Icons.bolt_outlined, 
+    provider: ApiProvider.dashscope, name: '百炼', icon: Icons.sports_volleyball, 
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', defaultModel: 'qwen-image', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
   ),
@@ -141,7 +141,7 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
 // =================================================================
 final List<ApiPlatformPreset> videoPlatformPresets = [
   const ApiPlatformPreset(
-    provider: ApiProvider.google, name: '谷歌', icon: Icons.bubble_chart_outlined,
+    provider: ApiProvider.google, name: '谷歌', icon: Icons.data_usage,
     defaultUrl: 'https://generativelanguage.googleapis.com/v1beta',
     defaultModel: 'veo-3.1-generate-preview',
     defaultFormat: ApiFormat.none, defaultConcurrency: 1, defaultRpm: 60
@@ -153,7 +153,7 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
     defaultFormat: ApiFormat.none, defaultConcurrency: 5, defaultRpm: 60
   ),
   const ApiPlatformPreset(
-    provider: ApiProvider.bailian, name: '百炼', icon: Icons.whatshot_outlined, 
+    provider: ApiProvider.bailian, name: '百炼', icon: Icons.sports_volleyball, 
     defaultUrl: 'https://dashscope.aliyuncs.com/api/v1', 
     defaultModel: 'wan2.2-t2v-plus', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
