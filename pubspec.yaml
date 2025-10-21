@@ -5,7 +5,7 @@ description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
 
-version: 1.0.0+1
+version: 1.1.0+1
 
 
 environment:
@@ -46,7 +46,8 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
-  
+  flutter_launcher_icons: ^0.13.1
+
   # 开发依赖
   build_runner: ^2.8.0  # 配合 json_serializable 使用
   json_serializable: ^6.7.1 # 用于生成 JSON 序列化代码
@@ -69,4 +70,16 @@ flutter:
   fonts:
     - family: NotoSansSC  # 这是你给字体起的名字，在代码中会用到
       fonts:
-        - asset: assets/fonts/NotoSansSC-Regular.ttf
+        - asset: assets/fonts/NotoSansSC-Regular.ttf   
+
+
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"  # 你的图标路径
+  # 可选配置
+  min_sdk_android: 21
+  # adaptive_icon_background: "#ffffff"  # Android 自适应图标背景色
+  # adaptive_icon_foreground: "assets/icon/foreground.png"  # Android 前景图
+

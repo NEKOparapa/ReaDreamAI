@@ -36,10 +36,10 @@ class LlmService {
 
   /// 使用 OpenAI 兼容的 API 格式发起请求。
   Future<String> _requestWithOpenAiFormat(
-    String? systemPrompt,
-    List<Map<String, String>> messages,
-    ApiModel apiConfig,
-  ) async {
+      String? systemPrompt,
+      List<Map<String, String>> messages,
+      ApiModel apiConfig,
+      ) async {
     // 构造请求的 URI
     final uri = Uri.parse('${apiConfig.url}/chat/completions');
     // 构造请求头
@@ -47,7 +47,7 @@ class LlmService {
       'Authorization': 'Bearer ${apiConfig.apiKey}',
       'Content-Type': 'application/json',
     };
-    
+
     // 针对 DeepSeek 模型的特殊处理
     final processedMessages = List<Map<String, String>>.from(messages);
     // 检查模型名称是否包含 'deepseek' (不区分大小写)
@@ -112,10 +112,10 @@ class LlmService {
 
   /// 使用 Google Gemini API 格式发起请求。
   Future<String> _requestWithGoogleFormat(
-    String? systemPrompt,
-    List<Map<String, String>> messages,
-    ApiModel apiConfig,
-  ) async {
+      String? systemPrompt,
+      List<Map<String, String>> messages,
+      ApiModel apiConfig,
+      ) async {
     // Google API 将 API Key 作为 URL 查询参数
     final uri = Uri.parse(
         '${apiConfig.url}/models/${apiConfig.model}:generateContent?key=${apiConfig.apiKey}');
@@ -166,7 +166,7 @@ class LlmService {
 
       if (response.statusCode == 200) {
         final responseBody = jsonDecode(utf8.decode(response.bodyBytes));
-        
+
         // 检查是否有错误字段
         if (responseBody['error'] != null) {
           final errorMsg = 'Google API 返回错误: ${response.body}';
@@ -183,7 +183,7 @@ class LlmService {
               content['parts'].isNotEmpty) {
             return content['parts'][0]['text'] ?? '';
           } else {
-             // 可能是因为安全设置或其他原因被阻止，返回空内容
+            // 可能是因为安全设置或其他原因被阻止，返回空内容
             LogService.instance.warn('Google API 响应的 candidates 中没有 content 或 parts。响应体: ${response.body}');
             return ''; // 或者可以抛出异常，取决于业务需求
           }
@@ -207,10 +207,10 @@ class LlmService {
 
   /// 使用 Anthropic Claude API 格式发起请求。
   Future<String> _requestWithAnthropicFormat(
-    String? systemPrompt,
-    List<Map<String, String>> messages,
-    ApiModel apiConfig,
-  ) async {
+      String? systemPrompt,
+      List<Map<String, String>> messages,
+      ApiModel apiConfig,
+      ) async {
     final uri = Uri.parse('${apiConfig.url}/messages');
     // Anthropic API 的认证和版本信息在请求头中指定
     final headers = {

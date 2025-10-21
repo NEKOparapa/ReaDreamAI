@@ -13,19 +13,15 @@ permissions:
 
 jobs:
   build-and-release:
-    # 任务的名称
     name: Build and Release Pre-release
-    # 指定运行此任务的虚拟机环境 (windows-latest 可以同时构建 Windows 和 Android)
     runs-on: windows-latest
 
-    # 任务的执行步骤
     steps:
       # 步骤1：检出代码
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 步骤2：设置 Flutter 环境
-      # 建议在此处也设置 Java，以确保 keytool 等工具可用
+      # 步骤2：设置 Java 和 Flutter 环境
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -47,14 +43,13 @@ jobs:
       - name: Build Windows executable
         run: flutter build windows --release
 
-      # 步骤5：将 Windows 构建产物打包成 ZIP
       - name: Package Windows release assets
         shell: pwsh
         run: |
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
       # =======================================================
-      # 步骤6：构建 Android APK
+      # 步骤5：构建 Android APK
       # =======================================================
       - name: Setup Android Keystore and Properties
         shell: pwsh
@@ -67,69 +62,68 @@ jobs:
 
           # 创建 key.properties 文件
           $keyPropertiesPath = "android/key.properties"
-          # storeFile 路径相对于 android 目录，所以是 app/upload-keystore.jks
-          "storeFile=app/upload-keystore.jks" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8
+          # 关键修复：storeFile 的路径是相对于 android/app/build.gradle 的，所以直接写文件名即可
+          "storeFile=upload-keystore.jks" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8
           "keyAlias=${{ secrets.KEY_ALIAS }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           "keyPassword=${{ secrets.KEY_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           "storePassword=${{ secrets.STORE_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
           echo "key.properties file created successfully."
 
-      # 验证密钥库和配置文件（可选，用于调试）
+      # 可选：验证密钥库和配置文件是否正确创建
       - name: Verify Keystore and Properties
         shell: pwsh
         run: |
           echo "=== Checking keystore file ==="
           if (Test-Path "android/app/upload-keystore.jks") {
             echo "✓ Keystore found at android/app/upload-keystore.jks"
-            $fileInfo = Get-Item "android/app/upload-keystore.jks"
-            echo "  File size: $($fileInfo.Length) bytes"
           } else {
             echo "✗ Keystore NOT found!"
             exit 1
           }
           
           echo "`n=== key.properties content ==="
-          if (Test-Path "android/key.properties") {
-            Get-Content "android/key.properties"
-          } else {
-            echo "✗ key.properties NOT found!"
-            exit 1
-          }
+          Get-Content "android/key.properties"
       
-      - name: Build Android APK
-        run: flutter build apk --release --android-skip-build-dependency-validation
+      - name: Build Android APK (ARM64)
+        # 优化：只构建目前主流的 64位 ARM 版本，输出文件名固定，便于后续处理
+        run: flutter build apk --release --target-platform android-arm64
         
       - name: Rename APK for release
         shell: pwsh
         run: |
-          # 将默认的 app-release.apk 重命名为更具描述性的名字
-          if (Test-Path "build\app\outputs\flutter-apk\app-release.apk") {
-            Rename-Item -Path "build\app\outputs\flutter-apk\app-release.apk" -NewName "ReaDreamAI-beta-android.apk"
-            echo "✓ APK renamed successfully"
+          # 修复：源文件名应为带架构的版本，因为你的 gradle 配置了分包
+          $sourceApkPath = "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
+          $destinationApkName = "ReaDreamAI-beta-android.apk"
+
+          if (Test-Path $sourceApkPath) {
+            Rename-Item -Path $sourceApkPath -NewName $destinationApkName
+            echo "✓ APK renamed to $destinationApkName"
           } else {
-            echo "✗ APK not found!"
+            echo "✗ APK not found at $sourceApkPath! Checking for other APKs..."
+            # 添加调试信息，如果找不到文件，列出目录内容
+            Get-ChildItem -Path "build\app\outputs\flutter-apk" -Recurse
             exit 1
           }
 
-      # 步骤7：删除旧的预览版
+      # 步骤6：删除旧的预览版，以便发布同名新版
       - name: Delete old pre-releases
         uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
           tag_name: Beta
-          delete_release: true
+          delete_release: true # 删除标签对应的 Release
           github_token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true # 如果没有旧版本，允许继续执行
           
-      # 步骤8：创建 GitHub Pre-release 并上传所有产物
+      # 步骤7：创建 GitHub Pre-release 并上传所有产物
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: Beta
-          name: ReaDreamAI 开发测试版本，由最新源码自动打包 
+          name: ReaDreamAI 开发测试版本 (由最新源码自动打包)
           draft: false
           prerelease: true
-          generate_release_notes: true 
-          # 使用多行字符串上传多个文件
+          generate_release_notes: true
+          # 上传打包好的 Windows zip 和重命名后的 Android APK
           files: |
             ReaDreamAI-beta-windows.zip
             build/app/outputs/flutter-apk/ReaDreamAI-beta-android.apk
