@@ -90,6 +90,7 @@ BookshelfEntry _$BookshelfEntryFromJson(
   fileType: json['fileType'] as String,
   subCachePath: json['subCachePath'] as String,
   coverImagePath: json['coverImagePath'] as String?,
+  lastReadChapterIndex: (json['lastReadChapterIndex'] as num?)?.toInt() ?? 0,
   status:
       $enumDecodeNullable(_$TaskStatusEnumMap, json['status']) ??
       TaskStatus.notStarted,
@@ -150,6 +151,7 @@ Map<String, dynamic> _$BookshelfEntryToJson(
   'fileType': instance.fileType,
   'subCachePath': instance.subCachePath,
   'coverImagePath': instance.coverImagePath,
+  'lastReadChapterIndex': instance.lastReadChapterIndex,
   'status': _$TaskStatusEnumMap[instance.status]!,
   'taskChunks': instance.taskChunks.map((e) => e.toJson()).toList(),
   'errorMessage': instance.errorMessage,

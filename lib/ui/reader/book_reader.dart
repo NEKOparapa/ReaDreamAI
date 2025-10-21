@@ -29,7 +29,14 @@ enum DisplayMode { original, translation }
 
 class BookReaderPage extends StatefulWidget {
   final Book book;
-  const BookReaderPage({super.key, required this.book});
+  // [新增] 用于接收初始章节索引
+  final int initialChapterIndex;
+
+  const BookReaderPage({
+    super.key,
+    required this.book,
+    this.initialChapterIndex = 0, // [新增] 设置默认值
+  });
 
   @override
   State<BookReaderPage> createState() => _BookReaderPageState();
@@ -38,13 +45,14 @@ class BookReaderPage extends StatefulWidget {
 class _BookReaderPageState extends State<BookReaderPage> {
   late Book _currentBook;
   bool _isTaskRunning = false;
-  final _illustrationExecutor = SingleIllustrationExecutor.instance; 
+  final _illustrationExecutor = SingleIllustrationExecutor.instance;
   final _videoExecutor = SingleVideoExecutor.instance; // 视频执行器实例
   final _textModificationExecutor = TextModificationExecutor.instance; // 文本修改执行器
 
   // --- 页面状态和设置 ---
-  final PageController _pageController = PageController();
-  int _currentChapterIndex = 0;
+  // [修改] PageController 需要在 initState 中初始化，以便使用 initialPage
+  late PageController _pageController;
+  late int _currentChapterIndex;
 
   // --- UI 可见性控制 ---
   final ValueNotifier<bool> _isToolbarVisible = ValueNotifier(true);
@@ -65,6 +73,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
   void initState() {
     super.initState();
     _currentBook = widget.book;
+
+    // [修改] 初始化章节索引和 PageController
+    _currentChapterIndex = widget.initialChapterIndex;
+    _pageController = PageController(initialPage: _currentChapterIndex);
+
     _loadReaderSettings();
     _toggleSystemUI(_isToolbarVisible.value);
   }
@@ -84,7 +97,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       _settingsLoaded = true;
     });
   }
-  
+
   // 切换系统UI（状态栏、导航栏）的可见性
   void _toggleSystemUI(bool show) {
     if (show) {
@@ -123,10 +136,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final screenHeight = MediaQuery.of(context).size.height;
     final safeTopPadding = MediaQuery.of(context).padding.top;
     final toolbarHeight = kToolbarHeight;
-    
+
     // 计算安全的底部边距，确保 SnackBar 不会超出屏幕
     final safeBottomMargin = screenHeight - toolbarHeight - safeTopPadding - 100;
-    
+
     messenger.showSnackBar(
       SnackBar(
         content: Row(
@@ -141,7 +154,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
         // 使用更安全的边距计算
         margin: EdgeInsets.only(
           bottom: safeBottomMargin.clamp(80.0, screenHeight - 150), // 限制在安全范围内
-          left: 20, 
+          left: 20,
           right: 20
         ),
       ),
@@ -294,7 +307,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       newContent: '', // 传入空字符串即为删除
     ), '文本已删除');
   }
-  
+
   // 显示改写要求对话框
   Future<void> _showRewriteDialog(String selectedText, LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter) async {
     if (_currentBook.fileType != 'txt') {
@@ -354,7 +367,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       );
     }, '文本改写成功');
   }
-  
+
   // 提取划选文本前后的上下文
   ({String preceding, String succeeding}) _extractContextAroundSelection(LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter, int maxTokens) {
     final encoding = encodingForModel("gpt-4");
@@ -447,7 +460,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       }
       cumulativeLength += lineLength;
     }
-    
+
     // 如果循环结束还没找到lastLine（比如划选到末尾），则将最后一行作为lastLine
     if (firstLine != null && lastLine == null && linesInBlock.isNotEmpty) {
       lastLine = linesInBlock.last.line;
@@ -458,7 +471,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     }
     return null;
   }
-  
+
   // 创建一个自定义的上下文菜单项
   Widget _buildContextMenuItem({
     required BuildContext context,
@@ -519,7 +532,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     ).trim();
 
     final lineInfo = _findLinesForSelection(selection, linesInBlock);
-    
+
     if (selectedText.isEmpty || lineInfo == null) {
       // 如果选择的文本为空或无法定位行，也显示默认菜单
       return AdaptiveTextSelectionToolbar.buttonItems(
@@ -527,7 +540,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
         anchors: state.contextMenuAnchors,
       );
     }
-    
+
     return AdaptiveTextSelectionToolbar(
       anchors: state.contextMenuAnchors,
       children: [
@@ -561,7 +574,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ],
     );
   }
-  
+
   /// 显示章节重写要求对话框
   Future<void> _showRewriteChapterDialog() async {
     // 1. 检查书籍类型
@@ -633,6 +646,23 @@ class _BookReaderPageState extends State<BookReaderPage> {
     }, '正在重写章节，可能需要几分钟...');
   }
 
+  // [新增] 保存阅读进度的方法
+  Future<void> _saveReadingProgress(int chapterIndex) async {
+    // 使用一个独立的 CacheManager 实例来执行后台保存
+    final cacheManager = CacheManager();
+    final entries = await cacheManager.loadBookshelf();
+    final entryIndex = entries.indexWhere((e) => e.id == _currentBook.id);
+
+    if (entryIndex != -1) {
+      final currentEntry = entries[entryIndex];
+      // 只有在章节索引发生变化时才执行保存，避免不必要的磁盘写入
+      if (currentEntry.lastReadChapterIndex != chapterIndex) {
+        entries[entryIndex] = currentEntry.copyWith(lastReadChapterIndex: chapterIndex);
+        await cacheManager.saveBookshelf(entries);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _pageController.dispose();
@@ -662,7 +692,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
               _displayMode = displayMode;
               _lineHeight = lineHeight;
             });
-            _configService.modifySetting('reader_theme_id', theme.id); 
+            _configService.modifySetting('reader_theme_id', theme.id);
             _configService.modifySetting('reader_font_size', fontSize);
             _configService.modifySetting('reader_line_height', lineHeight);
             _configService.modifySetting('reader_font_family', fontFamily);
@@ -671,7 +701,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       },
     );
   }
-  
+
   // 跳转到指定章节
   void _jumpToChapter(int chapterIndex) {
       _pageController.jumpToPage(chapterIndex);
@@ -711,9 +741,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
         child: Center(
           child: ListView.builder(
             // 让 ListView 的高度包裹其内容，这是居中的关键
-            shrinkWrap: true, 
+            shrinkWrap: true,
             // 为列表添加一些垂直内边距，避免内容紧贴边缘
-            padding: const EdgeInsets.symmetric(vertical: 20.0), 
+            padding: const EdgeInsets.symmetric(vertical: 20.0),
             itemCount: _currentBook.chapters.length,
             itemBuilder: (context, index) {
               final chapter = _currentBook.chapters[index];
@@ -721,7 +751,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
                 title: Text(
                   chapter.title,
                   // 将每个章节标题的文本也居中显示
-                  textAlign: TextAlign.center, 
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontWeight: _currentChapterIndex == index ? FontWeight.bold : FontWeight.normal,
                     color: _currentChapterIndex == index ? Theme.of(context).colorScheme.primary : null,
@@ -829,7 +859,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
     );
   }
-  
+
   // 构建阅读器主体
   Widget _buildReaderBody() {
     if (_currentBook.chapters.isEmpty) {
@@ -843,6 +873,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
         setState(() {
           _currentChapterIndex = index;
         });
+        // [修改] 当页面改变时，调用保存进度的方法
+        _saveReadingProgress(index);
       },
       itemBuilder: (context, chapterIndex) {
         return SingleChildScrollView(
@@ -857,7 +889,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
   // 构建章节内容
   Widget _buildChapterContent(int chapterIndex) {
     final chapter = _currentBook.chapters[chapterIndex];
-    
+
     return Padding(
       padding: EdgeInsets.fromLTRB(24.0, 48.0 + MediaQuery.of(context).padding.top, 24.0, 48.0),
       child: Column(
@@ -881,7 +913,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       ),
     );
   }
-  
+
   List<Widget> _buildContentWidgets(ChapterStructure chapter) {
     List<Widget> contentWidgets = [];
     List<({LineStructure line, ChapterStructure chapter})> currentTextLines = [];
@@ -918,7 +950,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
     submitTextBlock();
     return contentWidgets;
   }
-  
+
   Widget _buildSelectableTextBlock(List<({LineStructure line, ChapterStructure chapter})> linesInfo) {
     return SelectableText.rich(
       TextSpan(
@@ -1440,7 +1472,7 @@ class _VideoTileState extends State<_VideoTile> {
           if (mounted) {
             setState(() {
               _isInitialized = true;
-              _controller.setVolume(0); 
+              _controller.setVolume(0);
               _controller.setLooping(true);
             });
           }
@@ -1538,7 +1570,7 @@ class _VideoTileState extends State<_VideoTile> {
                   if(_isInitialized) _controller.pause();
                 },
                 child: Container(
-                  color: Colors.transparent, 
+                  color: Colors.transparent,
                   child: Center(
                     child: Icon(Icons.play_circle_outline, color: Colors.white.withOpacity(0.7), size: 50),
                   ),

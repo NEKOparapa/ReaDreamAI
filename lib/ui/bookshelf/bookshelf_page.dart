@@ -375,8 +375,12 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   void _openBook(BookshelfEntry entry) async {
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
+      // 在跳转到 BookReaderPage 时，传入记录的章节索引
       await Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => BookReaderPage(book: book)),
+        MaterialPageRoute(builder: (context) => BookReaderPage(
+          book: book,
+          initialChapterIndex: entry.lastReadChapterIndex, // 传递进度
+        )),
       );
       await _loadBookshelf();
     } else {
@@ -497,7 +501,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       ),
     );
   }
-  /// END: 功能函数未改变，保持原样 ///
 
   @override
   Widget build(BuildContext context) {

@@ -97,7 +97,11 @@ class BookshelfEntry {
   final String originalPath;
   final String fileType;
   final String subCachePath;
-  final String? coverImagePath; 
+  final String? coverImagePath;
+
+  // 用于记录最后阅读的章节索引
+  @JsonKey(defaultValue: 0)
+  final int lastReadChapterIndex;
 
   // --- 插图任务字段 ---
   TaskStatus status;
@@ -130,7 +134,8 @@ class BookshelfEntry {
     required this.originalPath,
     required this.fileType,
     required this.subCachePath,
-    this.coverImagePath, // 添加到构造函数
+    this.coverImagePath,
+    this.lastReadChapterIndex = 0,
     // 插图任务
     this.status = TaskStatus.notStarted,
     this.taskChunks = const [],
@@ -187,6 +192,7 @@ class BookshelfEntry {
   // copyWith 方法便于状态更新
   BookshelfEntry copyWith({
     String? coverImagePath,
+    int? lastReadChapterIndex,
     TaskStatus? status,
     List<IllustrationTaskChunk>? taskChunks,
     String? errorMessage,
@@ -215,6 +221,7 @@ class BookshelfEntry {
       fileType: fileType,
       subCachePath: subCachePath,
       coverImagePath: coverImagePath ?? this.coverImagePath,
+      lastReadChapterIndex: lastReadChapterIndex ?? this.lastReadChapterIndex,
       // 插图
       status: status ?? this.status,
       taskChunks: taskChunks ?? this.taskChunks,

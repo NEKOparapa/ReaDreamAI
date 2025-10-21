@@ -91,19 +91,19 @@ jobs:
       - name: Rename APK for release
         shell: pwsh
         run: |
-          # 修改为正确的带架构后缀的文件名
-          $sourceApkPath = "build\app\outputs\flutter-apk\app-arm64-v8a-release.apk"
+          # 直接使用实际生成的文件名
+          $sourceApkPath = "build\app\outputs\flutter-apk\app-release.apk"
           $destinationPath = "build\app\outputs\flutter-apk\ReaDreamAI-beta-android.apk"
-
+          
           if (Test-Path $sourceApkPath) {
             Copy-Item -Path $sourceApkPath -Destination $destinationPath
             echo "✓ APK copied to $destinationPath"
           } else {
-            echo "✗ APK not found at $sourceApkPath!"
-            echo "Available files:"
+            echo "✗ APK not found!"
             Get-ChildItem -Path "build\app\outputs\flutter-apk" | Format-Table Name, Length
             exit 1
           }
+
 
 
       # 步骤6：删除旧的预览版，以便发布同名新版
