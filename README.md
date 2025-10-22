@@ -9,10 +9,12 @@
 
 - **专属故事**：只需一个核心创意，AI即可为你构建宏大世界观，塑造有血有肉的角色，编织跌宕起伏的情节。
 - **深度调教**：深度优化了AI生成的连贯性、逻辑性和节奏感，让AI能够生成高质量的长篇小说。
+- **智能编辑**：可以对任意段落或章节进行AI改写、续写、删除或风格转换,不想看的不看。
 
 ### 💕 AI生成插图与视频：让阅读多彩，让故事精彩
 
-- **人物一致**：主角在任何场景、画风下都保持统一形象，完美服务于故事的连贯性。
+- **随心插画**：不仅可以一键为整本书籍自动生成插画，也可以读到哪里，画到哪里，选中场景文本，指定AI生成对应插图。
+- **人物一致**：主角形象在不同场景与画风下保持一致，全书视觉风格一键设定，确保沉浸式阅读体验。
 - **风格统一**：无论是二次元风、写实主义还是像素艺术，一键设定，全书统一的视觉风格。
 
 ---
@@ -168,22 +170,23 @@
 
 ## 🚀 ReaDreamAI 三步走
 
-* **第一步：配置接口**
+* **第一步：配置并激活接口**
   > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第一步.png">
   - 在线语言接口：需付费但性价比很高，无显卡要求，[配置教程‐Deepseek](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%AF%AD%E8%A8%80%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90Deepseek)
   - 在线绘画接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E7%BB%98%E7%94%BB%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
   - 在线视频接口：需付费但性价比很高，无显卡要求，[配置教程‐火山](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E5%9C%A8%E7%BA%BF%E8%A7%86%E9%A2%91%E6%8E%A5%E5%8F%A3%E6%95%99%E7%A8%8B%E2%80%90%E7%81%AB%E5%B1%B1)
-  - 本地绘画接口：生成无限制，生成速度和显卡挂钩，[配置教程‐ComfyUI](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
+  - 本地绘画接口：免费，生成无限制，生成速度和显卡挂钩，[配置教程‐ComfyUI](https://github.com/NEKOparapa/ReaDreamAI/wiki/%E6%9C%AC%E5%9C%B0%E7%BB%98%E7%94%BB%E9%85%8D%E7%BD%AE%E6%95%99%E7%A8%8B%E2%80%90ComfyUI)
 
 
-* **第二步：拖入文件**
+* **第二步：生成小说或导入书籍**
   > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第二步.png">
-  - 打开书架页面，将txt或者epub文件拖入，软件会自动读取。也可以通过右下角手动选择文件导入或者粘贴文本导入
+  - 创作你自己的小说：点击AI创作小说，跟随流程进行创作，创作完成后，新书籍会出现在书架上面
+  - 导入已有的书籍：将txt或者epub文件拖入，软件会自动读取。也可以通过右下角手动选择文件导入或者粘贴文本导入
 
-* **第三步：开始生成**
+* **第三步：开始生成插画**
   > <img src="https://raw.githubusercontent.com/NEKOparapa/ReaDreamAI/main/resource/三步走/第三步.png">
   - 右键书籍上的书籍，在弹出的右键菜单中，选择生成插图。进度会显示在任务界面中。
-  - 生成完成后，可点击书籍预览生成效果，并支持重新生成插图，生成视频，导出书籍等操作
+  - 生成完成后，可点击书籍查看生成效果，并支持重新生成插图，生成视频，导出书籍等操作
 
 ---
 
