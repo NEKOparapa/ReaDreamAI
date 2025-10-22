@@ -5,8 +5,8 @@ part of 'epub_exporter.dart';
 /// 内部实现类：处理源文件为 EPUB 的情况。
 /// 主要逻辑是解包现有的 EPUB，修改其内容（HTML、OPF），添加新媒体文件，然后重新打包。
 class _EpubSourceExporter {
-  /// 执行导出操作
-  Future<void> export(Book book, String outputPath) async {
+  /// 执行导出操作，返回生成的 EPUB 文件字节数据。
+  Future<Uint8List?> export(Book book) async {
     // 步骤 1: 读取并解压原始 EPUB 文件到内存中的 Archive 对象。
     final originalFile = File(book.cachedPath);
     final archive = ZipDecoder().decodeBytes(await originalFile.readAsBytes());
@@ -76,11 +76,15 @@ class _EpubSourceExporter {
     await _MediaHelper.addMediaToArchive(newArchive, newMediaPaths, oebpsDir);
 
     // 步骤 10: 使用 ZipEncoder 将新 Archive 压缩成最终的 EPUB 文件数据。
-    final epubData = ZipEncoder().encode(newArchive);
+    final List<int>? epubData = ZipEncoder().encode(newArchive); // epubData 的类型是 List<int>?
+    
+    // 如果 epubData 不为 null，则将其转换为 Uint8List 并返回
     if (epubData != null) {
-      // 将压缩后的数据写入用户指定的输出路径。
-      await File(outputPath).writeAsBytes(epubData);
+      return Uint8List.fromList(epubData); 
     }
+    
+    // 如果为 null，则返回 null
+    return null;
   }
 
   /// 构建文件到需要修改的行的映射，Key 为文件名 (例如 "chapter1.html")。

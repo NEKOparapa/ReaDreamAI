@@ -201,8 +201,10 @@ class _GenerateVideoDialogState extends State<GenerateVideoDialog> {
                               children: [
                                 Icon(Icons.video_library, color: Theme.of(context).colorScheme.primary),
                                 const SizedBox(width: 12),
-                                const Text('预计生成视频数量：', style: TextStyle(fontWeight: FontWeight.w500)),
-                                const Spacer(),
+                                // 使用 Expanded 包裹文本，让它填充可用空间
+                                const Expanded(
+                                  child: Text('预计生成视频数量：', style: TextStyle(fontWeight: FontWeight.w500)),
+                                ),
                                 _buildEstimationWidget(),
                               ],
                             ),

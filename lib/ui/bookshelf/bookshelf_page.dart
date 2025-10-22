@@ -14,12 +14,12 @@ import '../../services/cache_manager/cache_manager.dart';
 import '../../services/file_parser/file_parser.dart';
 import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
-import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
 import 'ai_novel_creation/ai_generate_outline_page.dart';
 import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
+import 'export_book_dialog.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -432,7 +432,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          onTap: () => _exportBook(entry),
+          onTap: () => _showExportDialog(entry),
           child: const Row(
             children: [
               Icon(Icons.import_export, color: Colors.orange),
@@ -455,22 +455,14 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     );
   }
 
-  Future<void> _exportBook(BookshelfEntry entry) async {
-    try {
-      final book = await CacheManager().loadBookDetail(entry.id);
-      if (book != null) {
-        await EpubExporter.exportBook(book);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('书籍导出成功！')),
-          );
-        }
-      }
-    } catch (e, s) {
-      _showTopMessage('导出失败：$e', isError: true);
-      LogService.instance.error('书籍导出失败', e, s);
-    }
+  Future<void> _showExportDialog(BookshelfEntry entry) async {
+    await showDialog(
+      context: context,
+      barrierDismissible: false, // 导出过程中不允许点击外部关闭
+      builder: (context) => ExportBookDialog(entry: entry),
+    );
   }
+
 
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason> _showTopMessage(
     String message, {

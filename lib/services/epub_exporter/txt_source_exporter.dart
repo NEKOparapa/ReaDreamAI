@@ -4,7 +4,8 @@ part of 'epub_exporter.dart';
 
 /// 内部实现类：处理 TXT 源文件，从头构建 EPUB。
 class _TxtSourceExporter {
-  Future<void> export(Book book, String outputPath) async {
+  /// 执行导出操作，返回生成的 EPUB 文件字节数据
+  Future<Uint8List?> export(Book book) async {
     final archive = Archive();
 
     // 1. 添加 mimetype (必须未压缩且在开头)
@@ -65,11 +66,16 @@ class _TxtSourceExporter {
     // 8. 复制所有媒体文件到 OEBPS/ 目录
     await _MediaHelper.addMediaToArchive(archive, mediaPaths, 'OEBPS');
 
-    // 9. 压缩并写入文件
-    final epubData = ZipEncoder().encode(archive);
+    // 9. 压缩数据并返回
+    final List<int>? epubData = ZipEncoder().encode(archive); // epubData 的类型是 List<int>?
+    
+    // 如果 epubData 不为 null，则将其转换为 Uint8List 并返回
     if (epubData != null) {
-      await File(outputPath).writeAsBytes(epubData);
+      return Uint8List.fromList(epubData);
     }
+    
+    // 如果为 null，则返回 null
+    return null;
   }
 
   String _buildContainerXml() {
@@ -88,7 +94,6 @@ class _TxtSourceExporter {
     String manifestItems = '';
     String spineItems = '';
 
-    // 章节列表
     int chapterIndex = 1;
     for (final chapter in book.chapters) {
       manifestItems +=
@@ -97,7 +102,6 @@ class _TxtSourceExporter {
       chapterIndex++;
     }
 
-    // 媒体文件 (图片和视频) 列表
     int mediaId = 1;
     for (final path in mediaPaths) {
       final fileName = p.basename(path);
