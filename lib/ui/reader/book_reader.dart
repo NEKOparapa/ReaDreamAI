@@ -39,7 +39,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
   late int _currentChapterIndex;
 
   // --- UI 可见性控制 ---
-  final ValueNotifier<bool> _isToolbarVisible = ValueNotifier(true);
+  final ValueNotifier<bool> _isToolbarVisible = ValueNotifier(false);
 
   // --- 阅读器设置 ---
   // 使用从新文件导入的公开类
