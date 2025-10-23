@@ -187,7 +187,7 @@ class _ImageTile extends StatelessWidget {
   }
 }
 
-// [移出] 视频展示瓦片
+// 视频展示瓦片
 class _VideoTile extends StatefulWidget {
   final String videoPath;
   final VoidCallback onDelete;
@@ -243,8 +243,6 @@ class _VideoTileState extends State<_VideoTile> {
 
   void _showEnlargedVideo(BuildContext context) async {
     if (!_isInitialized) return;
-
-    _controller.pause();
 
     await showDialog(
       context: context,
@@ -341,12 +339,25 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
   @override
   void initState() {
     super.initState();
-    widget.controller.seekTo(Duration.zero);
-    widget.controller.setVolume(1.0);
-    widget.controller.setLooping(true);
-    widget.controller.play();
-    _isPlaying = true;
     widget.controller.addListener(_videoListener);
+    _initializeAndPlay(); // 改为异步初始化
+  }
+
+  // 异步初始化和播放
+  Future<void> _initializeAndPlay() async {
+    try {
+      widget.controller.setVolume(1.0);
+      widget.controller.setLooping(true);
+      await widget.controller.seekTo(Duration.zero);
+      await widget.controller.play();
+      if (mounted) {
+        setState(() {
+          _isPlaying = true;
+        });
+      }
+    } catch (e) {
+      print('视频播放失败: $e');
+    }
   }
 
   void _videoListener() {
