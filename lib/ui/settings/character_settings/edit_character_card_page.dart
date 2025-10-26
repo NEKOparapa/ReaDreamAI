@@ -215,7 +215,7 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
               const SizedBox(height: 16),
               _buildTextField(_statusController, '状态'), // 新增
               const SizedBox(height: 16),
-              _buildTextField(_otherController, '其他标签'),
+              _buildTextField(_otherController, '其他'),
               const SizedBox(height: 24),
               const Text('参考图片', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),

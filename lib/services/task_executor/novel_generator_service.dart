@@ -106,7 +106,7 @@ class NovelGeneratorService {
       "appearance": "角色外貌",
       "clothing": "角色服装",
       "personality": "角色性格",
-      "status": "角色状态(故事各个章节的状态)",
+      "status": "角色状态(故事各个阶段的状态)",
       "other": "其他关键信息"
     }
   ],
@@ -146,7 +146,7 @@ class NovelGeneratorService {
       "appearance": "金属义肢，眼神疲惫，风衣下隐藏着过去的伤疤",
       "clothing": "磨损的合成纤维风衣，高领衫",
       "personality": "愤世嫉俗，但内心深处渴望真相",
-      "status": "第1章：发现自己记忆芯片部分损坏 →",
+      "status": "记忆芯片部分损坏，正在接受一个神秘客户的委托",
       "other": "对雨天有特殊的反应"
     }
   ],

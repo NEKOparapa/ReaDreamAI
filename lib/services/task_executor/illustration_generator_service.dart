@@ -260,8 +260,8 @@ class IllustrationGeneratorService {
     // 获取对应API的速率限制器
     final llmRateLimiter = _configService.getRateLimiterForApi(activeApi);
 
-    // 最多尝试2次（1次原始 + 1次重试）
-    for (int attempt = 0; attempt < 2; attempt++) {
+    // 最多尝试3次（1次原始 + 1次重试）
+    for (int attempt = 0; attempt < 3; attempt++) {
       try {
         if (cancellationToken.isCanceled) throw Exception('任务已取消');
 
@@ -271,7 +271,7 @@ class IllustrationGeneratorService {
 
         // 在每次尝试前都等待获取一个“令牌”，以符合API的速率限制
         await llmRateLimiter.acquire();
-        LogService.instance.info("    [LLM] 已获取到速率令牌，正在发送请求... (尝试 ${attempt + 1}/2)");
+        LogService.instance.info("    [LLM] 已获取到速率令牌，正在发送请求... (尝试 ${attempt + 1}/3)");
 
         // 执行LLM请求
         final llmResponse = await _llmService.requestCompletion(
@@ -298,7 +298,7 @@ class IllustrationGeneratorService {
           // 继续循环进行重试
         }
       } catch (e, s) {
-        LogService.instance.error('    [LLM] ❌ 处理LLM响应时失败 (尝试 ${attempt + 1}/2)', e, s);
+        LogService.instance.error('    [LLM] ❌ 处理LLM响应时失败 (尝试 ${attempt + 1}/3)', e, s);
         // 捕获异常后，循环将继续进行下一次尝试
       }
     }

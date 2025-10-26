@@ -159,7 +159,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_realistic_style',
       'name': '现实写真',
-      'content': 'realistic, photo-realistic, ultra-realistic, hyper-realistic',
+      'content': 'realistic, photo-realistic, ultra-realistic, hyper-realistic, 8k',
       "exampleImage": 'assets/drawing_style_example/realistic_style.jpeg',
       'isSystemPreset': true,
     },
@@ -173,7 +173,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_anime_style',
       'name': '动漫风格',
-      'content': 'anime style, anime screencap',
+      'content': 'anime style, anime screencap, anime screenshot,anime coloring,',
       "exampleImage": 'assets/drawing_style_example/anime_style.jpeg',
       'isSystemPreset': true,
     },
@@ -219,7 +219,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_other',
       'name': '预设-其他标签',
-      'content': 'nsfw',
+      'content': 'nsfw, uncensored',
       'isSystemPreset': true,
     }
   ],
@@ -277,20 +277,33 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_default_prompt',
       'name': '预设-角色向',
-      'content': '''你的任务是仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。
-英文绘画提示词应该遵守以下要求:
-- 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。
-- 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
-- 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
-- 不要包含任何艺术风格、画质或艺术家名字。''',
+  "content": """你的任务是分析小说文本，识别具有强烈视觉表现力的关键场景，提取场景中的核心视觉要素（人物、动作、环境、情绪），生成结构化的英文绘图提示词。提示词生成规则与格式：
+一、 提示词结构
+1.  主体: 场景中的核心角色或物体是谁/是什么。
+2.  外貌与特征: 角色的核心外貌，如发型、发色、眼瞳颜色、体型、以及任何显著特征（如伤疤、纹身）等。
+3.  服装与配饰: 角色的穿着、饰品、等。
+4.  姿态与情绪: 角色的动作、姿势、表情、眼神等。
+5.  构图与镜头: 画面构图，镜头视角（如特写、全身、鸟瞰），角色位置等。
+6.  环境与背景: 场景发生的具体地点，背景中的元素等。
+7.  氛围与光影: 整体氛围（如紧张、温暖），光线来源、颜色、阴影效果等。
+
+二、 角色信息处理
+- 一致性与继承：在为多个场景生成提示词时，如果都是同一个主体，其主体描述（如 外貌与特征、服装与配饰）应保持一致，且都需要重复和详细描写，以免不同的插图主体描述不一致。
+- 优先级原则：如果在某个具体场景中，角色的服装、状态、情绪或配饰与【参考角色信息】不一致，优先采用【小说文本】中该场景的描述，或者进行补充。
+
+三、 其他要求
+- 视觉化语言: 使用具体、可被描绘的英文词汇，使用AI绘画相关的标签语言。
+- 场景选择: 场景选择应尽可能分散在文本的不同阶段，并体现不同的情境或情绪，避免插图选取位置过于集中。
+- 禁止任何艺术风格，艺术家名字，画质/渲染相关的词: 例如 `Impressionism`, `Anime`, `by Greg Rutkowski`, `masterpiece`, `best quality`, `4K`。
+""",
       'isSystemPreset': true,
     },
     {
       'id': 'system_background_prompt',
       'name': '预设-平衡向',
-      'content': '''你的任务是仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。对于部分场景（约30%的场景），生成纯背景插图，专注于环境和氛围，而不包含任何角色或主体。
+      'content': '''你的任务是仔细分析小说文本，捕捉关键的角色、动作、环境和氛围，选择情感冲击力最强的时刻，提取最具画面感的场景，并为每个场景生成详细的英文绘图提示词。对于部分场景（约20%的场景），生成纯背景插图，专注于环境和氛围，而不包含任何角色或主体。
 英文绘画提示词应该遵守以下要求:
-- 从主体、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。对于纯背景插图，省略主体、服装、姿态与情绪部分，专注于环境、背景、氛围与光影。
+- 从主体、外貌与特征、服装与配饰、姿态与情绪、构图与镜头、环境与背景、氛围与光影方面进行详细描绘。对于纯背景插图，省略主体、服装、姿态与情绪部分，专注于环境、背景、氛围与光影。
 - 如果场景文本中角色的服装、状态或细节与角色参考信息不一致，优先使用场景文本中的描述。
 - 尽量使用具体的视觉性语言，尽量使用AI绘画相关的标签语言。
 - 不要包含任何艺术风格、画质或艺术家名字。''',
