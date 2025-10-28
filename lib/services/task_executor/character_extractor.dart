@@ -70,10 +70,10 @@ class CharacterExtractor {
    - 服装配饰（衣服、饰品、装备等）
    - 性格（冷静、活泼、傲娇等内在特质）
    - 状态（当前情绪、身体状况，如开心、受伤、疲惫等）
-   - 其他特征（特殊能力、标志性动作等）
+   - 其他备注（特殊能力、标志性动作等）
 3. 所有描述使用中文
-4. 使用具体、视觉化的语言描述
-5. 每个字段的描述要简洁但准确''';
+4. 使用具体、视觉化的语言描述，不使用模糊性描述
+5. 每个字段的描述要简洁准确，直白易懂''';
     } else {
       return '''You are a professional character analysis assistant. Your task is to extract character information from the given text and generate detailed character cards.
 
@@ -123,7 +123,7 @@ $outputFormatLabel
     "clothing": "服装描述",
     "personality": "性格描述",
     "status": "状态描述",
-    "other": "其他特征"
+    "other": "其他备注"
   }
 ]
 ```''';
@@ -157,8 +157,8 @@ $outputFormatLabel
           identity: json['identity'] ?? '',
           appearance: json['appearance'] ?? '',
           clothing: json['clothing'] ?? '',
-          personality: json['personality'] ?? '', // 新增
-          status: json['status'] ?? '',           // 新增
+          personality: json['personality'] ?? '', 
+          status: json['status'] ?? '',
           other: json['other'] ?? '',
           isSystemPreset: false,
         );
