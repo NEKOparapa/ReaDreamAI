@@ -3,21 +3,17 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:pool/pool.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../base/config_service.dart';
 import '../../../models/book.dart';
 import '../../../models/character_card_model.dart';
-import '../../../services/cache_manager/cache_manager.dart';
-import '../../../services/drawing_service/drawing_service.dart';
 import '../../../services/task_executor/storyboard_generator_executor.dart';
-import '../../../services/video_service/video_service.dart';
-import 'package:file_picker/file_picker.dart';  // 新增
-import 'package:uuid/uuid.dart';                 // 新增
+import 'package:file_picker/file_picker.dart';
+import 'package:uuid/uuid.dart';
 
-// [模型定义]
+// [UNCHANGED] Shot, Scene, ChapterScript 模型定义...
 class Shot {
   int shotNumber;
   TextEditingController shotTypeController;
@@ -151,8 +147,6 @@ class ChapterScript {
   }
 }
 
-// --- 工作台主界面 ---
-
 class NovelToShortDramaWorkbenchPage extends StatefulWidget {
   final Book book;
   final List<ChapterScript> initialScript;
@@ -200,7 +194,8 @@ class _NovelToShortDramaWorkbenchPageState
     }
     super.dispose();
   }
-
+  
+  // [UNCHANGED] UI and data loading/saving logic
   void _debounceSaveWorkbenchData() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 800), () {
@@ -294,6 +289,7 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
+
   Future<void> _generateAllPrompts() async {
     setState(() {
       _isGenerating = true;
@@ -302,37 +298,36 @@ class _NovelToShortDramaWorkbenchPageState
     });
 
     try {
-      final allShots = _script.expand((cs) => cs.scenes.expand((s) => s.shots)).toList();
-      final totalShots = allShots.length;
-      if (totalShots == 0) return;
+      final characters = _charactersData
+          .map((data) => CharacterCard.fromJson(data))
+          .toList();
 
-      final characters = _charactersData.map((data) => CharacterCard.fromJson(data)).toList();
-      int processedCount = 0;
+      // 直接调用 executor 的批量生成方法
+      await StoryboardGeneratorExecutor.instance.generateAllPromptsForScript(
+        novelTitle: widget.book.title,
+        characters: characters,
+        script: _script,
+        onProgress: (progress, status) {
+          if (mounted) {
+            setState(() {
+              _generationProgress = progress;
+              _generationStatus = status;
+            });
+          }
+        },
+      );
 
-      await Future.wait(allShots.map((shot) async {
-        final prompts = await StoryboardGeneratorExecutor.instance.generatePromptsForShot(
-          shot: shot,
-          characters: characters,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ 提示词生成完毕!')),
         );
-        processedCount++;
-        if (mounted) {
-          setState(() {
-            shot.firstFramePromptController.text = prompts.imagePrompt;
-            shot.videoPromptController.text = prompts.videoPrompt;
-            _generationStatus = '正在生成提示词: $processedCount / $totalShots';
-            _generationProgress = processedCount / totalShots;
-          });
-        }
-      }));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('提示词生成完毕!')));
       }
-    } catch (e) {
+    } catch (e, s) {
+      debugPrint('[提示词生成] 失败: $e\n$s');
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('提示词生成失败: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ 提示词生成失败: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -350,80 +345,32 @@ class _NovelToShortDramaWorkbenchPageState
       _generationProgress = 0.0;
     });
 
-    final imageSizeString = _configService.getSetting<String>('image_gen_size', '1024*1024');
-    int width = 1024;
-    int height = 1024;
     try {
-      final parts = imageSizeString.split('*');
-      if (parts.length == 2) {
-        width = int.parse(parts[0]);
-        height = int.parse(parts[1]);
-      }
-    } catch (_) {}
-
-    final videoDuration = _configService.getSetting<int>('video_gen_duration', 5);
-    final videoResolution = _configService.getSetting<String>('video_gen_resolution', '720p');
-
-    final imageSaveDir = await CacheManager().getOrCreateBookSubDir(widget.book.id, p.join('media', 'images'));
-    final videoSaveDir = await CacheManager().getOrCreateBookSubDir(widget.book.id, p.join('media', 'videos'));
-
-    final pool = Pool(2);
-    final allShots = _script.expand((cs) => cs.scenes.expand((s) => s.shots)).toList();
-    final totalShots = allShots.length;
-    if (totalShots == 0) {
-      setState(() => _isGenerating = false);
-      return;
-    }
-    int processedCount = 0;
-
-    try {
-      for (final shot in allShots) {
-        pool.withResource(() async {
-          if (shot.firstFramePromptController.text.isNotEmpty) {
-            try {
-              final imagePaths = await DrawingService.instance.generateImages(
-                  positivePrompt: shot.firstFramePromptController.text,
-                  negativePrompt: _configService.getActiveTagContent(
-                      'drawing_negative_tags', 'active_drawing_negative_tag_id'),
-                  saveDir: imageSaveDir.path, count: 1, width: width, height: height,
-                  apiConfig: _configService.getActiveDrawingApi());
-
-              if (imagePaths != null && imagePaths.isNotEmpty) {
-                if (mounted) setState(() => shot.firstFrameImagePaths.addAll(imagePaths));
-
-                if (shot.videoPromptController.text.isNotEmpty) {
-                  final videoPaths = await VideoService.instance.generateVideo(
-                      positivePrompt: shot.videoPromptController.text,
-                      saveDir: videoSaveDir.path, count: 1, referenceImagePath: imagePaths.first,
-                      duration: videoDuration, resolution: videoResolution,
-                      apiConfig: _configService.getActiveVideoApi());
-                  if (videoPaths != null && videoPaths.isNotEmpty) {
-                    if (mounted) setState(() => shot.videoPaths.addAll(videoPaths));
-                  }
-                }
-              }
-            } catch (e) {
-              debugPrint('生成分镜 ${shot.shotNumber} 的媒体失败: $e');
-            }
-          }
-          processedCount++;
+      // 直接调用 executor 的批量生成方法
+      await StoryboardGeneratorExecutor.instance.generateAllMediaForScript(
+        book: widget.book,
+        script: _script,
+        onProgress: (progress, status) {
           if (mounted) {
-             setState(() {
-                _generationStatus = '正在生成媒体: $processedCount / $totalShots';
-                _generationProgress = processedCount / totalShots;
-             });
+            setState(() {
+              _generationProgress = progress;
+              _generationStatus = status;
+            });
           }
-        });
-      }
-      await pool.close();
+        },
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('媒体生成任务完成!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ 媒体生成完毕!')),
+        );
       }
-    } catch (e) {
+    } catch (e, s) {
+      debugPrint('[媒体生成] 失败: $e\n$s');
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('媒体生成过程中发生错误: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ 媒体生成失败: $e')),
+        );
       }
     } finally {
       if (mounted) {
@@ -433,7 +380,7 @@ class _NovelToShortDramaWorkbenchPageState
       }
     }
   }
-
+  // [UNCHANGED] 以下所有UI构建和辅助方法保持不变
   Future<bool> _showDeleteConfirmationDialog({required String title, required String content}) async {
     return await showDialog<bool>(
       context: context,
@@ -697,9 +644,6 @@ class _NovelToShortDramaWorkbenchPageState
           );
   }
 
-  // =======================================================================
-  // [KEPT] 新的章节卡片样式
-  // =======================================================================
   Widget _buildChapterItem(ChapterScript chapter, int chapterIndex) {
     final theme = Theme.of(context);
     return Card(
@@ -763,9 +707,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  // =======================================================================
-  // [KEPT] 新的场景卡片样式
-  // =======================================================================
   Widget _buildSceneItem(ChapterScript chapter, Scene scene, int chapterIndex, int sceneNumber) {
     final theme = Theme.of(context);
     return Container(
@@ -847,9 +788,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  // =======================================================================
-  // [REVERTED] 恢复到原始的分镜卡片样式
-  // =======================================================================
   Widget _buildShotItem(Scene scene, Shot shot) {
     final theme = Theme.of(context);
     return Container(
@@ -1055,6 +993,7 @@ class _NovelToShortDramaWorkbenchPageState
   }
 }
 
+// [UNCHANGED] The rest of the file (_EditableCharacterCardItem, _VideoPlayerWidget) remains the same.
 class _EditableCharacterCardItem extends StatefulWidget {
   final Map<String, dynamic> characterData;
   final VoidCallback onDataChanged;
@@ -1296,7 +1235,7 @@ class _EditableCharacterCardItemState extends State<_EditableCharacterCardItem> 
         children: [
           const Divider(height: 1),
           const SizedBox(height: 12),
-          _buildReferenceImageSection(),  // 添加参考图片区域
+          _buildReferenceImageSection(),
           const SizedBox(height: 16),
           _buildEditableDetailRow('name', '卡片名称'),
           _buildEditableDetailRow('characterName', '角色名'),

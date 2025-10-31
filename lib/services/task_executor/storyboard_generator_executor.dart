@@ -1,14 +1,21 @@
 // lib/services/task_executor/storyboard_generator_executor.dart
 
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:pool/pool.dart';
+import 'package:path/path.dart' as p;
+
 import '../../base/config_service.dart';
 import '../../base/log/log_service.dart';
 import '../../models/book.dart';
 import '../../models/character_card_model.dart';
 import '../../services/llm_service/llm_service.dart';
+import '../../services/drawing_service/drawing_service.dart';
+import '../../services/video_service/video_service.dart';
+import '../../services/cache_manager/cache_manager.dart';
 import '../../ui/bookshelf/novel_to_short_drama/novel_to_short_drama_workbench_page.dart'
-    show ChapterScript, Shot; // 导入Shot模型
+    show ChapterScript, Scene, Shot;
 
 // 定义返回类型
 typedef StoryboardGenerationResult = ({
@@ -16,80 +23,87 @@ typedef StoryboardGenerationResult = ({
   List<CharacterCard> characters
 });
 
-typedef ShotPromptsResult = ({String imagePrompt, String videoPrompt});
+typedef ScenePromptsResult = Map<int, ({String imagePrompt, String videoPrompt})>;
 
 class StoryboardGeneratorExecutor {
   StoryboardGeneratorExecutor._();
-  static final StoryboardGeneratorExecutor instance =
-      StoryboardGeneratorExecutor._();
+  static final StoryboardGeneratorExecutor instance = StoryboardGeneratorExecutor._();
 
   final ConfigService _configService = ConfigService();
   final LlmService _llmService = LlmService.instance;
   final LogService _logger = LogService.instance;
 
-  // --- 任务1: 为整本小说生成分镜脚本 ---
+  // ==================== 任务1: 生成分镜脚本 ====================
+  
   Future<StoryboardGenerationResult> generateStoryboard({
     required Book book,
     required String requirements,
     required List<CharacterCard> characters,
-    int? scenesPerChapter, // [新增]
-    int? shotsPerScene,   // [新增]
+    int? scenesPerChapter,
+    int? shotsPerScene,
   }) async {
     _logger.info("开始为《${book.title}》生成分镜脚本...");
-    final pool = Pool(3); // 限制并发数为3
-    // 存储每个章节的生成结果，包含索引、脚本JSON和角色JSON
+
+    final llmApi = _configService.getActiveLanguageApi();
+    final llmConcurrency = llmApi.concurrencyLimit ?? 3;
+    final llmRateLimiter = _configService.getRateLimiterForApi(llmApi);
+    final pool = Pool(llmConcurrency);
+    const maxRetries = 3;
+    _logger.info("启动分镜脚本生成任务池，最大并发数: $llmConcurrency (API: ${llmApi.name})");
+
     final results = <(int, Map<String, dynamic>)>[];
 
     try {
-      // 并发处理所有章节
       await Future.wait(
         book.chapters.asMap().entries.map((entry) {
           final chapterIndex = entry.key;
           final chapter = entry.value;
 
           return pool.withResource(() async {
-            _logger.info("正在处理章节 ${chapter.title}...");
-            final chapterText = chapter.lines.map((l) => l.text).join('\n');
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+              try {
+                _logger.info("正在处理章节 ${chapter.title}... (尝试 $attempt/$maxRetries)");
+                await llmRateLimiter.acquire();
+                _logger.info("章节 ${chapter.title} 已获取速率令牌，开始请求LLM。");
 
-            final (systemPrompt, messages) = _buildPromptForStoryboardGeneration(
-              novelTitle: book.title,
-              chapterTitle: chapter.title,
-              chapterText: chapterText,
-              requirements: requirements,
-              characters: characters,
-              scenesPerChapter: scenesPerChapter, // [修改] 传递参数
-              shotsPerScene: shotsPerScene,       // [修改] 传递参数
-            );
+                final chapterText = chapter.lines.map((l) => l.text).join('\n');
+                final (systemPrompt, messages) = _buildPromptForStoryboardGeneration(
+                  novelTitle: book.title,
+                  chapterTitle: chapter.title,
+                  chapterText: chapterText,
+                  requirements: requirements,
+                  characters: characters,
+                  scenesPerChapter: scenesPerChapter,
+                  shotsPerScene: shotsPerScene,
+                );
 
-            final llmResponse = await _llmService.requestCompletion(
-              systemPrompt: systemPrompt,
-              messages: messages,
-              apiConfig: _configService.getActiveLanguageApi(),
-            );
+                final llmResponse = await _llmService.requestCompletion(
+                  systemPrompt: systemPrompt,
+                  messages: messages,
+                  apiConfig: llmApi,
+                );
 
-            // 解析返回的包含 script 和 characters 的JSON对象
-            try {
-              String jsonString = llmResponse;
-              // 提取被 ```json ... ``` 包裹的内容
-              final match = RegExp(r'```json\s*([\s\S]+?)\s*```')
-                  .firstMatch(llmResponse);
-              if (match != null) jsonString = match.group(1)!;
+                String jsonString = llmResponse;
+                final match = RegExp(r'```json\s*([\s\S]+?)\s*```').firstMatch(llmResponse);
+                if (match != null) jsonString = match.group(1)!;
 
-              final Map<String, dynamic> responseJson = jsonDecode(jsonString);
-              results.add((chapterIndex, responseJson));
-              _logger.success("章节 ${chapter.title} 处理成功。");
-            } catch (e, s) {
-              _logger.error("解析章节 ${chapter.title} 的LLM响应失败", e, s);
-              // 即使失败也添加一个空结果，以保证章节顺序不错乱
-              results.add((chapterIndex, {'script': [], 'characters': []}));
+                final Map<String, dynamic> responseJson = jsonDecode(jsonString);
+                results.add((chapterIndex, responseJson));
+                _logger.success("章节 ${chapter.title} 处理成功。");
+                break;
+              } catch (e, s) {
+                _logger.error("处理章节 ${chapter.title} 失败 (尝试 $attempt/$maxRetries)", e, s);
+                if (attempt == maxRetries) {
+                  _logger.error("章节 ${chapter.title} 达到最大重试次数，将使用空结果。");
+                  results.add((chapterIndex, {'script': [], 'characters': []}));
+                }
+                await Future.delayed(Duration(seconds: 2 * attempt));
+              }
             }
           });
         }),
       );
 
-      // --- 汇总和处理所有章节的结果 ---
-
-      // 按章节索引排序，确保顺序正确
       results.sort((a, b) => a.$1.compareTo(b.$1));
 
       final finalScript = <ChapterScript>[];
@@ -97,11 +111,8 @@ class StoryboardGeneratorExecutor {
 
       for (int i = 0; i < book.chapters.length; i++) {
         final chapter = book.chapters[i];
-        // 查找对应章节的结果
-        final chapterResult =
-            results.firstWhere((r) => r.$1 == i, orElse: () => (i, {})).$2;
+        final chapterResult = results.firstWhere((r) => r.$1 == i, orElse: () => (i, {})).$2;
 
-        // 1. 处理分镜脚本
         final scenesJson = chapterResult['script'] as List<dynamic>? ?? [];
         final chapterScript = ChapterScript.fromJson({
           'originalChapterTitle': chapter.title,
@@ -109,8 +120,7 @@ class StoryboardGeneratorExecutor {
         });
         finalScript.add(chapterScript);
 
-        // 2. 收集AI生成的角色
-        if (characters.isEmpty) { // 仅当用户未提供角色时，才收集AI生成的角色
+        if (characters.isEmpty) {
           final charactersJson = chapterResult['characters'] as List<dynamic>? ?? [];
           for (final charJson in charactersJson) {
             try {
@@ -121,63 +131,323 @@ class StoryboardGeneratorExecutor {
           }
         }
       }
-      
-      // 对所有收集到的AI角色进行去重
-      final uniqueCharacters = _deduplicateCharacters(allGeneratedCharacters);
 
+      final uniqueCharacters = _deduplicateCharacters(allGeneratedCharacters);
       _logger.success("所有章节分镜脚本生成完毕！");
       return (script: finalScript, characters: uniqueCharacters);
-
     } catch (e, s) {
       _logger.error("生成分镜脚本时发生严重错误", e, s);
       rethrow;
     }
   }
 
-  // --- 任务2: 为单个分镜生成提示词 ---
-
-  Future<ShotPromptsResult> generatePromptsForShot({
-    required Shot shot,
+  // ==================== 任务2: 批量生成提示词（按场景并发）====================
+  
+  /// 为整个脚本的所有场景生成提示词（按场景为单位并发）
+  Future<void> generateAllPromptsForScript({
+    required String novelTitle,
     required List<CharacterCard> characters,
+    required List<ChapterScript> script,
+    required void Function(double progress, String status) onProgress,
   }) async {
-    _logger.info("为分镜 ${shot.shotNumber} 生成提示词...");
-    // 1. 构建提示词
-    final (systemPrompt, messages) = _buildPromptForShot(
-      shotContent: shot.contentController.text,
-      characters: characters,
-    );
+    _logger.info("🚀 开始为《$novelTitle》生成所有场景的提示词...");
 
-    // 2. 请求LLM
-    final llmResponse = await _llmService.requestCompletion(
-      systemPrompt: systemPrompt,
-      messages: messages,
-      apiConfig: _configService.getActiveLanguageApi(),
-    );
+    // 1. 收集所有场景作为子任务
+    final allSceneTasks = <_SceneTask>[];
+    for (final chapter in script) {
+      for (final scene in chapter.scenes) {
+        if (scene.shots.isNotEmpty) {
+          allSceneTasks.add(_SceneTask(
+            chapterTitle: chapter.originalChapterTitle,
+            scene: scene,
+          ));
+        }
+      }
+    }
 
-    // 3. 解析结果
+    if (allSceneTasks.isEmpty) {
+      _logger.warn("没有可用的场景，跳过提示词生成。");
+      onProgress(1.0, '无场景需要处理');
+      return;
+    }
+
+    _logger.info("📦 发现 ${allSceneTasks.length} 个场景需要生成提示词");
+
+    // 2. 获取并发配置
+    final llmApi = _configService.getActiveLanguageApi();
+    final llmConcurrency = llmApi.concurrencyLimit ?? 3;
+    final llmRateLimiter = _configService.getRateLimiterForApi(llmApi);
+    final pool = Pool(llmConcurrency);
+    const maxRetries = 3;
+
+    _logger.info("🛠️ 启动提示词生成任务池，最大并发数: $llmConcurrency (API: ${llmApi.name})");
+
+    int processedCount = 0;
+    final totalScenes = allSceneTasks.length;
+
     try {
-      String jsonString = llmResponse;
-      final match =
-          RegExp(r'```json\s*([\s\S]+?)\s*```').firstMatch(llmResponse);
-      if (match != null) jsonString = match.group(1)!;
+      // 3. 并发处理所有场景
+      final tasks = allSceneTasks.map((sceneTask) {
+        return pool.withResource(() async {
+          for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              await llmRateLimiter.acquire();
+              _logger.info("  ⚡️ 正在为场景「${sceneTask.scene.titleController.text}」生成提示词 (尝试 $attempt/$maxRetries)");
 
-      // 将解码后的对象强制转换为 Map<String, dynamic>
-      final data = jsonDecode(jsonString) as Map<String, dynamic>; 
-      
-      // 在取值时确保类型为 String
-      return (
-        imagePrompt: data['image_prompt'] as String? ?? '',
-        videoPrompt: data['video_prompt'] as String? ?? ''
-      );
+              // 调用单个场景的提示词生成方法
+              final prompts = await _generatePromptsForScene(
+                novelTitle: novelTitle,
+                characters: characters,
+                chapterTitle: sceneTask.chapterTitle,
+                scene: sceneTask.scene,
+                apiConfig: llmApi,
+              );
+
+              // 更新场景中所有分镜的提示词
+              for (final shot in sceneTask.scene.shots) {
+                if (prompts.containsKey(shot.shotNumber)) {
+                  shot.firstFramePromptController.text = prompts[shot.shotNumber]!.imagePrompt;
+                  shot.videoPromptController.text = prompts[shot.shotNumber]!.videoPrompt;
+                }
+              }
+
+              _logger.success("  ✅ 场景「${sceneTask.scene.titleController.text}」提示词生成成功 (${prompts.length} 个分镜)");
+              break; // 成功，跳出重试循环
+            } catch (e, s) {
+              _logger.error("  ❌ 场景「${sceneTask.scene.titleController.text}」提示词生成失败 (尝试 $attempt/$maxRetries)", e, s);
+              if (attempt == maxRetries) {
+                _logger.error("  ⚠️ 场景「${sceneTask.scene.titleController.text}」达到最大重试次数，跳过。");
+              }
+              await Future.delayed(Duration(seconds: 2 * attempt));
+            }
+          }
+
+          // 更新进度
+          processedCount++;
+          onProgress(
+            processedCount / totalScenes,
+            '正在生成提示词: $processedCount / $totalScenes',
+          );
+        });
+      });
+
+      await Future.wait(tasks);
+      _logger.success("🎉 所有场景的提示词生成完毕！");
     } catch (e, s) {
-      _logger.error("解析分镜 ${shot.shotNumber} 的提示词响应失败", e, s);
-      return (imagePrompt: '', videoPrompt: ''); // 返回空结果
+      _logger.error("❌ 批量生成提示词时发生错误", e, s);
+      rethrow;
     }
   }
 
-  // --- 私有方法: 提示词构建逻辑 ---
+  /// 为单个场景的所有分镜生成提示词（内部方法）
+  Future<ScenePromptsResult> _generatePromptsForScene({
+    required String novelTitle,
+    required List<CharacterCard> characters,
+    required String chapterTitle,
+    required Scene scene,
+    required dynamic apiConfig,
+  }) async {
+    final (systemPrompt, messages) = _buildPromptForScenePrompts(
+      novelTitle: novelTitle,
+      characters: characters,
+      chapterTitle: chapterTitle,
+      sceneTitle: scene.titleController.text,
+      shots: scene.shots,
+    );
 
-  /// [内联方法] 为“小说转短剧”生成分镜脚本构建提示词
+    final llmResponse = await _llmService.requestCompletion(
+      systemPrompt: systemPrompt,
+      messages: messages,
+      apiConfig: apiConfig,
+    );
+
+    try {
+      String jsonString = llmResponse;
+      final match = RegExp(r'```json\s*([\s\S]+?)\s*```').firstMatch(llmResponse);
+      if (match != null) jsonString = match.group(1)!;
+
+      final data = jsonDecode(jsonString) as Map<String, dynamic>;
+      final shotsArray = data['shots'] as List<dynamic>? ?? [];
+
+      final result = <int, ({String imagePrompt, String videoPrompt})>{};
+      for (final shotData in shotsArray) {
+        final shotNumber = shotData['shotNumber'] as int?;
+        final imagePrompt = shotData['image_prompt'] as String? ?? '';
+        final videoPrompt = shotData['video_prompt'] as String? ?? '';
+
+        if (shotNumber != null) {
+          result[shotNumber] = (imagePrompt: imagePrompt, videoPrompt: videoPrompt);
+        }
+      }
+
+      return result;
+    } catch (e, s) {
+      _logger.error("解析场景提示词响应失败", e, s);
+      return {};
+    }
+  }
+
+  // ==================== 任务3: 批量生成媒体（图片+视频）====================
+  
+  /// 为整个脚本的所有分镜生成媒体文件
+  Future<void> generateAllMediaForScript({
+    required Book book,
+    required List<ChapterScript> script,
+    required void Function(double progress, String status) onProgress,
+  }) async {
+    _logger.info("🚀 开始为《${book.title}》生成所有分镜的媒体文件...");
+
+    // 1. 收集所有分镜
+    final allShots = <_ShotTask>[];
+    for (final chapter in script) {
+      for (final scene in chapter.scenes) {
+        for (final shot in scene.shots) {
+          if (shot.firstFramePromptController.text.isNotEmpty) {
+            allShots.add(_ShotTask(
+              chapterTitle: chapter.originalChapterTitle,
+              sceneTitle: scene.titleController.text,
+              shot: shot,
+            ));
+          }
+        }
+      }
+    }
+
+    if (allShots.isEmpty) {
+      _logger.warn("没有可生成的分镜，跳过媒体生成。");
+      onProgress(1.0, '无分镜需要处理');
+      return;
+    }
+
+    _logger.info("📦 发现 ${allShots.length} 个分镜需要生成媒体");
+
+    // 2. 获取API配置和并发限制
+    final drawingApi = _configService.getActiveDrawingApi();
+    final videoApi = _configService.getActiveVideoApi();
+
+    final drawConcurrency = drawingApi.concurrencyLimit ?? 1;
+    final videoConcurrency = videoApi.concurrencyLimit ?? 1;
+    final concurrency = min(drawConcurrency, videoConcurrency);
+
+    final drawRateLimiter = _configService.getRateLimiterForApi(drawingApi);
+    final videoRateLimiter = _configService.getRateLimiterForApi(videoApi);
+
+    final pool = Pool(max(1, concurrency));
+    const maxRetries = 3;
+    _logger.info("🛠️ 启动媒体生成任务池，最大并发数: $concurrency");
+
+    // 3. 获取媒体生成参数
+    final imageSizeString = _configService.getSetting<String>('image_gen_size', '1024*1024');
+    final parts = imageSizeString.split('*');
+    final width = parts.length == 2 ? int.tryParse(parts[0]) ?? 1024 : 1024;
+    final height = parts.length == 2 ? int.tryParse(parts[1]) ?? 1024 : 1024;
+    final videoDuration = _configService.getSetting<int>('video_gen_duration', 5);
+    final videoResolution = _configService.getSetting<String>('video_gen_resolution', '720p');
+
+    // 4. 准备保存目录
+    final imageSaveDir = await CacheManager().getOrCreateBookSubDir(
+      book.id,
+      p.join('media', 'images'),
+    );
+    final videoSaveDir = await CacheManager().getOrCreateBookSubDir(
+      book.id,
+      p.join('media', 'videos'),
+    );
+
+    int processedCount = 0;
+    final totalShots = allShots.length;
+
+    try {
+      // 5. 并发处理所有分镜
+      final tasks = allShots.map((shotTask) {
+        return pool.withResource(() async {
+          String? generatedImagePath;
+
+          // 5.1 生成图片（带重试）
+          for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              await drawRateLimiter.acquire();
+              _logger.info("  🎨 正在为分镜 ${shotTask.shot.shotNumber} 生成图片 (尝试 $attempt/$maxRetries)");
+
+              final imagePaths = await DrawingService.instance.generateImages(
+                positivePrompt: shotTask.shot.firstFramePromptController.text,
+                negativePrompt: _configService.getActiveTagContent(
+                  'drawing_negative_tags',
+                  'active_drawing_negative_tag_id',
+                ),
+                saveDir: imageSaveDir.path,
+                count: 1,
+                width: width,
+                height: height,
+                apiConfig: drawingApi,
+              );
+
+              if (imagePaths != null && imagePaths.isNotEmpty) {
+                generatedImagePath = imagePaths.first;
+                shotTask.shot.firstFrameImagePaths.addAll(imagePaths);
+                _logger.success("  ✅ 分镜 ${shotTask.shot.shotNumber} 图片生成成功");
+                break;
+              }
+            } catch (e, s) {
+              _logger.error("  ❌ 分镜 ${shotTask.shot.shotNumber} 图片生成失败 (尝试 $attempt/$maxRetries)", e, s);
+              if (attempt == maxRetries) {
+                _logger.error("  ⚠️ 分镜 ${shotTask.shot.shotNumber} 图片达到最大重试次数");
+              }
+              await Future.delayed(Duration(seconds: 2 * attempt));
+            }
+          }
+
+          // 5.2 如果图片生成成功且有视频提示词，则生成视频（带重试）
+          if (generatedImagePath != null && shotTask.shot.videoPromptController.text.isNotEmpty) {
+            for (int attempt = 1; attempt <= maxRetries; attempt++) {
+              try {
+                await videoRateLimiter.acquire();
+                _logger.info("  🎬 正在为分镜 ${shotTask.shot.shotNumber} 生成视频 (尝试 $attempt/$maxRetries)");
+
+                final videoPaths = await VideoService.instance.generateVideo(
+                  positivePrompt: shotTask.shot.videoPromptController.text,
+                  saveDir: videoSaveDir.path,
+                  count: 1,
+                  referenceImagePath: generatedImagePath,
+                  duration: videoDuration,
+                  resolution: videoResolution,
+                  apiConfig: videoApi,
+                );
+
+                if (videoPaths != null && videoPaths.isNotEmpty) {
+                  shotTask.shot.videoPaths.addAll(videoPaths);
+                  _logger.success("  ✅ 分镜 ${shotTask.shot.shotNumber} 视频生成成功");
+                  break;
+                }
+              } catch (e, s) {
+                _logger.error("  ❌ 分镜 ${shotTask.shot.shotNumber} 视频生成失败 (尝试 $attempt/$maxRetries)", e, s);
+                if (attempt == maxRetries) {
+                  _logger.error("  ⚠️ 分镜 ${shotTask.shot.shotNumber} 视频达到最大重试次数");
+                }
+                await Future.delayed(Duration(seconds: 2 * attempt));
+              }
+            }
+          }
+
+          // 5.3 更新进度
+          processedCount++;
+          onProgress(
+            processedCount / totalShots,
+            '正在生成媒体: $processedCount / $totalShots',
+          );
+        });
+      });
+
+      await Future.wait(tasks);
+      _logger.success("🎉 所有分镜的媒体生成完毕！");
+    } catch (e, s) {
+      _logger.error("❌ 批量生成媒体时发生错误", e, s);
+      rethrow;
+    }
+  }
+
+  // ==================== 私有方法: 提示词构建逻辑 ====================
+
   (String, List<Map<String, String>>) _buildPromptForStoryboardGeneration({
     required String novelTitle,
     required String chapterTitle,
@@ -188,42 +458,36 @@ class StoryboardGeneratorExecutor {
     int? shotsPerScene,
   }) {
     String characterInfoBlock = '';
-    // 如果用户提供了角色信息，则将其加入提示词
     if (characters.isNotEmpty) {
       final buffer = StringBuffer();
       buffer.writeln('### 主要角色信息 (请基于此信息进行创作):');
       for (final char in characters) {
         buffer.writeln('- 角色名: ${char.characterName}');
-        if (char.appearance.isNotEmpty)
-          buffer.writeln('  - 外貌: ${char.appearance}');
-        if (char.clothing.isNotEmpty)
-          buffer.writeln('  - 服装: ${char.clothing}');
-        if (char.personality.isNotEmpty)
-          buffer.writeln('  - 性格: ${char.personality}');
+        if (char.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${char.appearance}');
+        if (char.clothing.isNotEmpty) buffer.writeln('  - 服装: ${char.clothing}');
+        if (char.personality.isNotEmpty) buffer.writeln('  - 性格: ${char.personality}');
       }
       characterInfoBlock = buffer.toString();
     }
 
-    // [修改] 更新System Prompt，移除time和location，要求信息合并到title
-    const String systemPrompt = """你是一个专业的影视编剧和角色设计师。你的任务是将提供的小说章节内容，根据用户要求，改编成详细的分镜脚本。
-### 任务要求:
-1.  **场景划分**: 将章节内容合理地划分为多个场景（Scene）。每个场景的标题 `title` 字段应清晰地概括场景内容，并**在标题中包含时间和地点**（例如：“场景1 日/外景 - 森林边缘”）。
-2.  **分镜设计**: 在每个场景内，设计一系列分镜（Shot）。每个分镜都需要包含以下元素：
-    -   **景别 (shotType)**: 如全景、中景、近景、特写等。
-    -   **运镜 (cameraMove)**: 如固定、推、拉、摇、跟等。
-    -   **登场角色 (characters)**: 此分镜中出现的角色名。
-    -   **画面内容 (content)**: 详细描述画面中发生的事情、人物的动作和表情。
-    -   **声音/对白 (sound)**: 包含角色的对白、旁白或重要的环境音效。
-    -   **分镜时长 (duration)**: 预估的时长，如 "3s", "5s"。
-3.  **忠于原作**: 改编应在尊重小说原意的基础上进行，保留关键情节和对话。
-4.  **遵循要求**: 严格遵守用户提供的额外“分镜要求”和“结构要求”。
-5.  **角色生成 (重要)**:
-    -   **如果用户提供了“主要角色信息”**: 你必须严格参考这些信息来创作分镜，并且在返回的`characters`数组中**返回一个空数组 `[]`**。
-    -   **如果用户没有提供“主要角色信息”**: 你需要根据本章节内容，分析并识别出登场的主要角色，为他们创建角色简介。然后将这些角色信息填充到返回的`characters`数组中。
+    const String systemPrompt = """你是一个专业的影视编剧和角色设计师。你的任务是将提供的小说章节内容,根据用户要求,改编成详细的分镜脚本。
 
-### 输出格式:
-请严格以JSON格式返回一个根对象，该对象包含 `script` 和 `characters` 两个键。**注意：`script` 数组中的场景对象不再包含 `time` 和 `location` 字段。**
-```json
+任务要求:
+1. 场景划分: 将章节内容合理地划分为多个场景(Scene)。每个场景的标题title字段应清晰地概括场景内容,并在标题中包含时间和地点(例如:"场景1 日/外景 - 森林边缘")。
+2. 分镜设计: 在每个场景内,设计一系列分镜(Shot)。每个分镜都需要包含以下元素:
+   - 景别(shotType): 如全景、中景、近景、特写等
+   - 运镜(cameraMove): 如固定、推、拉、摇、跟等
+   - 登场角色(characters): 此分镜中出现的角色名
+   - 画面内容(content): 详细描述画面中发生的事情、人物的动作和表情
+   - 声音/对白(sound): 包含角色的对白、旁白或重要的环境音效
+   - 分镜时长(duration): 预估的时长,如"3s","5s"
+3. 忠于原作: 改编应在尊重小说原意的基础上进行,保留关键情节和对话。
+4. 遵循要求: 严格遵守用户提供的额外"分镜要求"和"结构要求"。
+5. 角色生成:
+   - 如果用户提供了"主要角色信息": 你必须严格参考这些信息来创作分镜,并且在返回的characters数组中返回一个空数组[]
+   - 如果用户没有提供"主要角色信息": 你需要根据本章节内容,分析并识别出登场的主要角色,为他们创建角色简介,然后将这些角色信息填充到返回的characters数组中
+
+输出格式: 请严格以JSON格式返回一个根对象,该对象包含script和characters两个键。
 {
   "script": [
     {
@@ -234,26 +498,16 @@ class StoryboardGeneratorExecutor {
           "shotType": "全景",
           "cameraMove": "固定",
           "characters": "主角A",
-          "content": "广阔的森林边缘，主角A从树林中走出，显得疲惫不堪。",
-          "sound": "风声，鸟鸣声。",
+          "content": "广阔的森林边缘,主角A从树林中走出,显得疲惫不堪。",
+          "sound": "风声,鸟鸣声。",
           "duration": "4s"
         }
       ]
     }
   ],
-  "characters": [
-    {
-      "name": "主角A",
-      "characterName": "李明",
-      "appearance": "约20岁，黑发，眼神坚毅，脸上有少许尘土。",
-      "clothing": "穿着破旧的皮夹克和牛仔裤。",
-      "personality": "沉着冷静，不善言辞但内心强大。"
-    }
-  ]
-}
-```
-""";
-    
+  "characters": []
+}""";
+
     String finalRequirements = requirements;
     final structureConstraints = StringBuffer();
     if (scenesPerChapter != null) {
@@ -268,20 +522,16 @@ class StoryboardGeneratorExecutor {
     }
 
     final realUserPrompt = """
-### 小说标题: 《$novelTitle》
-### 章节标题: 《$chapterTitle》
-
-### 分镜要求:
-${finalRequirements.isNotEmpty ? finalRequirements : "无特殊要求，请按专业标准生成。"}
+小说标题: 《$novelTitle》
+章节标题: 《$chapterTitle》
+分镜要求: ${finalRequirements.isNotEmpty ? finalRequirements : "无特殊要求,请按专业标准生成。"}
 
 $characterInfoBlock
 
-### 章节原文:
----
+章节原文:
 $chapterText
----
 
-请根据以上信息，为本章节生成分镜脚本和角色信息。
+请根据以上信息,为本章节生成分镜脚本和角色信息。
 """;
 
     final messages = [
@@ -290,60 +540,96 @@ $chapterText
     return (systemPrompt, messages);
   }
 
-  /// [内联方法] 为分镜生成首帧图片和视频的提示词
-  (String, List<Map<String, String>>) _buildPromptForShot({
-    required String shotContent,
+  /// 构建场景级别的提示词生成请求（改进版：一次性生成整个场景的所有分镜提示词）
+  (String, List<Map<String, String>>) _buildPromptForScenePrompts({
+    required String novelTitle,
     required List<CharacterCard> characters,
+    required String chapterTitle,
+    required String sceneTitle,
+    required List<Shot> shots,
   }) {
+    // 构建角色信息块
     String characterInfoBlock = '';
     if (characters.isNotEmpty) {
       final buffer = StringBuffer();
-      buffer.writeln('### 参考角色信息:');
+      buffer.writeln('### 主要角色信息:');
       for (final char in characters) {
         buffer.writeln('- 角色名: ${char.characterName}');
-        if (char.appearance.isNotEmpty)
-          buffer.writeln('  - 外貌: ${char.appearance}');
-        if (char.clothing.isNotEmpty)
-          buffer.writeln('  - 服装: ${char.clothing}');
+        if (char.appearance.isNotEmpty) buffer.writeln('  - 外貌: ${char.appearance}');
+        if (char.clothing.isNotEmpty) buffer.writeln('  - 服装: ${char.clothing}');
+        if (char.personality.isNotEmpty) buffer.writeln('  - 性格: ${char.personality}');
+        if (char.other.isNotEmpty) buffer.writeln('  - 其他: ${char.other}');
       }
       characterInfoBlock = buffer.toString();
     }
 
-    const String systemPrompt = """你是一个AI绘画和视频生成的提示词专家。你的任务是根据提供的分镜脚本内容，生成一个用于生成“首帧图片”的英文提示词和一个用于生成“视频”的英文提示词。
+    // 构建所有分镜的信息
+    final buffer = StringBuffer();
+    buffer.writeln('### 该场景的所有分镜:');
+    for (final shot in shots) {
+      buffer.writeln('分镜 ${shot.shotNumber}:');
+      buffer.writeln('  - 景别: ${shot.shotTypeController.text}');
+      buffer.writeln('  - 运镜: ${shot.cameraMoveController.text}');
+      buffer.writeln('  - 登场角色: ${shot.charactersController.text}');
+      buffer.writeln('  - 画面内容: ${shot.contentController.text}');
+      buffer.writeln('  - 声音/对白: ${shot.soundController.text}');
+      buffer.writeln('  - 时长: ${shot.durationController.text}');
+      buffer.writeln('');
+    }
+    final shotsInfoBlock = buffer.toString();
 
-### 任务要求:
-1.  **首帧图片提示词 (image_prompt)**:
-    -   应详细、具体，描述一个静态画面。
-    -   包含主体、外貌、服装、姿态、情绪、构图、环境、光影等。
-    -   使用AI绘画标签化的语言（如 `1boy, solo, looking at viewer, ...`）。
-    -   **不包含**任何动态描述（如 running, walking, smiling）。
-    -   **不包含**任何风格或画质词（如 `masterpiece, best quality, anime style`）。
+    const String systemPrompt = """你是一个AI绘画和视频生成的提示词专家。你的任务是根据提供的场景信息和该场景下所有分镜的详细内容,为每个分镜生成:
+1. 首帧图片提示词(image_prompt)
+2. 视频提示词(video_prompt)
 
-2.  **视频提示词 (video_prompt)**:
-    -   应简洁、有力，专注于描述**动态**。
-    -   描述画面中发生的核心运动或变化。
-    -   可以包含运镜描述（如 `camera slowly zooms in`）。
-    -   是对首帧图片的动态化延展。
+要求:
 
-### 输出格式:
-请严格以JSON格式返回。
-```json
+【首帧图片提示词】
+- 详细、具体,描述一个静态画面
+- 包含主体、外貌、服装、姿态、情绪、构图、环境、光影等
+- 使用AI绘画标签化的语言(如: 1boy, solo, looking at viewer, silver armor, red cape...)
+- 不包含任何动态描述(如: running, walking, smiling)
+- 不包含任何风格或画质词(如: masterpiece, best quality, anime style)
+- 必须是纯英文,使用逗号分隔的标签格式
+
+【视频提示词】
+- 简洁、有力,专注于描述动态
+- 描述画面中发生的核心运动或变化
+- 可以包含运镜描述(如: camera slowly zooms in)
+- 是对首帧图片的动态化延展
+- 必须是纯英文
+
+输出格式: 请严格以JSON格式返回,包含一个shots数组,数组中每个对象对应一个分镜:
 {
-  "image_prompt": "1boy, solo, short black hair, determined eyes, wearing silver armor, red cape, standing on a desolate battlefield, hand on sword hilt, rain, mud, stormy sky, dramatic lighting, full body shot.",
-  "video_prompt": "The knight slowly raises his shimmering sword, rain intensifies splashing on his armor, camera slowly pushes in on his determined face."
-}
-```
-""";
+  "shots": [
+    {
+      "shotNumber": 1,
+      "image_prompt": "1boy, solo, short black hair, determined eyes, wearing silver armor, red cape, standing on a desolate battlefield, hand on sword hilt, rain, mud, stormy sky, dramatic lighting, full body shot",
+      "video_prompt": "The knight slowly raises his shimmering sword, rain intensifies splashing on his armor, camera slowly pushes in on his determined face"
+    },
+    {
+      "shotNumber": 2,
+      "image_prompt": "...",
+      "video_prompt": "..."
+    }
+  ]
+}""";
 
     final realUserPrompt = """
+小说标题: 《$novelTitle》
+章节标题: 《$chapterTitle》
+场景标题: $sceneTitle
+
 $characterInfoBlock
 
-### 分镜画面内容:
----
-$shotContent
----
+$shotsInfoBlock
 
-请为以上分镜内容生成“首帧图片提示词”和“视频提示词”。
+请为以上场景中的每个分镜生成"首帧图片提示词"和"视频提示词"。
+注意:
+1. 必须为所有${shots.length}个分镜都生成提示词
+2. shotNumber必须与分镜编号严格对应
+3. 提示词必须是纯英文
+4. 图片提示词使用标签化格式,视频提示词使用简短句子描述动作
 """;
 
     final messages = [
@@ -352,13 +638,37 @@ $shotContent
     return (systemPrompt, messages);
   }
 
-  /// 私有辅助方法：对角色列表进行去重
   List<CharacterCard> _deduplicateCharacters(List<CharacterCard> characters) {
     final uniqueCharacters = <String, CharacterCard>{};
     for (final char in characters) {
-      // 使用 `characterName` 作为唯一键，如果不存在则添加
       uniqueCharacters.putIfAbsent(char.characterName, () => char);
     }
     return uniqueCharacters.values.toList();
   }
+}
+
+// ==================== 内部辅助类 ====================
+
+/// 场景任务封装
+class _SceneTask {
+  final String chapterTitle;
+  final Scene scene;
+
+  _SceneTask({
+    required this.chapterTitle,
+    required this.scene,
+  });
+}
+
+/// 分镜任务封装
+class _ShotTask {
+  final String chapterTitle;
+  final String sceneTitle;
+  final Shot shot;
+
+  _ShotTask({
+    required this.chapterTitle,
+    required this.sceneTitle,
+    required this.shot,
+  });
 }

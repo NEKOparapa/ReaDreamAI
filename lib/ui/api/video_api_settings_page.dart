@@ -183,7 +183,8 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
   }
 
   Widget _buildUrlField() {
-    final bool isUrlEditable = _selectedProvider == ApiProvider.custom;
+    // 允许 ComfyUI 的 URL 可编辑
+    final bool isUrlEditable = _selectedProvider == ApiProvider.custom || _selectedProvider == ApiProvider.comfyui;
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -233,7 +234,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
           onTap: () {
             setState(() {
               _selectedProvider = option.provider;
-              final bool isEditable = _selectedProvider == ApiProvider.custom;
+              final bool isEditable = _selectedProvider == ApiProvider.custom || _selectedProvider == ApiProvider.comfyui;
 
               if (!isEditable) {
                 _urlController.text = option.defaultUrl;
@@ -241,16 +242,16 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
                 _concurrencyController.text = option.defaultConcurrency.toString();
                 _rpmController.text = option.defaultRpm.toString();
               } else { 
-                if (widget.apiModel.provider == _selectedProvider) {
-                  _urlController.text = widget.apiModel.url;
-                  _modelController.text = widget.apiModel.model;
-                  _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
-                  _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
-                } else {
+                if (widget.apiModel.provider != _selectedProvider) {
                   _urlController.text = option.defaultUrl;
                   _modelController.text = option.defaultModel;
                   _concurrencyController.text = option.defaultConcurrency.toString();
                   _rpmController.text = option.defaultRpm.toString();
+                } else {
+                  _urlController.text = widget.apiModel.url;
+                  _modelController.text = widget.apiModel.model;
+                  _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
+                  _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
                 }
               }
             });
