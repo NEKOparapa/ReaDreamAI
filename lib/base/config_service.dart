@@ -150,6 +150,28 @@ class ConfigService {
     return _configDirectoryPath;
   }
   
+  /// 返回包含 character, image, video 子文件夹路径的 Map
+  Future<Map<String, Directory>> getOrCreateWorkbenchDirs() async {
+    final configDir = Directory(getConfigDirectoryPath());
+    final workbenchDir = Directory(p.join(configDir.path, 'Workbench'));
+    
+    final characterDir = Directory(p.join(workbenchDir.path, 'character'));
+    final imageDir = Directory(p.join(workbenchDir.path, 'Image'));
+    final videoDir = Directory(p.join(workbenchDir.path, 'video'));
+    
+    // 确保所有文件夹都存在
+    for (final dir in [characterDir, imageDir, videoDir]) {
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+    }
+    
+    return {
+      'character': characterDir,
+      'image': imageDir,
+      'video': videoDir,
+    };
+  }  
   /// 加载配置文件方法
   Future<void> load() async {
     final file = File(_configPath);

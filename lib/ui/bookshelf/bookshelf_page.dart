@@ -20,6 +20,7 @@ import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
 import 'export_book_dialog.dart';
+import 'novel_to_short_drama/generate_storyboard_page.dart'; 
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -264,7 +265,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// START: 功能函数未改变，保持原样 ///
   void _showAiNovelCreationFlow() async {
     // 导航到新的、独立的AI创作流程入口页面
     await Navigator.of(context).push<bool>(
@@ -276,6 +276,15 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     // 当创作完成并从编辑页面返回时，无论成功与否都刷新书架
     // 这样确保任何情况下书架都是最新的
     await _loadBookshelf();
+  }
+
+  // 导航到小说转短剧工作台
+  void _navigateToGenerateStoryboardPage() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const GenerateStoryboardPage(),
+      ),
+    );
   }
 
   /// 为指定书籍生成插图任务
@@ -549,7 +558,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     );
   }
 
-  /// 构建书架网格视图
+  /// [修改] 构建书架网格视图
   Widget _buildBookshelfGrid() {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -558,18 +567,24 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
-      itemCount: _entries.length + 1,
+      // 总数是 书籍数量 + 2个功能卡片
+      itemCount: _entries.length + 2,
       itemBuilder: (context, index) {
         // 第一个位置 (index == 0) 固定为AI创作卡片
         if (index == 0) {
           return _buildAiCreationCard();
         }
-        // 后续的位置显示书籍，注意索引需要减1
-        final entry = _entries[index - 1];
+        // 第二个位置 (index == 1) 为小说转短剧卡片
+        if (index == 1) {
+          return _buildNovelToShortDramaCard();
+        }
+        // 后续的位置显示书籍，注意索引需要减2
+        final entry = _entries[index - 2];
         return _buildBookItem(entry);
       },
     );
   }
+
   /// 构建AI创作小说的特殊卡片
   Widget _buildAiCreationCard() {
     final theme = Theme.of(context);
@@ -659,6 +674,94 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       ),
     );
   }
+
+  /// 构建小说转短剧的特殊卡片
+  Widget _buildNovelToShortDramaCard() {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: _navigateToGenerateStoryboardPage,
+      child: Card(
+        elevation: 4.0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        clipBehavior: Clip.antiAlias,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.blueGrey.shade700,
+                Colors.orange.shade800,
+              ],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: -15,
+                left: -25,
+                child: Icon(
+                  Icons.movie_creation_outlined,
+                  size: 100,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              Positioned(
+                bottom: -20,
+                right: -30,
+                child: Icon(
+                  Icons.camera_roll_outlined,
+                  size: 120,
+                  color: Colors.white.withOpacity(0.08),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.theaters,
+                      size: 60,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      '小说转短剧',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '开启你的短剧创作',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withOpacity(0.7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 
   /// 构建单个书籍封面的UI
   Widget _buildBookItem(BookshelfEntry entry) {

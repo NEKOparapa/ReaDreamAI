@@ -24,6 +24,79 @@ const Map<String, dynamic> appDefaultConfigs = {
   'video_gen_duration': 5, // 视频时长，单位秒
   'video_gen_resolution': '720p', // 视频分辨率
 
+  // --- 小说转短剧设置 ---
+  'storyboard_gen_selected_book_id': null, // 生成页面的小说ID，无默认值
+  'storyboard_gen_requirements': '', // 分镜要求
+  'storyboard_gen_character_ids': [], // 选中的角色ID
+  'storyboard_gen_use_ai_chars': true, // 是否使用AI生成角色
+  'storyboard_gen_scenes_per_chapter': 5, // 每章场景数
+  'storyboard_gen_use_ai_scenes': true,    // 是否由AI决定场景数
+  'storyboard_gen_shots_per_scene': 8,      // 每场景分镜数
+  'storyboard_gen_use_ai_shots': true,      // 是否由AI决定分镜数
+
+  // --- 工作台相关配置 ---
+  'workbench_last_active_book_id': null, // 工作台最后打开的小说ID
+
+  // 工作台默认角色数据
+  'workbench_active_characters': [
+    {
+      'id': 'default_character_1',
+      'name': '主角模板',
+      'characterName': '李华',
+      'identity': '普通高中生',
+      'appearance': '黑发，眼神清澈，身材中等',
+      'clothing': '白色T恤，蓝色校服裤',
+      'personality': '善良，有点内向，但在关键时刻很可靠',
+      'status': '正常',
+      'other': '这是一个用于初始化的角色示例。',
+      'referenceImageUrl': null,
+      'referenceImagePath': null,
+      'isSystemPreset': true,
+    }
+  ],
+
+  // 工作台默认脚本数据 
+  'workbench_active_script': [
+    {
+      'originalChapterTitle': '第一章', // 标题会在加载时被实际章节名覆盖
+      'scenes': [
+        {
+          'title': '场景1：清晨的街道',
+          'time': '日',
+          'location': '外景',
+          'shots': [
+            {
+              'shotNumber': 1,
+              'shotType': '全景',
+              'cameraMove': '固定',
+              'characters': '李华',
+              'content': '清晨的阳光洒在安静的街道上，三三两两的学生背着书包走向学校。李华独自一人走在人行道上，耳机里放着音乐。',
+              'sound': '（环境音）清脆的鸟鸣，远处车辆驶过的声音。',
+              'duration': '5s',
+              'firstFramePrompt': '',
+              'firstFrameImagePaths': [],
+              'videoPrompt': '',
+              'videoPaths': []
+            },
+            {
+              'shotNumber': 2,
+              'shotType': '近景',
+              'cameraMove': '跟拍',
+              'characters': '李华',
+              'content': '镜头跟随李华的步伐，他低着头，表情有些落寞，似乎在思考着什么心事。',
+              'sound': '（内心独白）“如果那天我能勇敢一点，现在会是怎样呢？”',
+              'duration': '4s',
+              'firstFramePrompt': '',
+              'firstFrameImagePaths': [],
+              'videoPrompt': '',
+              'videoPaths': []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+
   // --- 翻译设置 --- 
   'translation_tokens': 2000, // 翻译使用的最大Token数
   'translation_source_lang': 'ja', // 源语言
