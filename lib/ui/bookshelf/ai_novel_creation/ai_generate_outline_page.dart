@@ -18,6 +18,8 @@ class AiGenerateOutlinePage extends StatefulWidget {
 }
 
 class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
+  final _formStateKey = GlobalKey<GenerateOutlineFormState>();
+
   bool _isGeneratingOutline = false;
   final _configService = ConfigService();
 
@@ -118,12 +120,66 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
           const SizedBox(width: 8),
         ],
       ),
-      body: GenerateOutlineForm(
-        isLoading: _isGeneratingOutline,
-        onGenerate: _handleGenerateAndProceed,
+      // --- Start: MODIFICATION 2 ---
+      // 将 body 改为 Column 布局，上方是可扩展的表单，下方是固定的操作栏
+      body: Column(
+        children: [
+          Expanded(
+            child: GenerateOutlineForm(
+              key: _formStateKey, // 将 key 传递给表单
+              isLoading: _isGeneratingOutline,
+              onGenerate: _handleGenerateAndProceed,
+            ),
+          ),
+          _buildBottomActionBar(),
+        ],
+      ),
+      // --- End: MODIFICATION 2 ---
+    );
+  }
+
+  // --- Start: MODIFICATION 3 ---
+  // 新增方法，构建底部的操作栏按钮，样式参考 generate_storyboard_page.dart
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: FilledButton.icon(
+          icon: _isGeneratingOutline
+              ? const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: Colors.white),
+          )
+              : const Icon(Icons.auto_fix_high),
+          label: Text(_isGeneratingOutline ? '生成中...' : '生成大纲',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: _isGeneratingOutline
+              ? null
+              : () => _formStateKey.currentState?.triggerGenerate(),
+          style: FilledButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
       ),
     );
   }
+  // --- End: MODIFICATION 3 ---
 
   // 显示API设置对话框
   void _showApiSettingsDialog(BuildContext context) {
@@ -134,7 +190,6 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
   }
 }
 
-// API设置对话框组件
 class ApiSettingsDialog extends StatefulWidget {
   const ApiSettingsDialog({super.key});
 
@@ -290,6 +345,7 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
   }
 }
 
+
 class GenerateOutlineForm extends StatefulWidget {
   final bool isLoading;
   final Future<void> Function({
@@ -308,10 +364,10 @@ class GenerateOutlineForm extends StatefulWidget {
   });
 
   @override
-  State<GenerateOutlineForm> createState() => _GenerateOutlineFormState();
+  State<GenerateOutlineForm> createState() => GenerateOutlineFormState();
 }
 
-class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
+class GenerateOutlineFormState extends State<GenerateOutlineForm> {
   final _formKey = GlobalKey<FormState>();
   final _configService = ConfigService();
 
@@ -377,7 +433,7 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
     });
   }
 
-  void _triggerGenerate() {
+  void triggerGenerate() {
     if (_formKey.currentState!.validate()) {
       LogService.instance.info('触发生成大纲操作，正在收集表单数据...');
       String? selectedBackground;
@@ -419,10 +475,8 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 80.0),
+      padding: const EdgeInsets.all(16.0),
       child: Form(
         key: _formKey,
         child: Column(
@@ -541,18 +595,6 @@ class _GenerateOutlineFormState extends State<GenerateOutlineForm> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: widget.isLoading ? null : _triggerGenerate,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                textStyle: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              icon: widget.isLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.auto_fix_high),
-              label: Text(widget.isLoading ? '生成中...' : '生成大纲'),
             ),
           ],
         ),

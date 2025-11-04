@@ -282,15 +282,16 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           Expanded(
             child: ListView(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               children: [
                 _buildNovelSelectionSection(),
-                const SizedBox(height: 32), 
+                const SizedBox(height: 16),
                 _buildRequirementsSection(),
-                const SizedBox(height: 32), //大配置项之间的垂直间距
+                const SizedBox(height: 16),
                 _buildCharacterSettingsSection(),
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
                 _buildStoryboardStructureSection(),
+                const SizedBox(height: 64),
               ],
             ),
           ),
@@ -302,145 +303,249 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
 
   Widget _buildNovelSelectionSection() {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.menu_book_outlined),
-            const SizedBox(width: 8),
-            Text('选择小说', style: theme.textTheme.titleLarge),
+            const ListTile(
+              leading: Icon(Icons.menu_book_outlined),
+              title: Text('选择小说'),
+              subtitle: Text('从书架选择一本小说进行改编'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                hintText: '请选择...',
+                filled: true,
+              ),
+              value: _config.selectedBookId,
+              onChanged: _isLoading ? null : _onBookSelected,
+              items: _bookshelfEntries
+                  .map<DropdownMenuItem<String>>((BookshelfEntry entry) {
+                return DropdownMenuItem<String>(
+                  value: entry.id,
+                  child:
+                      Text(entry.title, overflow: TextOverflow.ellipsis),
+                );
+              }).toList(),
+            ),
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.only(top: 16.0),
+                child: Center(child: LinearProgressIndicator()),
+              )
+            else if (_selectedBook != null) ...[
+              const Divider(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedBook!.title,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.layers_outlined,
+                      size: 16, color: theme.textTheme.bodySmall?.color),
+                  const SizedBox(width: 4),
+                  Text('${_selectedBook!.chapters.length} 章',
+                      style: theme.textTheme.bodyMedium),
+                ],
+              ),
+            ],
           ],
         ),
-        const Divider(),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    hintText: '从书架选择一本小说',
-                  ),
-                  value: _config.selectedBookId,
-                  onChanged: _isLoading ? null : _onBookSelected,
-                  items: _bookshelfEntries
-                      .map<DropdownMenuItem<String>>((BookshelfEntry entry) {
-                    return DropdownMenuItem<String>(
-                      value: entry.id,
-                      child:
-                          Text(entry.title, overflow: TextOverflow.ellipsis),
-                    );
-                  }).toList(),
-                ),
-                if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 16.0),
-                    child: Center(child: LinearProgressIndicator()),
-                  )
-                else if (_selectedBook != null) ...[
-                  const Divider(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _selectedBook!.title,
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Icon(Icons.layers_outlined,
-                          size: 16, color: theme.textTheme.bodySmall?.color),
-                      const SizedBox(width: 4),
-                      Text('${_selectedBook!.chapters.length} 章',
-                          style: theme.textTheme.bodyMedium),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
   Widget _buildRequirementsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.list_alt_outlined),
-            const SizedBox(width: 8),
-            Text('分镜要求', style: Theme.of(context).textTheme.titleLarge),
+            const ListTile(
+              leading: Icon(Icons.list_alt_outlined),
+              title: Text('分镜要求 (可选)'),
+              subtitle: Text('详细描述生成要求，如风格、重点等'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _requirementsController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: '例如：\n- 突出主角的内心挣扎\n- 采用快节奏剪辑风格',
+                alignLabelWithHint: true,
+                filled: true,
+              ),
+              minLines: 5,
+              maxLines: 10,
+            ),
           ],
         ),
-        const Divider(),
-        TextFormField(
-          controller: _requirementsController,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: '请输入分镜生成的具体要求，例如：\n- 突出主角的内心挣扎\n- 采用快节奏剪辑风格',
-            alignLabelWithHint: true,
-          ),
-          minLines: 5,
-          maxLines: 10,
-        )
-      ],
+      ),
     );
   }
 
   Widget _buildStoryboardStructureSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
           children: [
-            const Icon(Icons.account_tree_outlined),
-            const SizedBox(width: 8),
-            Text('分镜结构', style: Theme.of(context).textTheme.titleLarge),
+            const ListTile(
+              leading: Icon(Icons.account_tree_outlined),
+              title: Text('分镜结构 (可选)'),
+              subtitle: Text('设置场景和分镜数量或由AI自动决定'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            _buildCountSelector(
+              title: '每章节场景数',
+              isAi: _config.useAiScenes,
+              controller: _scenesController,
+              onAiToggle: (isAi) {
+                setState(() => _config.useAiScenes = isAi);
+                _saveConfig();
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildCountSelector(
+              title: '每场景分镜数',
+              isAi: _config.useAiShots,
+              controller: _shotsController,
+              onAiToggle: (isAi) {
+                setState(() => _config.useAiShots = isAi);
+                _saveConfig();
+              },
+            ),
           ],
         ),
-        const Divider(),
-        Card(
-          child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  _buildCountSelector(
-                    title: '每章节场景数',
-                    isAi: _config.useAiScenes,
-                    controller: _scenesController,
-                    onAiToggle: (isAi) {
-                      setState(() => _config.useAiScenes = isAi);
-                      _saveConfig();
-                    },
-
-                  ),
-                  const SizedBox(height: 16),
-                  _buildCountSelector(
-                    title: '每场景分镜数',
-                    isAi: _config.useAiShots,
-                    controller: _shotsController,
-                    onAiToggle: (isAi) {
-                      setState(() => _config.useAiShots = isAi);
-                      _saveConfig();
-                    },
-                  ),
-                ],
-              )),
-        ),
-      ],
+      ),
     );
   }
 
+  Widget _buildCharacterSettingsSection() {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.people_outline),
+              title: const Text('主要角色 (可选)'),
+              subtitle: const Text('手动选择预设角色卡或由AI自动识别'),
+              contentPadding: EdgeInsets.zero,
+              trailing: ToggleButtons(
+                isSelected: [
+                  _config.characterSource == CharacterSourceOption.manual,
+                  _config.characterSource == CharacterSourceOption.ai,
+                ],
+                onPressed: (int index) {
+                  setState(() {
+                    _config.characterSource = index == 0
+                        ? CharacterSourceOption.manual
+                        : CharacterSourceOption.ai;
+                    _saveConfig();
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                constraints: const BoxConstraints(minHeight: 40, minWidth: 100),
+                children: const [
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_search, size: 18),
+                        SizedBox(width: 8),
+                        Text('手动选择'),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome, size: 18),
+                        SizedBox(width: 8),
+                        Text('AI生成'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12.0),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(12.0),
+              ),
+              child: _config.characterSource == CharacterSourceOption.manual
+                  ? _allCharacterCards.isNotEmpty
+                      ? Wrap(
+                          spacing: 8.0,
+                          runSpacing: 8.0,
+                          children: _allCharacterCards.map((card) {
+                            final isSelected =
+                                _config.selectedCharacterIds.contains(card.id);
+                            return FilterChip(
+                              label: Text(card.name),
+                              avatar: card.referenceImagePath != null
+                                  ? CircleAvatar(
+                                      backgroundImage: FileImage(
+                                          File(card.referenceImagePath!)))
+                                  : null,
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setState(() {
+                                  if (selected) {
+                                    _config.selectedCharacterIds.add(card.id);
+                                  } else {
+                                    _config.selectedCharacterIds
+                                        .remove(card.id);
+                                  }
+                                  _saveConfig();
+                                });
+                              },
+                            );
+                          }).toList(),
+                        )
+                      : const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('没有预设角色卡，请先创建。'),
+                          ),
+                        )
+                  : const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text('AI将根据小说内容自动分析并创建主要角色。'),
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _buildCountSelector({
     required String title,
     required bool isAi,
@@ -449,122 +554,58 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
   }) {
     return Row(
       children: [
+        // 标题在左侧，并占据多余空间
         Expanded(
-            flex: 2,
-            child:
-                Text(title, style: Theme.of(context).textTheme.titleSmall)),
-        ToggleButtons(
-          isSelected: [isAi, !isAi],
-          onPressed: (index) {
-            onAiToggle(index == 0);
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+        ),
+        // 动画切换器：根据isAi状态显示输入框或一个零宽度的占位符
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          transitionBuilder: (child, animation) {
+            return FadeTransition(opacity: animation, child: child);
           },
-          borderRadius: BorderRadius.circular(8),
-          constraints: const BoxConstraints(minHeight: 36, minWidth: 60),
-          children: const [
-            Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('AI自动')),
-            Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Text('自定义')),
-          ],
+          child: !isAi
+              // 当选择“自定义”时，显示输入框
+              ? SizedBox(
+                  key: ValueKey('input-$title'),
+                  width: 100,
+                  child: TextFormField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                )
+              // 当选择“AI自动”时，显示一个不占用空间的SizedBox
+              : SizedBox(key: ValueKey('placeholder-$title')),
         ),
         const SizedBox(width: 16),
-        if (!isAi)
-          Expanded(
-            flex: 1,
-            child: TextFormField(
-              controller: controller,
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                isDense: true,
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly
-              ],
-            ),
-          ),
+        // 切换按钮现在位于最右侧
+        ToggleButtons(
+          isSelected: [!isAi, isAi],
+          onPressed: (index) {
+            onAiToggle(index == 1);
+          },
+          borderRadius: BorderRadius.circular(8),
+          constraints: const BoxConstraints(minHeight: 40, minWidth: 64),
+          children: const [
+            Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('自定义')),
+            Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Text('AI自动')),
+          ],
+        ),
       ],
     );
   }
 
-  Widget _buildCharacterSettingsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.people_outline),
-            const SizedBox(width: 8),
-            Text('主要角色', style: Theme.of(context).textTheme.titleLarge),
-            const Spacer(),
-            SegmentedButton<CharacterSourceOption>(
-              segments: const <ButtonSegment<CharacterSourceOption>>[
-                ButtonSegment<CharacterSourceOption>(
-                    value: CharacterSourceOption.ai,
-                    label: Text('AI自动生成'),
-                    icon: Icon(Icons.auto_awesome)),
-                ButtonSegment<CharacterSourceOption>(
-                    value: CharacterSourceOption.manual,
-                    label: Text('手动选择预设'),
-                    icon: Icon(Icons.person_search)),
-              ],
-              selected: <CharacterSourceOption>{_config.characterSource},
-              onSelectionChanged: (Set<CharacterSourceOption> newSelection) {
-                setState(() {
-                  _config.characterSource = newSelection.first;
-                  _saveConfig();
-                });
-              },
-            ),
-          ],
-        ),
-        const Divider(),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _config.characterSource == CharacterSourceOption.manual
-                ? Wrap(
-                    spacing: 8.0,
-                    runSpacing: 8.0,
-                    children: _allCharacterCards.map((card) {
-                      final isSelected =
-                          _config.selectedCharacterIds.contains(card.id);
-                      return FilterChip(
-                        label: Text(card.name),
-                        avatar: card.referenceImagePath != null
-                            ? CircleAvatar(
-                                backgroundImage:
-                                    FileImage(File(card.referenceImagePath!)))
-                            : null,
-                        selected: isSelected,
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _config.selectedCharacterIds.add(card.id);
-                            } else {
-                              _config.selectedCharacterIds.remove(card.id);
-                            }
-                            _saveConfig();
-                          });
-                        },
-                      );
-                    }).toList(),
-                  )
-                : const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text('AI将根据小说内容自动分析并创建主要角色。'),
-                    ),
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildBottomActionBar() {
     return Container(
@@ -591,7 +632,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
                       strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.auto_awesome),
           label: Text(_isLoading ? '处理中...' : '生成分镜脚本',
-              style: const TextStyle(fontSize: 16)),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           onPressed: _selectedBook != null && !_isLoading
               ? _generateAndNavigate
               : null,
