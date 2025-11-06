@@ -33,6 +33,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'storyboard_gen_use_ai_scenes': true,    // 是否由AI决定场景数
   'storyboard_gen_shots_per_scene': 8,      // 每场景分镜数
   'storyboard_gen_use_ai_shots': true,      // 是否由AI决定分镜数
+  'storyboard_gen_prompt_language': 'en', // 提示词语言, 'en' 或 'zh'
 
   // --- 工作台相关配置 ---
   'workbench_last_active_book_id': null, // 工作台最后打开的小说ID
@@ -58,9 +59,11 @@ const Map<String, dynamic> appDefaultConfigs = {
   // 工作台默认脚本数据 
   'workbench_active_script': [
     {
+      'chapterNumber': 1,
       'originalChapterTitle': '第一章', // 标题会在加载时被实际章节名覆盖
       'scenes': [
         {
+          'sceneNumber': 1,
           'title': '场景1：清晨的街道',
           'time': '日',
           'location': '外景',

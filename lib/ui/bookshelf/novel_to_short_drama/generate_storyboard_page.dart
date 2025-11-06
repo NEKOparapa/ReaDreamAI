@@ -8,6 +8,7 @@ import '../../../base/config_service.dart';
 import '../../../models/book.dart';
 import '../../../models/bookshelf_entry.dart';
 import '../../../models/character_card_model.dart';
+//import '../../../models/storyboard_script_model.dart';
 import '../../../services/cache_manager/cache_manager.dart';
 import '../../../services/task_executor/storyboard_generator_executor.dart';
 import 'novel_to_short_drama_workbench_page.dart';
@@ -23,7 +24,6 @@ class StoryboardGenerationConfig {
   bool useAiScenes;
   int shotsPerScene;
   bool useAiShots;
-
   StoryboardGenerationConfig({
     this.selectedBookId,
     required this.requirements,
@@ -213,6 +213,9 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           finalCharacters.add(aiChar);
         }
       }
+
+      await ConfigService().clearWorkbenchMedia();
+      
       if (mounted) {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (context) => NovelToShortDramaWorkbenchPage(
@@ -558,7 +561,6 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
         Expanded(
           child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
-        // 动画切换器：根据isAi状态显示输入框或一个零宽度的占位符
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
           transitionBuilder: (child, animation) {

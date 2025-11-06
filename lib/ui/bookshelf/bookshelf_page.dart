@@ -20,7 +20,8 @@ import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
 import 'export_book_dialog.dart';
-import 'novel_to_short_drama/generate_storyboard_page.dart'; 
+import 'novel_to_short_drama/generate_storyboard_page.dart';
+import '../reader/video_book_reader.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -382,6 +383,16 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   }
 
   void _openBook(BookshelfEntry entry) async {
+    // 增加对 videoBook 类型的处理
+    if (entry.fileType == 'videoBook') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => VideoBookReaderPage(entry: entry),
+        ),
+      );
+      return; // 结束函数
+    }
+
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
       // 在跳转到 BookReaderPage 时，传入记录的章节索引
@@ -397,49 +408,53 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-
   void _showContextMenu(
       BuildContext context, BookshelfEntry entry, Offset globalPosition) {
     final RenderBox overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox;
     showMenu(
       context: context,
-      // 使用传入的 globalPosition 来定位菜单
       position: RelativeRect.fromRect(
           globalPosition & const Size(40, 40), Offset.zero & overlay.size),
       items: <PopupMenuEntry>[
-        PopupMenuItem(
-          enabled: entry.status == TaskStatus.notStarted ||
-              entry.status == TaskStatus.failed ||
-              entry.status == TaskStatus.canceled,
-          onTap: () => _generateIllustrations(entry),
-          child: const Row(children: [
-            Icon(Icons.auto_awesome, color: Colors.blue),
-            SizedBox(width: 8),
-            Text('生成插图')
-          ]),
-        ),
-        PopupMenuItem(
-          enabled: true,
-          onTap: () => _generateVideosFromImages(entry),
-          child: const Row(children: [
-            Icon(Icons.video_library, color: Colors.purple),
-            SizedBox(width: 8),
-            Text('图生视频')
-          ]),
-        ),
-        PopupMenuItem(
-          enabled: entry.translationStatus == TaskStatus.notStarted ||
-              entry.translationStatus == TaskStatus.failed ||
-              entry.translationStatus == TaskStatus.canceled,
-          onTap: () => _generateTranslations(entry),
-          child: const Row(children: [
-            Icon(Icons.translate, color: Colors.green),
-            SizedBox(width: 8),
-            Text('生成翻译')
-          ]),
-        ),
-        const PopupMenuDivider(),
+        // --- 仅对非视频书显示的生成选项 ---
+        if (entry.fileType != 'videoBook') ...[
+          PopupMenuItem(
+            enabled: entry.status == TaskStatus.notStarted ||
+                entry.status == TaskStatus.failed ||
+                entry.status == TaskStatus.canceled,
+            onTap: () => _generateIllustrations(entry),
+            child: const Row(children: [
+              Icon(Icons.auto_awesome, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('生成插图')
+            ]),
+          ),
+          PopupMenuItem(
+            enabled: true,
+            onTap: () => _generateVideosFromImages(entry),
+            child: const Row(children: [
+              Icon(Icons.video_library, color: Colors.purple),
+              SizedBox(width: 8),
+              Text('图生视频')
+            ]),
+          ),
+          PopupMenuItem(
+            enabled: entry.translationStatus == TaskStatus.notStarted ||
+                entry.translationStatus == TaskStatus.failed ||
+                entry.translationStatus == TaskStatus.canceled,
+            onTap: () => _generateTranslations(entry),
+            child: const Row(children: [
+              Icon(Icons.translate, color: Colors.green),
+              SizedBox(width: 8),
+              Text('生成翻译')
+            ]),
+          ),
+          // 分隔线，仅在有生成选项时显示
+          const PopupMenuDivider(),
+        ],
+        
+        // --- 对所有类型书籍都可见的通用选项 ---
         PopupMenuItem(
           onTap: () => _showExportDialog(entry),
           child: const Row(
@@ -558,7 +573,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     );
   }
 
-  /// [修改] 构建书架网格视图
+  /// 构建书架网格视图
   Widget _buildBookshelfGrid() {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -763,7 +778,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   }
 
 
-  /// 构建单个书籍封面的UI
+  /// 构建单个书籍封面的UI，增加videoBook类型判断
   Widget _buildBookItem(BookshelfEntry entry) {
     final hasCover =
         entry.coverImagePath != null && File(entry.coverImagePath!).existsSync();
@@ -780,33 +795,56 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
         elevation: 4.0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              flex: 4,
-              child: hasCover
-                  ? Image.file(
-                      File(entry.coverImagePath!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _buildCoverPlaceholder(entry);
-                      },
-                    )
-                  : _buildCoverPlaceholder(entry),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  flex: 4,
+                  child: hasCover
+                      ? Image.file(
+                          File(entry.coverImagePath!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return _buildCoverPlaceholder(entry);
+                          },
+                        )
+                      : _buildCoverPlaceholder(entry),
+                ),
+                Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    entry.title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
             ),
-            Container(
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              alignment: Alignment.centerLeft,
-              child: Text(
-                entry.title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 13, height: 1.2),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            // 如果是视频书，在右上角显示一个图标
+            if (entry.fileType == 'videoBook')
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.6),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.movie_creation_outlined,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
               ),
-            ),
           ],
         ),
       ),

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../../models/book.dart';
+import '../../models/storyboard_script_model.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../base/config_service.dart';
 import '../../base/log/log_service.dart';
@@ -38,6 +39,106 @@ class CacheManager {
       _cacheDirectory!.createSync(recursive: true);
     }
     return _cacheDirectory!;
+  }
+
+  /// 为视频书创建缓存，并深度复制所有关联的媒体文件
+  Future<void> createVideoBookCache({
+    required String title,
+    required String originalBookId,
+    required VideoBook videoBook, // 接收 VideoBook 对象
+  }) async {
+    // 1. 为新的视频书生成唯一ID，并创建项目目录结构
+    final newBookId = const Uuid().v4();
+    final cacheDir = await _getCacheDirectory();
+    final projectDir = Directory(p.join(cacheDir.path, newBookId));
+    projectDir.createSync(recursive: true);
+
+    // 为媒体文件创建子目录，保持整洁
+    final imagesDir = Directory(p.join(projectDir.path, 'images'));
+    imagesDir.createSync();
+    final videosDir = Directory(p.join(projectDir.path, 'videos'));
+    videosDir.createSync();
+
+    // 辅助函数，用于复制文件并返回新路径
+    Future<String> copyMediaFile(String oldPath, Directory destDir) async {
+      try {
+        final sourceFile = File(oldPath);
+        if (!await sourceFile.exists()) {
+          LogService.instance
+              .warn('[视频书缓存] 源文件不存在，无法复制: $oldPath');
+          return oldPath; // 返回旧路径，避免程序崩溃
+        }
+        // 使用 UUID + 原始文件名创建唯一的新文件名，防止冲突
+        final newFileName = '${const Uuid().v4()}-${p.basename(oldPath)}';
+        final newPath = p.join(destDir.path, newFileName);
+        await sourceFile.copy(newPath);
+        return newPath; // 返回新文件的路径
+      } catch (e) {
+        LogService.instance.error('[视频书缓存] 复制文件失败: $oldPath', e);
+        return oldPath; // 复制失败也返回旧路径
+      }
+    }
+
+    // 2. 遍历 VideoBook 结构，复制媒体文件并更新路径
+    for (final chapter in videoBook.script) {
+      for (final scene in chapter.scenes) {
+        for (final shot in scene.shots) {
+          // 处理首帧图片
+          final newImagePaths = <String>[];
+          for (final oldImagePath in shot.firstFrameImagePaths) {
+            final newImagePath = await copyMediaFile(oldImagePath, imagesDir);
+            newImagePaths.add(newImagePath);
+          }
+          shot.firstFrameImagePaths = newImagePaths;
+
+          // 处理视频
+          final newVideoPaths = <String>[];
+          for (final oldVideoPath in shot.videoPaths) {
+            final newVideoPath = await copyMediaFile(oldVideoPath, videosDir);
+            newVideoPaths.add(newVideoPath);
+          }
+          shot.videoPaths = newVideoPaths;
+        }
+      }
+    }
+
+    // 3. 将路径已更新的 VideoBook 对象序列化并保存
+    final contentFile = File(p.join(projectDir.path, 'video_book.json'));
+    await contentFile.writeAsString(jsonEncode(videoBook.toJson()));
+
+    // 4. 加载现有书架，准备添加新条目
+    final entries = await loadBookshelf();
+
+    // 5. 尝试从原始书籍复制封面图片
+    String? newCoverImagePath;
+    try {
+      final originalEntry = entries.firstWhere((e) => e.id == originalBookId);
+      if (originalEntry.coverImagePath != null &&
+          originalEntry.coverImagePath!.isNotEmpty) {
+        final coverFile = File(originalEntry.coverImagePath!);
+        if (await coverFile.exists()) {
+          final newCoverPath = p.join(projectDir.path, 'cover${p.extension(coverFile.path)}');
+          await coverFile.copy(newCoverPath);
+          newCoverImagePath = newCoverPath;
+        }
+      }
+    } catch (e) {
+      LogService.instance.warn('创建视频书时复制封面失败: $e');
+    }
+
+    // 6. 创建新的视频书条目
+    final newEntry = BookshelfEntry(
+      id: newBookId,
+      title: title,
+      originalPath: 'workbench-generated', // 标记为工作台生成
+      fileType: 'videoBook', // 关键类型字段
+      subCachePath: projectDir.path,
+      coverImagePath: newCoverImagePath, // 使用新封面路径
+    );
+
+    // 7. 添加到书架列表并保存
+    entries.add(newEntry);
+    await saveBookshelf(entries);
   }
 
   /// 为新导入的书籍创建缓存内容

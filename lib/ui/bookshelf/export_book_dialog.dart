@@ -1,3 +1,6 @@
+// lib/ui/bookshelf/export_book_dialog.dart
+
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -5,10 +8,11 @@ import '../../models/bookshelf_entry.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
+import '../../services/media_exporter/media_exporter.dart';
 
-// 定义导出格式的枚举
 enum ExportFormat {
   epub,
+  mediaPackage,
   cachePackage,
 }
 
@@ -37,13 +41,23 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
   // 对话框当前的状态
   _ExportState _currentState = _ExportState.selecting;
   // 选中的导出格式
-  ExportFormat? _selectedFormat = ExportFormat.epub;
+  ExportFormat? _selectedFormat;
   // 用于存储成功或失败后的提示信息
   String _message = '';
 
   // 这个值基于初始选择界面的大致高度设定
   static const double _minContentHeight = 160.0;
 
+  @override
+  void initState() {
+    super.initState();
+    // 根据书籍类型设置默认的导出格式
+    if (widget.entry.fileType == 'videoBook') {
+      _selectedFormat = ExportFormat.mediaPackage;
+    } else {
+      _selectedFormat = ExportFormat.epub;
+    }
+  }
 
   /// 开始导出流程
   Future<void> _startExport() async {
@@ -52,51 +66,74 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     // 1. 更新UI为“导出中”状态
     setState(() {
       _currentState = _ExportState.exporting;
-      _message = '正在准备书籍数据...';
+      _message = '正在准备数据...';
     });
 
     try {
-      // 2. 加载书籍完整详情
-      final book = await CacheManager().loadBookDetail(widget.entry.id);
-      if (book == null) {
-        throw Exception('加载书籍详情失败，无法导出。');
-      }
-
-      // 3. 根据选择的格式执行操作
+      // 2. 根据选择的格式执行操作
       switch (_selectedFormat!) {
         case ExportFormat.epub:
+          setState(() => _message = '正在加载书籍详情...');
+          final book = await CacheManager().loadBookDetail(widget.entry.id);
+          if (book == null) {
+            throw Exception('加载书籍详情失败，无法导出。');
+          }
+
           setState(() => _message = '正在生成 EPUB 文件...');
-          // 3.1 调用服务生成文件字节
           final epubBytes = await EpubExporter.generateEpubBytes(book);
 
           setState(() => _message = '请选择保存位置...');
-          // 3.2 弹出文件保存对话框
           final String? outputPath = await FilePicker.platform.saveFile(
-            dialogTitle: '导出书籍',
+            dialogTitle: '导出 EPUB',
             fileName: '${book.title}.epub',
-            bytes: epubBytes,
+            type: FileType.custom,
+            allowedExtensions: ['epub'],
           );
 
-          // 3.3 根据保存结果更新UI
           if (outputPath != null) {
+            await File(outputPath).writeAsBytes(epubBytes); // 写入文件
             setState(() {
               _currentState = _ExportState.success;
               _message = '《${book.title}》已成功导出到:\n$outputPath';
             });
           } else {
-            // 用户取消了保存
-            setState(() {
-              _currentState = _ExportState.selecting; // 回到选择界面
-              _message = '';
-            });
+            setState(() => _currentState = _ExportState.selecting);
           }
           break;
-        case ExportFormat.cachePackage:
-          // 预留功能
-           setState(() {
-              _currentState = _ExportState.error;
-              _message = '缓存包导出功能正在开发中。';
+
+        // 处理媒体包导出的逻辑
+        case ExportFormat.mediaPackage:
+          setState(() => _message = '正在收集所有媒体文件...');
+          // 调用新服务生成 ZIP 字节流
+          final zipBytes = await MediaExporter.exportVideoBookMediaAsZip(widget.entry);
+
+          setState(() => _message = '请选择保存位置...');
+          // 弹出文件保存对话框
+          final String? outputPath = await FilePicker.platform.saveFile(
+            dialogTitle: '导出媒体包',
+            fileName: '${widget.entry.title}_媒体文件.zip',
+            type: FileType.custom,
+            allowedExtensions: ['zip'],
+          );
+
+          if (outputPath != null) {
+            // 将字节流写入用户选择的文件
+            await File(outputPath).writeAsBytes(zipBytes);
+            setState(() {
+              _currentState = _ExportState.success;
+              _message = '《${widget.entry.title}》的媒体文件已成功导出到:\n$outputPath';
             });
+          } else {
+            // 用户取消保存
+            setState(() => _currentState = _ExportState.selecting);
+          }
+          break;
+
+        case ExportFormat.cachePackage:
+          setState(() {
+            _currentState = _ExportState.error;
+            _message = '缓存包导出功能正在开发中。';
+          });
           break;
       }
     } catch (e, s) {
@@ -201,29 +238,56 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     }
   }
 
-  /// 构建格式选择界面
+  /// 构建格式选择界面，使其根据书籍类型动态变化
   Widget _buildSelectionContent() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center, // 垂直居中
-      children: [
-        RadioListTile<ExportFormat>(
-          title: const Text('EPUB 格式'),
-          subtitle: const Text('标准电子书格式，兼容大多数阅读器。'),
-          value: ExportFormat.epub,
-          groupValue: _selectedFormat,
-          onChanged: (value) => setState(() => _selectedFormat = value),
-          activeColor: Theme.of(context).colorScheme.primary,
-        ),
-        const Divider(height: 8),
-        RadioListTile<ExportFormat>(
-          title: const Text('缓存包 (开发中)'),
-          subtitle: const Text('用于备份或迁移，包含所有元数据和媒体文件。'),
-          value: ExportFormat.cachePackage,
-          groupValue: _selectedFormat,
-          onChanged: null,
-        ),
-      ],
-    );
+    // 如果是视频书
+    if (widget.entry.fileType == 'videoBook') {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          RadioListTile<ExportFormat>(
+            title: const Text('导出媒体'),
+            subtitle: const Text('将所有图片和视频按章节-场景分类并打包成ZIP。'),
+            value: ExportFormat.mediaPackage,
+            groupValue: _selectedFormat,
+            onChanged: (value) => setState(() => _selectedFormat = value),
+            activeColor: Theme.of(context).colorScheme.primary,
+          ),
+          const Divider(height: 8),
+          RadioListTile<ExportFormat>(
+            title: const Text('缓存包 (开发中)'),
+            subtitle: const Text('用于备份或迁移，包含所有元数据和媒体文件。'),
+            value: ExportFormat.cachePackage,
+            groupValue: _selectedFormat,
+            onChanged: null, // 禁用
+          ),
+        ],
+      );
+    }
+    // 如果是普通书籍
+    else {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          RadioListTile<ExportFormat>(
+            title: const Text('EPUB 格式'),
+            subtitle: const Text('标准电子书格式，兼容大多数阅读器。'),
+            value: ExportFormat.epub,
+            groupValue: _selectedFormat,
+            onChanged: (value) => setState(() => _selectedFormat = value),
+            activeColor: Theme.of(context).colorScheme.primary,
+          ),
+          const Divider(height: 8),
+          RadioListTile<ExportFormat>(
+            title: const Text('缓存包 (开发中)'),
+            subtitle: const Text('用于备份或迁移，包含所有元数据和媒体文件。'),
+            value: ExportFormat.cachePackage,
+            groupValue: _selectedFormat,
+            onChanged: null, // 禁用
+          ),
+        ],
+      );
+    }
   }
 
   /// 构建导出中界面
@@ -254,8 +318,16 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     );
   }
 
-  /// 根据当前状态构建底部操作按钮
+  /// [修改] 根据当前状态构建底部操作按钮
   Widget _buildActions() {
+    // 辅助函数：检查当前选中的格式是否可用
+    bool isExportEnabled() {
+      if (_selectedFormat == null) return false;
+      // 缓存包导出功能未开放，始终禁用
+      if (_selectedFormat == ExportFormat.cachePackage) return false;
+      return true;
+    }
+
     switch (_currentState) {
       case _ExportState.selecting:
         return Row(
@@ -267,7 +339,7 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
             ),
             const SizedBox(width: 16),
             FilledButton(
-              onPressed: _selectedFormat == ExportFormat.epub ? _startExport : null,
+              onPressed: isExportEnabled() ? _startExport : null,
               child: const Text('确认导出'),
             ),
           ],

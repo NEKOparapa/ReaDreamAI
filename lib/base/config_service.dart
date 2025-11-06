@@ -171,7 +171,42 @@ class ConfigService {
       'image': imageDir,
       'video': videoDir,
     };
-  }  
+  }
+
+  // 清空工作台媒体文件，清空Workbench下的 image, video, character 文件夹内容
+  Future<void> clearWorkbenchMedia() async {
+    final logger = LogService.instance;
+    logger.info("正在清空工作台媒体文件...");
+    try {
+      final workbenchDirs = await getOrCreateWorkbenchDirs();
+      final imageDir = workbenchDirs['image']!;
+      final videoDir = workbenchDirs['video']!;
+      final characterDir = workbenchDirs['character']!;
+
+      // 定义一个内部函数来清空目录
+      Future<void> _clearDirectory(Directory dir) async {
+        if (await dir.exists()) {
+          final entities = dir.list();
+          await for (final entity in entities) {
+            try {
+              await entity.delete(recursive: true);
+            } catch (e) {
+              logger.error("删除文件失败: ${entity.path}", e);
+            }
+          }
+          logger.info("已清空目录: ${dir.path}");
+        }
+      }
+
+      await _clearDirectory(imageDir);
+      await _clearDirectory(videoDir);
+      await _clearDirectory(characterDir);
+      logger.success("工作台媒体文件已清空。");
+    } catch (e, s) {
+      logger.error("清空工作台媒体文件时发生错误", e, s);
+    }
+  }
+
   /// 加载配置文件方法
   Future<void> load() async {
     final file = File(_configPath);

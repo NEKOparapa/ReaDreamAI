@@ -6,157 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path/path.dart' as p;
+import 'package:file_picker/file_picker.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../base/config_service.dart';
 import '../../../models/book.dart';
 import '../../../models/character_card_model.dart';
+import '../../../models/storyboard_script_model.dart'; 
+import '../../../services/cache_manager/cache_manager.dart';
 import '../../../services/task_executor/storyboard_generator_executor.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:uuid/uuid.dart';
-
-// Shot 模型定义
-class Shot {
-  int shotNumber;
-  TextEditingController shotTypeController;
-  TextEditingController cameraMoveController;
-  TextEditingController charactersController;
-  TextEditingController contentController;
-  TextEditingController soundController;
-  TextEditingController durationController;
-  TextEditingController firstFramePromptController = TextEditingController();
-  TextEditingController mainCharacterController = TextEditingController();
-  List<String> firstFrameImagePaths = [];
-  TextEditingController videoPromptController = TextEditingController();
-  List<String> videoPaths = [];
-
-  Shot({
-    required this.shotNumber,
-    String shotType = '全景',
-    String cameraMove = '固定',
-    String characters = '',
-    String content = '',
-    String sound = '',
-    String duration = '3s',
-  })  : shotTypeController = TextEditingController(text: shotType),
-        cameraMoveController = TextEditingController(text: cameraMove),
-        charactersController = TextEditingController(text: characters),
-        contentController = TextEditingController(text: content),
-        soundController = TextEditingController(text: sound),
-        durationController = TextEditingController(text: duration);
-
-  void dispose() {
-    shotTypeController.dispose();
-    cameraMoveController.dispose();
-    charactersController.dispose();
-    contentController.dispose();
-    soundController.dispose();
-    durationController.dispose();
-    firstFramePromptController.dispose();
-    mainCharacterController.dispose();
-    videoPromptController.dispose();
-  }
-
-  Map<String, dynamic> toJson() => {
-        'shotNumber': shotNumber,
-        'shotType': shotTypeController.text,
-        'cameraMove': cameraMoveController.text,
-        'characters': charactersController.text,
-        'content': contentController.text,
-        'sound': soundController.text,
-        'duration': durationController.text,
-        'firstFramePrompt': firstFramePromptController.text,
-        'mainCharacter': mainCharacterController.text,
-        'firstFrameImagePaths': firstFrameImagePaths,
-        'videoPrompt': videoPromptController.text,
-        'videoPaths': videoPaths,
-      };
-
-  factory Shot.fromJson(Map<String, dynamic> json) {
-    String parseField(dynamic fieldValue) {
-      if (fieldValue == null) return '';
-      if (fieldValue is List) return fieldValue.join(', ');
-      return fieldValue.toString();
-    }
-
-    final shot = Shot(
-      shotNumber: json['shotNumber'] as int? ?? 1,
-      shotType: parseField(json['shotType']),
-      cameraMove: parseField(json['cameraMove']),
-      characters: parseField(json['characters']),
-      content: parseField(json['content']),
-      sound: parseField(json['sound']),
-      duration: parseField(json['duration']),
-    );
-
-    shot.firstFramePromptController.text =
-        json['firstFramePrompt'] as String? ?? '';
-    shot.mainCharacterController.text = json['mainCharacter'] as String? ?? '';
-    shot.firstFrameImagePaths =
-        List<String>.from(json['firstFrameImagePaths'] ?? []);
-    shot.videoPromptController.text = json['videoPrompt'] as String? ?? '';
-    shot.videoPaths = List<String>.from(json['videoPaths'] ?? []);
-    return shot;
-  }
-}
-
-class Scene {
-  TextEditingController titleController = TextEditingController(text: '场景');
-  List<Shot> shots;
-
-  Scene({List<Shot>? shots}) : shots = shots ?? [Shot(shotNumber: 1)];
-
-  void dispose() {
-    titleController.dispose();
-    for (final shot in shots) {
-      shot.dispose();
-    }
-  }
-
-  Map<String, dynamic> toJson() => {
-        'title': titleController.text,
-        'shots': shots.map((s) => s.toJson()).toList(),
-      };
-
-  factory Scene.fromJson(Map<String, dynamic> json) {
-    final shotsList = json['shots'] as List<dynamic>? ?? [];
-    final scene = Scene(
-      shots: shotsList
-          .map((s) => Shot.fromJson(s as Map<String, dynamic>))
-          .toList(),
-    );
-    scene.titleController.text = json['title'] as String? ?? '场景';
-    return scene;
-  }
-}
-
-class ChapterScript {
-  final String originalChapterTitle;
-  List<Scene> scenes;
-
-  ChapterScript({required this.originalChapterTitle, List<Scene>? scenes})
-      : scenes = scenes ?? [Scene()];
-
-  void dispose() {
-    for (final scene in scenes) {
-      scene.dispose();
-    }
-  }
-
-  Map<String, dynamic> toJson() => {
-        'originalChapterTitle': originalChapterTitle,
-        'scenes': scenes.map((s) => s.toJson()).toList(),
-      };
-
-  factory ChapterScript.fromJson(Map<String, dynamic> json) {
-    final scenesList = json['scenes'] as List<dynamic>? ?? [];
-    return ChapterScript(
-      originalChapterTitle: json['originalChapterTitle'] as String? ?? '未知章节',
-      scenes: scenesList
-          .map((s) => Scene.fromJson(s as Map<String, dynamic>))
-          .toList(),
-    );
-  }
-}
+import 'dialogs/generate_media_dialog.dart';
+import 'dialogs/generate_prompts_dialog.dart';
 
 class NovelToShortDramaWorkbenchPage extends StatefulWidget {
   final Book book;
@@ -265,16 +125,20 @@ class _NovelToShortDramaWorkbenchPageState
         _configService.getSetting('workbench_active_script', []));
 
     if (defaultScriptJson.isNotEmpty && widget.book.chapters.isNotEmpty) {
-      _script = widget.book.chapters.map((chapter) {
+      _script = widget.book.chapters.asMap().entries.map((entry) {
+        final index = entry.key;
+        final chapter = entry.value;
         final templateChapter = defaultScriptJson.first;
         return ChapterScript.fromJson({
           ...templateChapter,
           'originalChapterTitle': chapter.title,
+          'chapterNumber': index + 1,
         });
       }).toList();
     } else {
       _script = [
         ChapterScript(
+            chapterNumber: 1,
             originalChapterTitle: widget.book.chapters.isNotEmpty
                 ? widget.book.chapters.first.title
                 : "默认章节")
@@ -283,7 +147,7 @@ class _NovelToShortDramaWorkbenchPageState
   }
 
   Future<void> _saveWorkbenchData(
-      {bool showSnackbar = true, String message = '工作台已保存'}) async {
+      {bool showSnackbar = true, String message = '工作台已自动保存'}) async {
     _debounce?.cancel();
     try {
       await _configService.modifySetting(
@@ -308,7 +172,64 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
-  Future<void> _generateAllPrompts() async {
+  Future<void> _saveToBookshelf() async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('正在保存到书架...')),
+    );
+
+    try {
+      final cacheManager = CacheManager();
+      final videoBook = VideoBook(
+        novelTitle: widget.book.title,
+        script: _script,
+      );
+      await cacheManager.createVideoBookCache(
+        title: widget.book.title,
+        originalBookId: widget.book.id,
+        videoBook: videoBook,
+      );
+      if (mounted) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('✅ 成功保存到书架！'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e, s) {
+      debugPrint('[保存到书架] 失败: $e\n$s');
+      if (mounted) {
+        messenger.hideCurrentSnackBar();
+        messenger.showSnackBar(
+          SnackBar(content: Text('❌ 保存到书架失败: $e')),
+        );
+      }
+    }
+  }
+
+  void _showGeneratePromptsDialog() async {
+    final selectedLanguage = await showDialog<String>(
+      context: context,
+      builder: (context) => GeneratePromptsDialog(script: _script),
+    );
+    if (selectedLanguage != null && mounted) {
+      _generateAllPrompts(promptLanguage: selectedLanguage);
+    }
+  }
+
+  void _showGenerateMediaDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => GenerateMediaDialog(script: _script),
+    );
+    if (confirmed == true && mounted) {
+      _generateAllMedia();
+    }
+  }
+  
+  Future<void> _generateAllPrompts({required String promptLanguage}) async {
     setState(() {
       _isGenerating = true;
       _generationStatus = '准备中...';
@@ -318,11 +239,12 @@ class _NovelToShortDramaWorkbenchPageState
     try {
       final characters =
           _charactersData.map((data) => CharacterCard.fromJson(data)).toList();
-
+      
       await StoryboardGeneratorExecutor.instance.generateAllPromptsForScript(
         novelTitle: widget.book.title,
         characters: characters,
         script: _script,
+        promptLanguage: promptLanguage,
         onProgress: (progress, status) {
           if (mounted) {
             setState(() {
@@ -444,6 +366,7 @@ class _NovelToShortDramaWorkbenchPageState
     if (confirmed) {
       setState(() {
         chapter.scenes.remove(scene);
+        _updateSceneNumbers(chapter);
       });
       _debounceSaveWorkbenchData();
     }
@@ -461,50 +384,15 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
-  void _updateShotNumbers(Scene scene) {
-    for (int i = 0; i < scene.shots.length; i++) {
-      scene.shots[i].shotNumber = i + 1;
+  void _updateSceneNumbers(ChapterScript chapter) {
+    for (int i = 0; i < chapter.scenes.length; i++) {
+      chapter.scenes[i].sceneNumber = i + 1;
     }
   }
 
-  Future<void> _generateFirstFramePromptForShot(Shot shot, Scene scene) async {
-    final taskKey = '${shot.hashCode}_prompt';
-    if (_generatingTasks.contains(taskKey)) return;
-
-    setState(() => _generatingTasks.add(taskKey));
-    try {
-      final chapter = _script.firstWhere((c) => c.scenes.contains(scene));
-      final characters =
-          _charactersData.map((data) => CharacterCard.fromJson(data)).toList();
-
-      final result = await StoryboardGeneratorExecutor.instance
-          .generatePromptsForSingleShot(
-        novelTitle: widget.book.title,
-        characters: characters,
-        chapterTitle: chapter.originalChapterTitle,
-        sceneTitle: scene.titleController.text,
-        shot: shot,
-      );
-
-      setState(() {
-        shot.firstFramePromptController.text = result.imagePrompt;
-        shot.videoPromptController.text = result.videoPrompt;
-        shot.mainCharacterController.text = result.mainCharacter;
-      });
-      _debounceSaveWorkbenchData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('✅ 提示词已生成'), duration: Duration(seconds: 2)));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('❌ 提示词生成失败: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _generatingTasks.remove(taskKey));
-      }
+  void _updateShotNumbers(Scene scene) {
+    for (int i = 0; i < scene.shots.length; i++) {
+      scene.shots[i].shotNumber = i + 1;
     }
   }
 
@@ -645,12 +533,10 @@ class _NovelToShortDramaWorkbenchPageState
       appBar: AppBar(
         title: Text('短剧工作台 - 《${widget.book.title}》'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save_outlined),
-            tooltip: '保存工作台',
-            onPressed: _isGenerating
-                ? null
-                : () => _saveWorkbenchData(showSnackbar: true),
+          TextButton.icon(
+            icon: const Icon(Icons.library_add_outlined),
+            label: const Text('保存到书架'),
+            onPressed: _isGenerating ? null : _saveToBookshelf,
           ),
           const SizedBox(width: 16),
         ],
@@ -659,7 +545,6 @@ class _NovelToShortDramaWorkbenchPageState
           ? const Center(child: CircularProgressIndicator())
           : Stack(
               children: [
-                // 主要内容
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 20.0, vertical: 16.0),
@@ -673,18 +558,16 @@ class _NovelToShortDramaWorkbenchPageState
                       const SizedBox(height: 24),
                       _buildSectionHeader('分镜脚本', Icons.movie_filter_outlined),
                       _buildScriptSection(),
-                      const SizedBox(height: 100), // 底部留白,避免被悬浮按钮遮挡
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
-                // [新增] 右下角悬浮按钮
                 _buildFloatingActionButtons(),
               ],
             ),
     );
   }
 
-  /// [新增] 右下角悬浮生成按钮
   Widget _buildFloatingActionButtons() {
     return Positioned(
       right: 24,
@@ -693,9 +576,8 @@ class _NovelToShortDramaWorkbenchPageState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // 生成提示词按钮
           FloatingActionButton.extended(
-            onPressed: _isGenerating ? null : _generateAllPrompts,
+            onPressed: _isGenerating ? null : _showGeneratePromptsDialog,
             heroTag: 'generate_prompts',
             backgroundColor: _isGenerating
                 ? Theme.of(context).colorScheme.surfaceVariant
@@ -707,7 +589,7 @@ class _NovelToShortDramaWorkbenchPageState
                   : Theme.of(context).colorScheme.onPrimaryContainer,
             ),
             label: Text(
-              '生成提示词',
+              '生成全部提示词',
               style: TextStyle(
                 color: _isGenerating
                     ? Theme.of(context).colorScheme.onSurfaceVariant
@@ -717,9 +599,8 @@ class _NovelToShortDramaWorkbenchPageState
             ),
           ),
           const SizedBox(height: 12),
-          // 生成图片和视频按钮
           FloatingActionButton.extended(
-            onPressed: _isGenerating ? null : _generateAllMedia,
+            onPressed: _isGenerating ? null : _showGenerateMediaDialog,
             heroTag: 'generate_media',
             backgroundColor: _isGenerating
                 ? Theme.of(context).colorScheme.surfaceVariant
@@ -939,7 +820,7 @@ class _NovelToShortDramaWorkbenchPageState
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'CH ${chapterIndex + 1}',
+                  'CH ${chapter.chapterNumber}',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onPrimaryContainer,
                     fontWeight: FontWeight.bold,
@@ -965,18 +846,15 @@ class _NovelToShortDramaWorkbenchPageState
         children: [
           const Divider(height: 1),
           const SizedBox(height: 16),
-          ...chapter.scenes.asMap().entries.map((entry) {
-            int sceneNumber = entry.key + 1;
-            Scene scene = entry.value;
-            return _buildSceneItem(chapter, scene, chapterIndex, sceneNumber);
+          ...chapter.scenes.map((scene) {
+            return _buildSceneItem(chapter, scene);
           }).toList()
         ],
       ),
     );
   }
 
-  Widget _buildSceneItem(
-      ChapterScript chapter, Scene scene, int chapterIndex, int sceneNumber) {
+  Widget _buildSceneItem(ChapterScript chapter, Scene scene) {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 8),
@@ -999,7 +877,7 @@ class _NovelToShortDramaWorkbenchPageState
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'SC ${chapterIndex + 1}-$sceneNumber',
+                    'SC ${chapter.chapterNumber}-${scene.sceneNumber}',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.primary,
@@ -1064,8 +942,6 @@ class _NovelToShortDramaWorkbenchPageState
 
   Widget _buildShotItem(Scene scene, Shot shot) {
     final theme = Theme.of(context);
-    final isGeneratingPrompt =
-        _generatingTasks.contains('${shot.hashCode}_prompt');
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       decoration: BoxDecoration(
@@ -1130,29 +1006,10 @@ class _NovelToShortDramaWorkbenchPageState
                 _buildEditableSingleRow('声音/对白', shot.soundController,
                     minLines: 2, onChanged: _debounceSaveWorkbenchData),
                 const Divider(thickness: 1, height: 24),
-                Row(
-                  children: [
-                    Text('AI 生成',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: isGeneratingPrompt
-                          ? null
-                          : () => _generateFirstFramePromptForShot(shot, scene),
-                      icon: isGeneratingPrompt
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.auto_awesome, size: 16),
-                      label: Text(isGeneratingPrompt ? '生成中...' : '生成提示词'),
-                      style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact),
-                    ),
-                  ],
-                ),
+                Text('AI 生成',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold)),
                 const SizedBox(height: 12),
                 _buildAiGenerationRow(
                   shot: shot,
@@ -1181,7 +1038,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  /// [MODIFIED] 改进的AI生成行布局 - 精简角色信息卡片
   Widget _buildAiGenerationRow({
     required Shot shot,
     required TextEditingController promptController,
@@ -1198,7 +1054,6 @@ class _NovelToShortDramaWorkbenchPageState
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 左侧:媒体预览
         SizedBox(
           width: 150,
           height: 150,
@@ -1217,7 +1072,6 @@ class _NovelToShortDramaWorkbenchPageState
               : _buildMediaGallery(shot, mediaPaths, mediaType),
         ),
         const SizedBox(width: 12),
-        // 中间:提示词输入框
         Expanded(
           flex: 2,
           child: TextFormField(
@@ -1243,11 +1097,10 @@ class _NovelToShortDramaWorkbenchPageState
             maxLines: 6,
           ),
         ),
-        // 右侧:角色信息卡片(仅图片行显示,且更紧凑)
         if (isImageRow) ...[
           const SizedBox(width: 12),
           SizedBox(
-            width: 120, // [修改] 固定更小的宽度
+            width: 120,
             child: _buildCompactCharacterInfoCard(
               mainCharacterController: mainCharacterController,
               charactersData: charactersData,
@@ -1258,7 +1111,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  /// [新增] 紧凑版角色信息卡片
   Widget _buildCompactCharacterInfoCard({
     required TextEditingController mainCharacterController,
     required List<Map<String, dynamic>> charactersData,
@@ -1285,7 +1137,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  /// [新增] 空的紧凑角色卡片
   Widget _buildEmptyCompactCharacterCard() {
     final theme = Theme.of(context);
     return Card(
@@ -1323,7 +1174,6 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  /// [新增] 已填充的紧凑角色卡片
   Widget _buildFilledCompactCharacterCard(Map<String, dynamic> character) {
     final theme = Theme.of(context);
     final characterName = character['characterName']?.toString() ?? '';
@@ -1341,7 +1191,6 @@ class _NovelToShortDramaWorkbenchPageState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 角色头像
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(6),
@@ -1386,7 +1235,6 @@ class _NovelToShortDramaWorkbenchPageState
               ),
             ),
             const SizedBox(height: 6),
-            // 角色名
             Text(
               characterName,
               style: theme.textTheme.labelMedium?.copyWith(
@@ -1532,7 +1380,6 @@ class _NovelToShortDramaWorkbenchPageState
   }
 }
 
-// 角色卡片编辑组件 (保持不变)
 class _EditableCharacterCardItem extends StatefulWidget {
   final Map<String, dynamic> characterData;
   final VoidCallback onDataChanged;
@@ -1559,13 +1406,10 @@ class _EditableCharacterCardItemState
 
       if (result != null && result.files.single.path != null) {
         final sourceFile = File(result.files.single.path!);
-
         final workbenchDirs = await ConfigService().getOrCreateWorkbenchDirs();
         final characterDir = workbenchDirs['character']!;
-
         final fileName = '${const Uuid().v4()}${p.extension(sourceFile.path)}';
         final newPath = p.join(characterDir.path, fileName);
-
         await sourceFile.copy(newPath);
 
         setState(() {
@@ -1615,7 +1459,6 @@ class _EditableCharacterCardItemState
         widget.characterData['referenceImagePath'] = null;
       });
       widget.onDataChanged();
-
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1739,6 +1582,9 @@ class _EditableCharacterCardItemState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final characterName = widget.characterData['characterName']?.toString();
+    final characterTitle = widget.characterData['name']?.toString() ?? '未命名角色';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 1,
@@ -1750,7 +1596,9 @@ class _EditableCharacterCardItemState
         leading: CircleAvatar(
           backgroundColor: theme.colorScheme.primaryContainer,
           child: Text(
-            (widget.characterData['characterName']?.toString() ?? '?')[0],
+            (characterName != null && characterName.isNotEmpty)
+                ? characterName[0]
+                : '?',
             style: TextStyle(
               color: theme.colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.bold,
@@ -1758,11 +1606,11 @@ class _EditableCharacterCardItemState
           ),
         ),
         title: Text(
-          widget.characterData['name']?.toString() ?? '未命名角色',
+          characterTitle,
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          '角色: ${widget.characterData['characterName']?.toString() ?? ''} | 身份: ${widget.characterData['identity']?.toString() ?? ''}',
+          '角色: ${characterName ?? ''} | 身份: ${widget.characterData['identity']?.toString() ?? ''}',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1824,7 +1672,6 @@ class _EditableCharacterCardItemState
   }
 }
 
-// 视频播放器组件 (保持不变)
 class _VideoPlayerWidget extends StatefulWidget {
   final String videoPath;
   const _VideoPlayerWidget({required this.videoPath});
@@ -1878,7 +1725,6 @@ class _VideoPlayerWidgetState extends State<_VideoPlayerWidget> {
   }
 }
 
-// 媒体项组件 (保持不变)
 class _MediaItem extends StatelessWidget {
   final String path;
   final String mediaType;
@@ -1985,7 +1831,6 @@ class _MediaActionButton extends StatelessWidget {
   }
 }
 
-// 媒体预览弹窗 (保持不变)
 class _MediaViewerDialog extends StatefulWidget {
   final String mediaPath;
   final String mediaType;

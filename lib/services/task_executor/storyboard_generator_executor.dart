@@ -13,8 +13,7 @@ import '../../models/character_card_model.dart';
 import '../../services/llm_service/llm_service.dart';
 import '../../services/drawing_service/drawing_service.dart';
 import '../../services/video_service/video_service.dart';
-import '../../ui/bookshelf/novel_to_short_drama/novel_to_short_drama_workbench_page.dart'
-    show ChapterScript, Scene, Shot;
+import '../../models/storyboard_script_model.dart';
 
 
 
@@ -146,6 +145,7 @@ class StoryboardGeneratorExecutor {
 
         final scenesJson = chapterResult['script'] as List<dynamic>? ?? [];
         final chapterScript = ChapterScript.fromJson({
+          'chapterNumber': i + 1,
           'originalChapterTitle': chapter.title,
           'scenes': scenesJson,
         });
@@ -179,9 +179,10 @@ class StoryboardGeneratorExecutor {
     required String novelTitle,
     required List<CharacterCard> characters,
     required List<ChapterScript> script,
+    required String promptLanguage, // [修改]
     required void Function(double progress, String status) onProgress,
   }) async {
-    _logger.info("🚀 开始为《$novelTitle》生成所有场景的提示词...");
+    _logger.info("🚀 开始为《$novelTitle》生成所有场景的提示词 (语言: $promptLanguage)...");
 
     // 1. 收集所有场景作为子任务
     final allSceneTasks = <_SceneTask>[];
@@ -232,6 +233,7 @@ class StoryboardGeneratorExecutor {
                 chapterTitle: sceneTask.chapterTitle,
                 scene: sceneTask.scene,
                 apiConfig: llmApi,
+                promptLanguage: promptLanguage, // [修改]
               );
 
               // [MODIFIED] 更新场景中所有分镜的提示词和主要角色
@@ -278,6 +280,7 @@ class StoryboardGeneratorExecutor {
     required String chapterTitle,
     required Scene scene,
     required dynamic apiConfig,
+    required String promptLanguage, // [修改]
   }) async {
     final (systemPrompt, messages) = _buildPromptForScenePrompts(
       novelTitle: novelTitle,
@@ -285,6 +288,7 @@ class StoryboardGeneratorExecutor {
       chapterTitle: chapterTitle,
       sceneTitle: scene.titleController.text,
       shots: scene.shots,
+      promptLanguage: promptLanguage, // [修改]
     );
 
     final llmResponse = await _llmService.requestCompletion(
@@ -328,8 +332,9 @@ class StoryboardGeneratorExecutor {
     required String chapterTitle,
     required String sceneTitle,
     required Shot shot,
+    required String promptLanguage, // [修改]
   }) async {
-    _logger.info("⚡️ 正在为分镜 ${shot.shotNumber}「${shot.contentController.text.substring(0, min(10, shot.contentController.text.length))}...」生成提示词");
+    _logger.info("⚡️ 正在为分镜 ${shot.shotNumber}「${shot.contentController.text.substring(0, min(10, shot.contentController.text.length))}...」生成提示词 (语言: $promptLanguage)");
     final llmApi = _configService.getActiveLanguageApi();
 
     // 复用为场景生成提示词的Prompt构建逻辑，但只传入单个分镜
@@ -339,6 +344,7 @@ class StoryboardGeneratorExecutor {
       chapterTitle: chapterTitle,
       sceneTitle: sceneTitle,
       shots: [shot], // 关键：只传入当前这一个分镜
+      promptLanguage: promptLanguage, // [修改]
     );
 
     final llmResponse = await _llmService.requestCompletion(
@@ -666,7 +672,7 @@ class StoryboardGeneratorExecutor {
     const String systemPrompt = """你是一个专业的影视编剧和角色设计师。你的任务是将提供的小说章节内容,根据用户要求,改编成详细的分镜脚本。
 
 任务要求:
-1. 场景划分: 将章节内容合理地划分为多个场景(Scene)。每个场景的标题title字段应清晰地概括场景内容,并在标题中包含时间和地点(例如:"场景1 日/外景 - 森林边缘")。
+1. 场景划分: 将章节内容合理地划分为多个场景(Scene)。每个场景必须包含一个从1开始、在该章节内连续递增的`sceneNumber`字段。每个场景的标题title字段应清晰地概括场景内容,并在标题中包含时间和地点(例如:"场景1 日/外景 - 森林边缘")。
 2. 分镜设计: 在每个场景内,设计一系列分镜(Shot)。每个分镜都需要包含以下元素:
    - 景别(shotType): 如全景、中景、近景、特写等
    - 运镜(cameraMove): 如固定、推、拉、摇、跟等
@@ -684,6 +690,7 @@ class StoryboardGeneratorExecutor {
 {
   "script": [
     {
+      "sceneNumber": 1,
       "title": "场景1 日/外景 - 森林边缘",
       "shots": [
         {
@@ -740,6 +747,7 @@ $chapterText
     required String chapterTitle,
     required String sceneTitle,
     required List<Shot> shots,
+    required String promptLanguage, // [修改]
   }) {
     // 构建角色信息块
     String characterInfoBlock = '';
@@ -771,12 +779,16 @@ $chapterText
     }
     final shotsInfoBlock = buffer.toString();
 
-    const String systemPrompt = """你是一个AI绘画和视频生成的提示词专家。你的任务是根据提供的场景信息和该场景下所有分镜的详细内容,为每个分镜生成:
+    // [修改] 根据语言动态生成System Prompt
+    final String systemPrompt = """你是一个AI绘画和视频生成的提示词专家。你的任务是根据提供的场景信息和该场景下所有分镜的详细内容,为每个分镜生成:
 1. 首帧图片提示词(image_prompt)
 2. 视频提示词(video_prompt)
 3. 主体角色名(main_character)
 
 要求:
+
+【语言要求 (Language Requirement)】
+- 所有生成的提示词 (image_prompt 和 video_prompt) 必须严格使用**${promptLanguage == 'zh' ? '中文' : '英文'}**。
 
 【主体角色名 (main_character)】
 - 分析"登场角色"和"画面内容"字段,判断该分镜是否主要聚焦于某一个角色。
@@ -786,17 +798,17 @@ $chapterText
 【首帧图片提示词 (image_prompt)】
 - 详细、具体,描述一个静态画面。
 - 包含主体、外貌、服装、姿态、情绪、构图、环境、光影等。
-- 使用AI绘画标签化的语言(如: 1boy, solo, looking at viewer, silver armor, red cape...)。
+- 使用AI绘画标签化的语言(如: 1boy, solo, looking at viewer, silver armor, red cape... 或者 一位男孩, 单独, 看着观众, 银色盔甲, 红色斗篷... )。
 - 不包含任何动态描述(如: running, walking, smiling)。
 - 不包含任何风格或画质词(如: masterpiece, best quality, anime style)。
-- 必须是纯英文,使用逗号分隔的标签格式。
+- 必须是纯${promptLanguage == 'zh' ? '中文' : '英文'},使用逗号分隔的标签格式。
 
 【视频提示词 (video_prompt)】
 - 简洁、有力,专注于描述动态。
 - 描述画面中发生的核心运动或变化。
 - 可以包含运镜描述(如: camera slowly zooms in)。
 - 是对首帧图片的动态化延展。
-- 必须是纯英文。
+- 必须是纯${promptLanguage == 'zh' ? '中文' : '英文'}。
 
 输出格式: 请严格以JSON格式返回,包含一个shots数组,数组中每个对象对应一个分镜:
 {
@@ -804,12 +816,6 @@ $chapterText
     {
       "shotNumber": 1,
       "main_character": "主角A",
-      "image_prompt": "1boy, solo, short black hair, determined eyes, wearing silver armor, red cape, standing on a desolate battlefield, hand on sword hilt, rain, mud, stormy sky, dramatic lighting, full body shot",
-      "video_prompt": "The knight slowly raises his shimmering sword, rain intensifies splashing on his armor, camera slowly pushes in on his determined face"
-    },
-    {
-      "shotNumber": 2,
-      "main_character": "",
       "image_prompt": "...",
       "video_prompt": "..."
     }
@@ -829,7 +835,7 @@ $shotsInfoBlock
 注意:
 1. 必须为所有${shots.length}个分镜都生成
 2. shotNumber必须与分镜编号严格对应
-3. 提示词必须是纯英文
+3. 提示词必须是纯${promptLanguage == 'zh' ? '中文' : '英文'}
 4. main_character必须精确匹配提供的角色信息中的characterName, 否则返回空字符串
 """;
 

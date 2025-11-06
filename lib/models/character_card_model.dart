@@ -11,8 +11,8 @@ class CharacterCard {
   final String identity; // 身份
   final String appearance; // 外貌
   final String clothing; // 服装
-  final String personality; // 性格 (新增字段)
-  final String status; // 状态 (新增字段)
+  final String personality; // 性格
+  final String status; // 状态
   final String other; // 其他
   final String? referenceImageUrl; // 网络参考图
   final String? referenceImagePath; // 本地参考图
@@ -25,8 +25,8 @@ class CharacterCard {
     this.identity = '',
     this.appearance = '',
     this.clothing = '',
-    this.personality = '', // 新增字段
-    this.status = '', // 新增字段
+    this.personality = '',
+    this.status = '',
     this.other = '',
     this.referenceImageUrl,
     this.referenceImagePath,
@@ -42,8 +42,8 @@ class CharacterCard {
       identity: json['identity'] ?? '',
       appearance: json['appearance'] ?? '',
       clothing: json['clothing'] ?? '',
-      personality: json['personality'] ?? '', // 新增字段
-      status: json['status'] ?? '',           // 新增字段
+      personality: json['personality'] ?? '',
+      status: json['status'] ?? '',          
       other: json['other'] ?? '',
       referenceImageUrl: json['referenceImageUrl'],
       referenceImagePath: json['referenceImagePath'],
@@ -60,8 +60,8 @@ class CharacterCard {
       'identity': identity,
       'appearance': appearance,
       'clothing': clothing,
-      'personality': personality, // 新增字段
-      'status': status,           // 新增字段
+      'personality': personality,
+      'status': status,          
       'other': other,
       'referenceImageUrl': referenceImageUrl,
       'referenceImagePath': referenceImagePath,
