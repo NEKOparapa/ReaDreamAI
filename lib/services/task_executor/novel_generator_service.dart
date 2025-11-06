@@ -22,7 +22,7 @@ class NovelGeneratorService {
     final codeBlockMatch = RegExp(r'```json\s*([\s\S]*?)\s*```').firstMatch(response);
     if (codeBlockMatch != null && codeBlockMatch.group(1) != null) {
       LogService.instance.info('JSON 提取成功 (方式: Markdown代码块)。');
-      return codeBlockMatch.group(1)!;
+      return codeBlockMatch.group(1)!.trim();
     }
 
     // 备用方案1: 查找第一个被大括号包裹的完整块
@@ -43,7 +43,111 @@ class NovelGeneratorService {
     LogService.instance.warn('所有 JSON 提取策略均失败，将使用原始响应进行解析。');
     return response;
   }
+
+  /// [增强版] 尝试修复常见的JSON格式错误，包括结构截断
+  String _attemptJsonRepair(String brokenJson) {
+    String repaired = brokenJson.trim();
+
+    // 1. 移除末尾不完整的键值对，避免解析混乱
+    // 如果字符串以逗号结尾，很可能后面还有内容但被截断了，先移除它
+    if (repaired.endsWith(',')) {
+      repaired = repaired.substring(0, repaired.length - 1);
+    }
+    // 查找最后一个 "key":，如果后面没有完整的值，也可能需要处理，但逻辑复杂，暂时简化
+
+    // 2. 移除常见的行尾多余逗号 (保留原有逻辑)
+    repaired = repaired.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
+
+    // 3. 使用栈来检查并补全未闭合的括号
+    final stack = <String>[];
+    bool inString = false;
+
+    for (int i = 0; i < repaired.length; i++) {
+      final char = repaired[i];
+
+      if (char == '"') {
+        // 忽略转义的引号
+        if (i == 0 || repaired[i - 1] != r'\') {
+          inString = !inString;
+        }
+      }
+
+      if (!inString) {
+        if (char == '{' || char == '[') {
+          stack.add(char);
+        } else if (char == '}') {
+          if (stack.isNotEmpty && stack.last == '{') {
+            stack.removeLast();
+          }
+        } else if (char == ']') {
+          if (stack.isNotEmpty && stack.last == '[') {
+            stack.removeLast();
+          }
+        }
+      }
+    }
+
+    // 补全所有未闭合的括号
+    while (stack.isNotEmpty) {
+      final openBrace = stack.removeLast();
+      if (openBrace == '{') {
+        repaired += '}';
+      } else if (openBrace == '[') {
+        repaired += ']';
+      }
+    }
+    
+    // 4. 对字符串值中的特殊字符进行转义 (保留原有逻辑)
+    // 注意：这个正则表达式在处理极度混乱的JSON时可能仍然不够完美，但对于修复引号和换行符很有帮助
+    try {
+      final valueContentRegex = RegExp(r'(?<=":\s*")(.*?)(?="\s*[,}])');
+      repaired = repaired.replaceAllMapped(valueContentRegex, (match) {
+        String valueContent = match.group(1)!;
+        valueContent = valueContent
+            .replaceAll(r'\', r'\\')
+            .replaceAll(r'"', r'\"')
+            .replaceAll('\n', r'\n')
+            .replaceAll('\r', r'\r')
+            .replaceAll('\t', r'\t');
+        return valueContent;
+      });
+    } catch(e) {
+      LogService.instance.warn('JSON 值内容修复正则表达式执行失败: $e');
+    }
+
+    return repaired;
+  }
   
+  /// [新增] 健壮的JSON解析方法，包含自动修复逻辑
+  dynamic _parseJsonWithRepair(String jsonString) {
+    try {
+      // 第一次尝试：直接解析
+      return jsonDecode(jsonString);
+    } catch (e) {
+      LogService.instance.warn('常规JSON解析失败，启动自动修复程序...');
+      // 尝试修复
+      final repairedJson = _attemptJsonRepair(jsonString);
+      
+      try {
+        // 第二次尝试：解析修复后的字符串
+        final result = jsonDecode(repairedJson);
+        LogService.instance.success('JSON自动修复并解析成功！');
+        return result;
+      } catch (e2, s2) {
+        // 如果修复后仍然失败，记录详细信息并抛出原始异常
+        LogService.instance.error(
+          'JSON修复后解析仍然失败。',
+          e2,
+          s2,
+        );
+        LogService.instance.info('--- 原始JSON ---\n$jsonString');
+        LogService.instance.info('--- 修复后JSON ---\n$repairedJson');
+        // 重新抛出最初的异常，让上层调用知道根本原因
+        rethrow;
+      }
+    }
+  }
+
   // 独立的 <textarea> 文本提取方法
   String _extractTextareaContent(String llmResponse) {
     // 优先匹配 <textarea> 标签
@@ -209,12 +313,9 @@ $presetPrompts
       // 使用新的辅助方法提取 JSON
       final jsonString = _extractJsonString(llmResponse);
       
-      try {
-        return jsonDecode(jsonString);
-      } catch (e, s) {
-        LogService.instance.error('解析小说大纲 LLM 响应 JSON 失败。响应原文: $jsonString', e, s);
-        rethrow;
-      }
+      // 使用新的健壮解析方法
+      return _parseJsonWithRepair(jsonString);
+
     } catch (e) {
       LogService.instance.error('调用 LLM Service 生成小说大纲时出错');
       rethrow;
@@ -323,13 +424,10 @@ $chapterIdsToRegenerate
 
       final jsonString = _extractJsonString(llmResponse);
       
-      try {
-        final decodedList = jsonDecode(jsonString) as List;
-        return decodedList.map((item) => item as Map<String, dynamic>).toList();
-      } catch (e, s) {
-        LogService.instance.error('解析重写章节的 LLM 响应 JSON 失败。响应原文: $jsonString', e, s);
-        rethrow;
-      }
+      // 使用新的健壮解析方法
+      final decodedList = _parseJsonWithRepair(jsonString) as List;
+      return decodedList.map((item) => item as Map<String, dynamic>).toList();
+
     } catch (e, s) {
       LogService.instance.error('调用 LLM Service 重写章节时出错', e, s);
       rethrow;
@@ -366,7 +464,7 @@ $chapterIdsToRegenerate
     String? initialContent,
     int? startSegmentIndex,
   }) async {
-    final checkTerminated = isTerminated ?? () => false;
+    final checkTerminated = isTerminated ?? () => false; 
     if (checkTerminated()) return ''; 
 
     LogService.instance.info('[小说生成服务] 开始处理第 ${chapterIndex + 1} 章内容...');
@@ -554,7 +652,9 @@ ${jsonEncode(storyline)}
         );
         
         final jsonString = _extractJsonString(llmResponse);
-        final decodedList = jsonDecode(jsonString) as List;
+        
+        // 使用新的健壮解析方法
+        final decodedList = _parseJsonWithRepair(jsonString) as List;
         
         if (decodedList.isNotEmpty) {
           return decodedList.map((item) => item.toString()).toList();
@@ -680,7 +780,7 @@ $previouslyGeneratedContent
 ### 当前写作指引
 $currentSegmentDescription
 
-现在，请你基于以上所有信息，严格遵循 **[当前写作指引]**，继续写作。
+现在，请你基于以上所有信息，严格遵循 [当前写作指引]，继续写作。
 """;
     const maxRetries = 3;
     for (int attempt = 1; attempt <= maxRetries; attempt++) {

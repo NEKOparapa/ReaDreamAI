@@ -527,7 +527,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                           decoration:
                               const InputDecoration.collapsed(hintText: '章节标题'),
                           onChanged: (val) {
-                            // <--- 核心改动：用 setState 更新 UI
                             setState(() {
                               _outline['storyline'][idx]['chapter_title'] = val;
                             });
@@ -580,9 +579,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                                 border: OutlineInputBorder(),
                                 filled: true,
                               ),
-                              maxLines: 3,
+                              maxLines: 5,
                               onChanged: (val) {
-                                // <--- 核心改动：用 setState 更新 UI
                                 setState(() {
                                   _outline['storyline'][idx]['chapter_summary'] = val;
                                 });
@@ -605,7 +603,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               ),
                               maxLines: 1,
                               onChanged: (val) {
-                                // <--- 核心改动：用 setState 更新 UI
                                 setState(() {
                                   _outline['storyline'][idx]['time_span'] = val;
                                 });
@@ -628,7 +625,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               ),
                               maxLines: 2,
                               onChanged: (val) {
-                                // <--- 核心改动：用 setState 更新 UI
                                 setState(() {
                                   _outline['storyline'][idx]['setting_update'] = val;
                                 });

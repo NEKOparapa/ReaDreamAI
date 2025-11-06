@@ -12,7 +12,7 @@ import 'package:uuid/uuid.dart';
 import '../../../base/config_service.dart';
 import '../../../models/book.dart';
 import '../../../models/character_card_model.dart';
-import '../../../models/storyboard_script_model.dart'; 
+import '../../../models/storyboard_script_model.dart';
 import '../../../services/cache_manager/cache_manager.dart';
 import '../../../services/task_executor/storyboard_generator_executor.dart';
 import 'dialogs/generate_media_dialog.dart';
@@ -228,7 +228,7 @@ class _NovelToShortDramaWorkbenchPageState
       _generateAllMedia();
     }
   }
-  
+
   Future<void> _generateAllPrompts({required String promptLanguage}) async {
     setState(() {
       _isGenerating = true;
@@ -239,7 +239,7 @@ class _NovelToShortDramaWorkbenchPageState
     try {
       final characters =
           _charactersData.map((data) => CharacterCard.fromJson(data)).toList();
-      
+
       await StoryboardGeneratorExecutor.instance.generateAllPromptsForScript(
         novelTitle: widget.book.title,
         characters: characters,
@@ -384,6 +384,29 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
+  void _addShot(Scene scene) {
+    setState(() {
+      final newShot = Shot(shotNumber: scene.shots.length + 1);
+      scene.shots.add(newShot);
+      _updateShotNumbers(scene);
+    });
+    _debounceSaveWorkbenchData();
+  }
+
+  void _moveShot(Scene scene, int oldIndex, int direction) {
+    if (direction == 0) return;
+    final newIndex = oldIndex + direction;
+
+    if (newIndex < 0 || newIndex >= scene.shots.length) return;
+
+    setState(() {
+      final shotToMove = scene.shots.removeAt(oldIndex);
+      scene.shots.insert(newIndex, shotToMove);
+      _updateShotNumbers(scene);
+    });
+    _debounceSaveWorkbenchData();
+  }
+
   void _updateSceneNumbers(ChapterScript chapter) {
     for (int i = 0; i < chapter.scenes.length; i++) {
       chapter.scenes[i].sceneNumber = i + 1;
@@ -463,11 +486,11 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
-  Future<void> _deleteMediaItem(Shot shot, String path, String mediaType) async {
+  Future<void> _deleteMediaItem(
+      Shot shot, String path, String mediaType) async {
     final confirmed = await _showDeleteConfirmationDialog(
       title: '确认删除',
-      content:
-          '确定要删除这个${mediaType == 'image' ? '图片' : '视频'}吗?此操作会从磁盘删除文件。',
+      content: '确定要删除这个${mediaType == 'image' ? '图片' : '视频'}吗?此操作会从磁盘删除文件。',
     );
 
     if (!confirmed) return;
@@ -906,16 +929,37 @@ class _NovelToShortDramaWorkbenchPageState
           ),
           Padding(
             padding: const EdgeInsets.all(12.0),
-            child: scene.shots.isEmpty
-                ? const Center(
-                    child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text("该场景下无分镜")))
-                : Column(
-                    children: scene.shots
-                        .map((shot) => _buildShotItem(scene, shot))
-                        .toList(),
+            child: Column(
+              children: [
+                if (scene.shots.isEmpty)
+                  const Center(
+                      child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Text("该场景下无分镜")))
+                else
+                  Column(
+                    children: scene.shots.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final shot = entry.value;
+                      return _buildShotItem(scene, shot, index);
+                    }).toList(),
                   ),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _addShot(scene),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('添加分镜'),
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -940,7 +984,7 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  Widget _buildShotItem(Scene scene, Shot shot) {
+  Widget _buildShotItem(Scene scene, Shot shot, int index) {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -968,6 +1012,29 @@ class _NovelToShortDramaWorkbenchPageState
                   ),
                 ),
                 const Spacer(),
+                IconButton(
+                  icon: Icon(Icons.arrow_upward,
+                      color:
+                          index > 0 ? Colors.grey.shade600 : Colors.grey.shade300),
+                  onPressed: index > 0 ? () => _moveShot(scene, index, -1) : null,
+                  tooltip: '上移',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  splashRadius: 20,
+                ),
+                IconButton(
+                  icon: Icon(Icons.arrow_downward,
+                      color: index < scene.shots.length - 1
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade300),
+                  onPressed: index < scene.shots.length - 1
+                      ? () => _moveShot(scene, index, 1)
+                      : null,
+                  tooltip: '下移',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  splashRadius: 20,
+                ),
                 IconButton(
                   icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
                   onPressed: () => _deleteShot(scene, shot),

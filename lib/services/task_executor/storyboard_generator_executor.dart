@@ -42,16 +42,15 @@ class _ShotTask {
     required this.shot,
   });
 }
+
 // 定义返回类型
 typedef StoryboardGenerationResult = ({
   List<ChapterScript> script,
   List<CharacterCard> characters
 });
 
-// [MODIFIED] 定义返回类型，增加mainCharacter
 typedef ScenePromptsResult = Map<int, ({String imagePrompt, String videoPrompt, String mainCharacter})>;
 
-// [新增] 单个分镜提示词的返回类型
 typedef SingleShotPromptsResult = ({String imagePrompt, String videoPrompt, String mainCharacter});
 
 
@@ -233,10 +232,10 @@ class StoryboardGeneratorExecutor {
                 chapterTitle: sceneTask.chapterTitle,
                 scene: sceneTask.scene,
                 apiConfig: llmApi,
-                promptLanguage: promptLanguage, // [修改]
+                promptLanguage: promptLanguage,
               );
 
-              // [MODIFIED] 更新场景中所有分镜的提示词和主要角色
+              // 更新场景中所有分镜的提示词和主要角色
               for (final shot in sceneTask.scene.shots) {
                 if (prompts.containsKey(shot.shotNumber)) {
                   shot.firstFramePromptController.text = prompts[shot.shotNumber]!.imagePrompt;
@@ -280,7 +279,7 @@ class StoryboardGeneratorExecutor {
     required String chapterTitle,
     required Scene scene,
     required dynamic apiConfig,
-    required String promptLanguage, // [修改]
+    required String promptLanguage,
   }) async {
     final (systemPrompt, messages) = _buildPromptForScenePrompts(
       novelTitle: novelTitle,
@@ -288,7 +287,7 @@ class StoryboardGeneratorExecutor {
       chapterTitle: chapterTitle,
       sceneTitle: scene.titleController.text,
       shots: scene.shots,
-      promptLanguage: promptLanguage, // [修改]
+      promptLanguage: promptLanguage,
     );
 
     final llmResponse = await _llmService.requestCompletion(
@@ -305,7 +304,7 @@ class StoryboardGeneratorExecutor {
       final data = jsonDecode(jsonString) as Map<String, dynamic>;
       final shotsArray = data['shots'] as List<dynamic>? ?? [];
 
-      // [MODIFIED] 更新返回类型和解析逻辑
+      // 返回类型和解析逻辑
       final result = <int, ({String imagePrompt, String videoPrompt, String mainCharacter})>{};
       for (final shotData in shotsArray) {
         final shotNumber = shotData['shotNumber'] as int?;
@@ -325,14 +324,14 @@ class StoryboardGeneratorExecutor {
     }
   }
 
-  // ==================== [新增] 任务2.1: 为单个分镜生成提示词 ====================
+  // ==================== 任务2.1: 为单个分镜生成提示词 ====================
   Future<SingleShotPromptsResult> generatePromptsForSingleShot({
     required String novelTitle,
     required List<CharacterCard> characters,
     required String chapterTitle,
     required String sceneTitle,
     required Shot shot,
-    required String promptLanguage, // [修改]
+    required String promptLanguage,
   }) async {
     _logger.info("⚡️ 正在为分镜 ${shot.shotNumber}「${shot.contentController.text.substring(0, min(10, shot.contentController.text.length))}...」生成提示词 (语言: $promptLanguage)");
     final llmApi = _configService.getActiveLanguageApi();
@@ -344,7 +343,7 @@ class StoryboardGeneratorExecutor {
       chapterTitle: chapterTitle,
       sceneTitle: sceneTitle,
       shots: [shot], // 关键：只传入当前这一个分镜
-      promptLanguage: promptLanguage, // [修改]
+      promptLanguage: promptLanguage,
     );
 
     final llmResponse = await _llmService.requestCompletion(
@@ -380,7 +379,6 @@ class StoryboardGeneratorExecutor {
   // ==================== 任务3: 批量生成媒体（图片+视频）====================
   
   /// 为整个脚本的所有分镜生成媒体文件
-  // [MODIFIED] 更新方法签名以接收角色列表
   Future<void> generateAllMediaForScript({
     required Book book,
     required List<ChapterScript> script,
@@ -456,7 +454,7 @@ class StoryboardGeneratorExecutor {
               await drawRateLimiter.acquire();
               _logger.info("  🎨 正在为分镜 ${shotTask.shot.shotNumber} 生成图片 (尝试 $attempt/$maxRetries)");
               
-              // --- [MODIFIED] 新增逻辑: 查找角色参考图 ---
+              // 查找角色参考图
               String? referenceImagePath;
               final mainCharName = shotTask.shot.mainCharacterController.text;
               if (mainCharName.isNotEmpty) {
@@ -473,7 +471,6 @@ class StoryboardGeneratorExecutor {
                   _logger.warn("  ⚠️ 未能为 '$mainCharName' 找到匹配的角色卡或参考图。");
                 }
               }
-              // --- 结束新增逻辑 ---
 
               final imagePaths = await DrawingService.instance.generateImages(
                 positivePrompt: shotTask.shot.firstFramePromptController.text,
@@ -486,7 +483,6 @@ class StoryboardGeneratorExecutor {
                 width: width,
                 height: height,
                 apiConfig: drawingApi,
-                // 新增: 传入参考图路径
                 referenceImagePath: referenceImagePath,
               );
 
@@ -554,7 +550,7 @@ class StoryboardGeneratorExecutor {
     }
   }
 
-  // ==================== [新增] 任务3.1: 为单个分镜生成首帧图片 ====================
+  // ==================== 任务3.1: 为单个分镜生成首帧图片 ====================
   Future<String> generateImageForShot({
     required Shot shot,
     required List<CharacterCard> characters,
@@ -609,7 +605,7 @@ class StoryboardGeneratorExecutor {
     }
   }
 
-  // ==================== [新增] 任务3.2: 为单个分镜生成视频 ====================
+  // ==================== 任务3.2: 为单个分镜生成视频 ====================
   Future<String> generateVideoForShot({ required Shot shot }) async {
      _logger.info("🎬 正在为分镜 ${shot.shotNumber} 生成视频...");
     if (shot.videoPromptController.text.isEmpty) {
@@ -740,14 +736,14 @@ $chapterText
     return (systemPrompt, messages);
   }
 
-  /// [MODIFIED] 生成首帧图片与视频的提示词
+  /// 生成首帧图片与视频的提示词
   (String, List<Map<String, String>>) _buildPromptForScenePrompts({
     required String novelTitle,
     required List<CharacterCard> characters,
     required String chapterTitle,
     required String sceneTitle,
     required List<Shot> shots,
-    required String promptLanguage, // [修改]
+    required String promptLanguage,
   }) {
     // 构建角色信息块
     String characterInfoBlock = '';
@@ -779,7 +775,7 @@ $chapterText
     }
     final shotsInfoBlock = buffer.toString();
 
-    // [修改] 根据语言动态生成System Prompt
+    // 根据语言动态生成System Prompt
     final String systemPrompt = """你是一个AI绘画和视频生成的提示词专家。你的任务是根据提供的场景信息和该场景下所有分镜的详细内容,为每个分镜生成:
 1. 首帧图片提示词(image_prompt)
 2. 视频提示词(video_prompt)
