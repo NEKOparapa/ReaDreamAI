@@ -434,10 +434,16 @@ class StoryboardGeneratorExecutor {
     final videoDuration = _configService.getSetting<int>('video_gen_duration', 5);
     final videoResolution = _configService.getSetting<String>('video_gen_resolution', '720p');
 
-    // 4. 准备保存目录
+    // 4. 准备保存目录和通用提示词
     final workbenchDirs = await _configService.getOrCreateWorkbenchDirs();
-    final imageSaveDir = workbenchDirs['image']!; // 获取 .../Config/Workbench/Image 目录
-    final videoSaveDir = workbenchDirs['video']!; // 获取 .../Config/Workbench/video 目录
+    final imageSaveDir = workbenchDirs['image']!;
+    final videoSaveDir = workbenchDirs['video']!;
+
+    // 预先获取通用的绘画提示词组件，提高效率
+    final stylePrompt = _configService.getActiveTagContent('drawing_style_tags', 'active_drawing_style_tag_id');
+    final otherPrompt = _configService.getActiveTagContent('drawing_other_tags', 'active_drawing_other_tag_id');
+    final negativePrompt = _configService.getActiveTagContent('drawing_negative_tags', 'active_drawing_negative_tag_id');
+    const qualityPrompt = 'masterpiece, best quality, absurdres';
 
     int processedCount = 0;
     final totalShots = allShots.length;
@@ -471,13 +477,19 @@ class StoryboardGeneratorExecutor {
                   _logger.warn("  ⚠️ 未能为 '$mainCharName' 找到匹配的角色卡或参考图。");
                 }
               }
+              
+              final llmGeneratedPrompt = shotTask.shot.firstFramePromptController.text;
+              final positiveParts = [
+                llmGeneratedPrompt,
+                qualityPrompt,
+                stylePrompt,
+                otherPrompt,
+              ];
+              final positivePrompt = positiveParts.where((p) => p.isNotEmpty).join(', ');
 
               final imagePaths = await DrawingService.instance.generateImages(
-                positivePrompt: shotTask.shot.firstFramePromptController.text,
-                negativePrompt: _configService.getActiveTagContent(
-                  'drawing_negative_tags',
-                  'active_drawing_negative_tag_id',
-                ),
+                positivePrompt: positivePrompt,
+                negativePrompt: negativePrompt,
                 saveDir: imageSaveDir.path,
                 count: 1,
                 width: width,
@@ -487,6 +499,15 @@ class StoryboardGeneratorExecutor {
               );
 
               if (imagePaths != null && imagePaths.isNotEmpty) {
+                // 在添加新图片前，先删除旧图片文件并清空路径列表
+                for (final oldPath in shotTask.shot.firstFrameImagePaths) {
+                  final oldFile = File(oldPath);
+                  if (await oldFile.exists()) {
+                    try { await oldFile.delete(); } catch (_) {}
+                  }
+                }
+                shotTask.shot.firstFrameImagePaths.clear();
+
                 generatedImagePath = imagePaths.first;
                 shotTask.shot.firstFrameImagePaths.addAll(imagePaths);
                 _logger.success("  ✅ 分镜 ${shotTask.shot.shotNumber} 图片生成成功");
@@ -519,6 +540,15 @@ class StoryboardGeneratorExecutor {
                 );
 
                 if (videoPaths != null && videoPaths.isNotEmpty) {
+                  // 在添加新视频前，先删除旧视频文件并清空路径列表
+                  for (final oldPath in shotTask.shot.videoPaths) {
+                    final oldFile = File(oldPath);
+                    if (await oldFile.exists()) {
+                      try { await oldFile.delete(); } catch (_) {}
+                    }
+                  }
+                  shotTask.shot.videoPaths.clear();
+                  
                   shotTask.shot.videoPaths.addAll(videoPaths);
                   _logger.success("  ✅ 分镜 ${shotTask.shot.shotNumber} 视频生成成功");
                   break;
@@ -582,9 +612,26 @@ class StoryboardGeneratorExecutor {
         _logger.warn("⚠️ 未能为 '$mainCharName' 找到匹配的角色卡或参考图。");
       }
     }
+    
+    // 组装最终的绘画提示词，参考 DrawPromptBuilder 的逻辑
+    final llmGeneratedPrompt = shot.firstFramePromptController.text;
+    final stylePrompt = _configService.getActiveTagContent('drawing_style_tags', 'active_drawing_style_tag_id');
+    final otherPrompt = _configService.getActiveTagContent('drawing_other_tags', 'active_drawing_other_tag_id');
+    const qualityPrompt = 'masterpiece, best quality, absurdres';
+    
+    final positiveParts = [
+      llmGeneratedPrompt,
+      qualityPrompt,
+      stylePrompt,
+      otherPrompt,
+    ];
+    
+    final positivePrompt = positiveParts
+      .where((p) => p.isNotEmpty)
+      .join(', ');
 
     final imagePaths = await DrawingService.instance.generateImages(
-      positivePrompt: shot.firstFramePromptController.text,
+      positivePrompt: positivePrompt,
       negativePrompt: _configService.getActiveTagContent(
         'drawing_negative_tags',
         'active_drawing_negative_tag_id',
