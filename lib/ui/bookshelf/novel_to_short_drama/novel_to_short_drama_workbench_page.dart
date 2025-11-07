@@ -419,6 +419,82 @@ class _NovelToShortDramaWorkbenchPageState
     }
   }
 
+  // 为单个分镜重新生成提示词
+  Future<void> _regeneratePromptsForShot({
+    required ChapterScript chapter,
+    required Scene scene,
+    required Shot shot,
+  }) async {
+    final taskKey = '${shot.hashCode}_prompts';
+    if (_generatingTasks.contains(taskKey)) return;
+
+    setState(() => _generatingTasks.add(taskKey));
+    
+    try {
+      // 从配置读取提示词语言
+      final promptLanguage = _configService.getSetting<String>(
+        'storyboard_gen_prompt_language', 
+        'en'
+      );
+      
+      final characters = _charactersData
+          .map((data) => CharacterCard.fromJson(data))
+          .toList();
+
+      final result = await StoryboardGeneratorExecutor.instance
+          .generatePromptsForSingleShot(
+        novelTitle: widget.book.title,
+        characters: characters,
+        chapterTitle: chapter.originalChapterTitle,
+        sceneTitle: scene.titleController.text,
+        shot: shot,
+        promptLanguage: promptLanguage,
+      );
+
+      setState(() {
+        shot.firstFramePromptController.text = result.imagePrompt;
+        shot.videoPromptController.text = result.videoPrompt;
+        shot.mainCharacterController.text = result.mainCharacter;
+      });
+      
+      _debounceSaveWorkbenchData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('✅ 提示词已重新生成')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('❌ 提示词生成失败: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _generatingTasks.remove(taskKey));
+      }
+    }
+  }
+
+  // 选择主体角色
+  Future<void> _selectMainCharacter(Shot shot) async {
+    final selected = await showDialog<String?>(
+      context: context,
+      builder: (context) => _MainCharacterSelectionDialog(
+        currentCharacter: shot.mainCharacterController.text,
+        characters: _charactersData,
+      ),
+    );
+
+    if (selected != null) {
+      setState(() {
+        shot.mainCharacterController.text = selected;
+      });
+      _debounceSaveWorkbenchData();
+    }
+  }
+
   Future<void> _generateImageForShot(Shot shot) async {
     final taskKey = '${shot.hashCode}_image';
     if (_generatingTasks.contains(taskKey)) return;
@@ -941,7 +1017,7 @@ class _NovelToShortDramaWorkbenchPageState
                     children: scene.shots.asMap().entries.map((entry) {
                       final index = entry.key;
                       final shot = entry.value;
-                      return _buildShotItem(scene, shot, index);
+                      return _buildShotItem(chapter, scene, shot, index);
                     }).toList(),
                   ),
                 const SizedBox(height: 8),
@@ -984,7 +1060,7 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  Widget _buildShotItem(Scene scene, Shot shot, int index) {
+  Widget _buildShotItem(ChapterScript chapter, Scene scene, Shot shot, int index) {
     final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8.0),
@@ -1073,12 +1149,16 @@ class _NovelToShortDramaWorkbenchPageState
                 _buildEditableSingleRow('声音/对白', shot.soundController,
                     minLines: 2, onChanged: _debounceSaveWorkbenchData),
                 const Divider(thickness: 1, height: 24),
-                Text('AI 生成',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold)),
+                // 修改：添加标题行和重新生成按钮
+                _buildAiGenerationHeader(
+                  chapter: chapter,
+                  scene: scene,
+                  shot: shot,
+                ),
                 const SizedBox(height: 12),
                 _buildAiGenerationRow(
+                  chapter: chapter,
+                  scene: scene,
                   shot: shot,
                   promptController: shot.firstFramePromptController,
                   mainCharacterController: shot.mainCharacterController,
@@ -1089,6 +1169,8 @@ class _NovelToShortDramaWorkbenchPageState
                 ),
                 const SizedBox(height: 16),
                 _buildAiGenerationRow(
+                  chapter: chapter,
+                  scene: scene,
                   shot: shot,
                   promptController: shot.videoPromptController,
                   mainCharacterController: shot.mainCharacterController,
@@ -1105,7 +1187,51 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
+  // AI生成标题栏
+  Widget _buildAiGenerationHeader({
+    required ChapterScript chapter,
+    required Scene scene,
+    required Shot shot,
+  }) {
+    final theme = Theme.of(context);
+    final isGeneratingPrompts = _generatingTasks.contains('${shot.hashCode}_prompts');
+
+    return Row(
+      children: [
+        Text(
+          'AI 生成',
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold
+          ),
+        ),
+        const Spacer(),
+        if (isGeneratingPrompts)
+          const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          TextButton.icon(
+            onPressed: () => _regeneratePromptsForShot(
+              chapter: chapter,
+              scene: scene,
+              shot: shot,
+            ),
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('重新生成提示词'),
+            style: TextButton.styleFrom(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildAiGenerationRow({
+    required ChapterScript chapter,
+    required Scene scene,
     required Shot shot,
     required TextEditingController promptController,
     required TextEditingController mainCharacterController,
@@ -1169,6 +1295,7 @@ class _NovelToShortDramaWorkbenchPageState
           SizedBox(
             width: 120,
             child: _buildCompactCharacterInfoCard(
+              shot: shot,
               mainCharacterController: mainCharacterController,
               charactersData: charactersData,
             ),
@@ -1178,29 +1305,35 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
+  // 修改：使角色卡片可点击
   Widget _buildCompactCharacterInfoCard({
+    required Shot shot,
     required TextEditingController mainCharacterController,
     required List<Map<String, dynamic>> charactersData,
   }) {
-    return ValueListenableBuilder<TextEditingValue>(
-      valueListenable: mainCharacterController,
-      builder: (context, value, child) {
-        if (value.text.isEmpty) {
-          return _buildEmptyCompactCharacterCard();
-        }
+    return InkWell(
+      onTap: () => _selectMainCharacter(shot),
+      borderRadius: BorderRadius.circular(8),
+      child: ValueListenableBuilder<TextEditingValue>(
+        valueListenable: mainCharacterController,
+        builder: (context, value, child) {
+          if (value.text.isEmpty) {
+            return _buildEmptyCompactCharacterCard();
+          }
 
-        final characterName = value.text;
-        final character = charactersData.firstWhere(
-          (c) => c['characterName'] == characterName,
-          orElse: () => <String, dynamic>{},
-        );
+          final characterName = value.text;
+          final character = charactersData.firstWhere(
+            (c) => c['characterName'] == characterName,
+            orElse: () => <String, dynamic>{},
+          );
 
-        if (character.isEmpty) {
-          return _buildEmptyCompactCharacterCard();
-        }
+          if (character.isEmpty) {
+            return _buildEmptyCompactCharacterCard();
+          }
 
-        return _buildFilledCompactCharacterCard(character);
-      },
+          return _buildFilledCompactCharacterCard(character);
+        },
+      ),
     );
   }
 
@@ -1231,6 +1364,15 @@ class _NovelToShortDramaWorkbenchPageState
                 style: TextStyle(
                   color: Colors.grey[600],
                   fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '点击选择',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                  fontSize: 10,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -1443,6 +1585,79 @@ class _NovelToShortDramaWorkbenchPageState
           _modernInputDecoration(label).copyWith(alignLabelWithHint: true),
       minLines: minLines,
       maxLines: minLines + 2,
+    );
+  }
+}
+
+// 主体角色选择对话框
+class _MainCharacterSelectionDialog extends StatelessWidget {
+  final String currentCharacter;
+  final List<Map<String, dynamic>> characters;
+
+  const _MainCharacterSelectionDialog({
+    required this.currentCharacter,
+    required this.characters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return AlertDialog(
+      title: const Text('选择主体角色'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            // 消除选项
+            ListTile(
+              leading: Icon(
+                Icons.clear,
+                color: theme.colorScheme.error,
+              ),
+              title: const Text('消除主体角色'),
+              selected: currentCharacter.isEmpty,
+              selectedTileColor: theme.colorScheme.errorContainer.withOpacity(0.3),
+              onTap: () => Navigator.of(context).pop(''),
+            ),
+            const Divider(),
+            // 角色列表
+            ...characters.map((charData) {
+              final characterName = charData['characterName']?.toString() ?? '';
+              final name = charData['name']?.toString() ?? '未命名';
+              final imagePath = charData['referenceImagePath'] as String?;
+              
+              return ListTile(
+                leading: imagePath != null && imagePath.isNotEmpty
+                    ? CircleAvatar(
+                        backgroundImage: FileImage(File(imagePath)),
+                      )
+                    : CircleAvatar(
+                        backgroundColor: theme.colorScheme.primaryContainer,
+                        child: Text(
+                          characterName.isNotEmpty ? characterName[0] : '?',
+                          style: TextStyle(
+                            color: theme.colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      ),
+                title: Text(name),
+                subtitle: Text('角色名: $characterName'),
+                selected: currentCharacter == characterName,
+                selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                onTap: () => Navigator.of(context).pop(characterName),
+              );
+            }).toList(),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+      ],
     );
   }
 }
