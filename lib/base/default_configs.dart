@@ -211,7 +211,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     {
       'id': 'system_blunt_style',
       'name': '简单直白',
-      'content': '句式简单，语言直白，注重动作和对白，节奏紧凑，对各类器官的描写毫不避讳。',
+      'content': '句式简单，语言直白，以动作和对白推动剧情发展，心理描写较少，节奏紧凑，对各类器官的描写毫不避讳。',
       'isSystemPreset': true,
     },
     {
