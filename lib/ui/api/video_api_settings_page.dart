@@ -28,7 +28,6 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
 
   late ApiProvider _selectedProvider;
 
-  // 直接从 api_model.dart 获取视频平台的预设列表
   final List<ApiPlatformPreset> _platformOptions = videoPlatformPresets;
 
   @override
@@ -40,7 +39,6 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
     _urlController = TextEditingController(text: widget.apiModel.url);
     _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
     _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
-    
     _selectedProvider = widget.apiModel.provider;
   }
 
@@ -61,12 +59,11 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
         id: widget.apiModel.id,
         name: _nameController.text,
         apiKey: _apiKeyController.text,
-        accessKey: '', // 视频接口不需要这些字段
+        accessKey: '',
         secretKey: '',
         model: _modelController.text,
         provider: _selectedProvider,
         url: _urlController.text,
-        // 视频接口没有格式选项，使用一个默认值
         format: ApiFormat.openai,
         concurrencyLimit: int.tryParse(_concurrencyController.text),
         rpm: int.tryParse(_rpmController.text),
@@ -81,42 +78,65 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       appBar: AppBar(
         title: const Text('视频接口设置'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSectionTitle('基础信息'),
-              _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
-              _buildTextField(_modelController, '模型选择', '例如：bailian-v1, V-D-plus', isRequired: true),
-              const SizedBox(height: 24),
-              
-              _buildSectionTitle('接口平台'),
-              _buildPlatformSelector(),
-              const SizedBox(height: 16),
-              
-              _buildUrlField(),
-              // 统一的 API Key 输入框
-              _buildTextField(_apiKeyController, 'API Key', '请输入 API Key', isRequired: _selectedProvider != ApiProvider.custom),
-
-              const SizedBox(height: 24),
-              _buildSectionTitle('接口速率'),
-              _buildNumberField(_concurrencyController, '并发数限制', '同时进行的最大请求数 (可选)'),
-              _buildNumberField(_rpmController, 'RPM (每分钟请求数)', '每分钟允许的最大请求数 (可选)'),
-
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: _saveAndExit,
-                icon: const Icon(Icons.save),
-                label: const Text('保存配置'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSectionTitle('基础信息'),
+                    _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
+                    _buildTextField(_modelController, '模型选择', '例如：bailian-v1, V-D-plus', isRequired: true),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('接口平台'),
+                    _buildPlatformSelector(),
+                    const SizedBox(height: 16),
+                    _buildUrlField(),
+                    _buildTextField(_apiKeyController, 'API Key', '请输入 API Key', isRequired: _selectedProvider != ApiProvider.custom),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('接口速率'),
+                    _buildNumberField(_concurrencyController, '并发数限制', '同时进行的最大请求数 (可选)'),
+                    _buildNumberField(_rpmController, 'RPM (每分钟请求数)', '每分钟允许的最大请求数 (可选)'),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ),
+          _buildBottomActionBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        // 改为 ElevatedButton.icon 以获得更简洁的样式
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.save),
+          label: const Text('保存配置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: _saveAndExit,
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -129,9 +149,9 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.bold,
-        ),
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+            ),
       ),
     );
   }
@@ -175,17 +195,14 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
           fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly
-        ],
+        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
       ),
     );
   }
 
   Widget _buildUrlField() {
-    // 允许 ComfyUI 的 URL 可编辑
     final bool isUrlEditable = _selectedProvider == ApiProvider.custom || _selectedProvider == ApiProvider.comfyui;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -229,7 +246,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
       itemBuilder: (context, index) {
         final option = _platformOptions[index];
         final isSelected = _selectedProvider == option.provider;
-        
+
         return InkWell(
           onTap: () {
             setState(() {
@@ -241,7 +258,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
                 _modelController.text = option.defaultModel;
                 _concurrencyController.text = option.defaultConcurrency.toString();
                 _rpmController.text = option.defaultRpm.toString();
-              } else { 
+              } else {
                 if (widget.apiModel.provider != _selectedProvider) {
                   _urlController.text = option.defaultUrl;
                   _modelController.text = option.defaultModel;

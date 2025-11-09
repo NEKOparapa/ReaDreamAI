@@ -321,7 +321,7 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
 
   Widget _buildApiList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 80.0),
       itemCount: _apiList.length,
       itemBuilder: (context, index) {
         final api = _apiList[index];

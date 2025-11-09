@@ -1,9 +1,8 @@
 // lib/ui/api/api_settings_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; 
+import 'package:flutter/services.dart';
 import '../../base/api_model.dart';
-
 
 class ApiSettingsPage extends StatefulWidget {
   final ApiModel apiModel;
@@ -81,42 +80,65 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       appBar: AppBar(
         title: const Text('接口设置'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSectionTitle('基础信息'),
-              _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字'),
-              _buildTextField(_keyController, '接口Key (API Key)', '请输入你的API Key'),
-              _buildTextField(_modelController, '模型选择', '例如：gpt-4, gemini-pro'),
-              const SizedBox(height: 24),
-
-              _buildSectionTitle('接口平台'),
-              _buildPlatformSelector(),
-
-              const SizedBox(height: 16),
-              _buildUrlField(),
-
-              const SizedBox(height: 8),
-              _buildFormatSelector(),
-
-              const SizedBox(height: 24),
-              _buildRateLimitSection(),
-
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: _saveAndExit,
-                icon: const Icon(Icons.save),
-                label: const Text('保存配置'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSectionTitle('基础信息'),
+                    _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字'),
+                    _buildTextField(_keyController, '接口Key (API Key)', '请输入你的API Key'),
+                    _buildTextField(_modelController, '模型选择', '例如：gpt-4, gemini-pro'),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('接口平台'),
+                    _buildPlatformSelector(),
+                    const SizedBox(height: 16),
+                    _buildUrlField(),
+                    const SizedBox(height: 8),
+                    _buildFormatSelector(),
+                    const SizedBox(height: 24),
+                    _buildRateLimitSection(),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ),
+          _buildBottomActionBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        // 改为 ElevatedButton.icon 以获得更简洁的样式
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.save),
+          label: const Text('保存配置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: _saveAndExit,
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -162,7 +184,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildNumberField(TextEditingController controller, String label, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -178,9 +200,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
           fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly 
-        ],
+        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
       ),
     );
   }
@@ -231,7 +251,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildPlatformSelector() {
     return GridView.builder(
       shrinkWrap: true,
@@ -252,24 +272,24 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             setState(() {
               _selectedProvider = option.provider;
               _selectedFormat = option.defaultFormat;
-              
+
               if (_selectedProvider != ApiProvider.custom) {
+                _urlController.text = option.defaultUrl;
+                _modelController.text = option.defaultModel;
+                _concurrencyController.text = option.defaultConcurrency.toString();
+                _rpmController.text = option.defaultRpm.toString();
+              } else {
+                if (widget.apiModel.provider == ApiProvider.custom) {
+                  _urlController.text = widget.apiModel.url;
+                  _modelController.text = widget.apiModel.model;
+                  _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
+                  _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
+                } else {
                   _urlController.text = option.defaultUrl;
                   _modelController.text = option.defaultModel;
                   _concurrencyController.text = option.defaultConcurrency.toString();
                   _rpmController.text = option.defaultRpm.toString();
-              } else { 
-                  if (widget.apiModel.provider == ApiProvider.custom) {
-                      _urlController.text = widget.apiModel.url;
-                      _modelController.text = widget.apiModel.model;
-                      _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
-                      _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
-                  } else {
-                      _urlController.text = option.defaultUrl;
-                      _modelController.text = option.defaultModel;
-                      _concurrencyController.text = option.defaultConcurrency.toString();
-                      _rpmController.text = option.defaultRpm.toString();
-                  }
+                }
               }
             });
           },

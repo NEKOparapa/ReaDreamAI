@@ -30,7 +30,6 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
 
   late ApiProvider _selectedProvider;
 
-  // 直接从 api_model.dart 获取预设平台列表
   final List<ApiPlatformPreset> _platformOptions = drawingPlatformPresets;
 
   @override
@@ -44,7 +43,6 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
     _urlController = TextEditingController(text: widget.apiModel.url);
     _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
     _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
-
     _selectedProvider = widget.apiModel.provider;
   }
 
@@ -86,39 +84,63 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
       appBar: AppBar(
         title: const Text('绘画接口设置'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSectionTitle('基础信息'),
-              _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
-              _buildTextField(_modelController, '模型选择', '例如：sdxl-lightning, wanx-v1', isRequired: true),
-              const SizedBox(height: 24),
-
-              _buildSectionTitle('接口平台'),
-              _buildPlatformSelector(),
-              const SizedBox(height: 16),
-              
-              _buildUrlField(),
-              ..._buildAuthFields(),
-
-              const SizedBox(height: 24),
-              _buildRateLimitSection(),
-
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: _saveAndExit,
-                icon: const Icon(Icons.save),
-                label: const Text('保存配置'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  textStyle: const TextStyle(fontSize: 16),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildSectionTitle('基础信息'),
+                    _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字', isRequired: true),
+                    _buildTextField(_modelController, '模型选择', '例如：sdxl-lightning, wanx-v1', isRequired: true),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('接口平台'),
+                    _buildPlatformSelector(),
+                    const SizedBox(height: 16),
+                    _buildUrlField(),
+                    ..._buildAuthFields(),
+                    const SizedBox(height: 24),
+                    _buildRateLimitSection(),
+                  ],
                 ),
               ),
-            ],
+            ),
+          ),
+          _buildBottomActionBar(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomActionBar() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        // 改为 ElevatedButton.icon 以获得更简洁的样式
+        child: ElevatedButton.icon(
+          icon: const Icon(Icons.save),
+          label: const Text('保存配置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          onPressed: _saveAndExit,
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ),
@@ -161,7 +183,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
       ),
     );
   }
-  
+
   Widget _buildNumberField(TextEditingController controller, String label, String hint) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -177,9 +199,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
           fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[
-          FilteringTextInputFormatter.digitsOnly
-        ],
+        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
       ),
     );
   }
@@ -206,9 +226,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
   List<Widget> _buildAuthFields() {
     switch (_selectedProvider) {
       case ApiProvider.comfyui:
-        // ComfyUI 的 API Key 是可选的
         return [_buildTextField(_apiKeyController, 'API Key (可选)', '如果ComfyUI启动时设置了--api-key，请在此输入')];
-      // 其他所有平台都显示必填的 API Key 输入框
       default:
         return [_buildTextField(_apiKeyController, 'API Key', '请输入平台的 API Key', isRequired: true)];
     }
@@ -245,8 +263,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
       ),
     );
   }
-  
-  // onTap 逻辑保持不变
+
   Widget _buildPlatformSelector() {
     return GridView.builder(
       shrinkWrap: true,
@@ -273,7 +290,7 @@ class _DrawingApiSettingsPageState extends State<DrawingApiSettingsPage> {
                 _modelController.text = option.defaultModel;
                 _concurrencyController.text = option.defaultConcurrency.toString();
                 _rpmController.text = option.defaultRpm.toString();
-              } else { 
+              } else {
                 if (widget.apiModel.provider == _selectedProvider) {
                   _urlController.text = widget.apiModel.url;
                   _modelController.text = widget.apiModel.model;

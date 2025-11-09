@@ -120,8 +120,6 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
           const SizedBox(width: 8),
         ],
       ),
-      // --- Start: MODIFICATION 2 ---
-      // 将 body 改为 Column 布局，上方是可扩展的表单，下方是固定的操作栏
       body: Column(
         children: [
           Expanded(
@@ -134,12 +132,9 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
           _buildBottomActionBar(),
         ],
       ),
-      // --- End: MODIFICATION 2 ---
     );
   }
 
-  // --- Start: MODIFICATION 3 ---
-  // 新增方法，构建底部的操作栏按钮，样式参考 generate_storyboard_page.dart
   Widget _buildBottomActionBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -179,7 +174,6 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
       ),
     );
   }
-  // --- End: MODIFICATION 3 ---
 
   // 显示API设置对话框
   void _showApiSettingsDialog(BuildContext context) {
@@ -488,18 +482,41 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const ListTile(
-                      leading: Icon(Icons.lightbulb_outline),
-                      title: Text('你希望写一个什么样的故事？'),
-                      contentPadding: EdgeInsets.zero,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.lightbulb_outline,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '故事灵感',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '在这里输入故事的核心创意、关键情节，或只是一个简单的想法。AI将基于此为您构建整个故事大纲。',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _storyPromptController,
                       autofocus: true,
-                      maxLines: 10,
+                      maxLines: 15,
                       decoration: const InputDecoration(
-                        hintText: '例如：一个关于少年遇见少女的爱情故事...',
+                        hintText: '例如：在一个赛博朋克都市，一位失忆的侦探必须找回自己的过去，同时揭露一个足以颠覆整个城市的巨大阴谋。',
                         border: OutlineInputBorder(),
                         filled: true,
                       ),
@@ -517,7 +534,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
             const SizedBox(height: 16),
             _buildSingleChoiceChipSelector(
               icon: Icons.public,
-              title: '背景设定 (可选)',
+              title: '背景设定',
               cards: _backgroundCards,
               selectedId: _selectedBackgroundId,
               onChanged: (id) {
@@ -528,7 +545,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
             const SizedBox(height: 16),
             _buildSingleChoiceChipSelector(
               icon: Icons.brush,
-              title: '文风设定 (可选)',
+              title: '文风设定',
               cards: _styleCards,
               selectedId: _selectedStyleId,
               onChanged: (id) {
@@ -546,7 +563,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                   children: [
                     const ListTile(
                       leading: Icon(Icons.format_list_numbered),
-                      title: Text('篇幅设定'),
+                      title: Text('篇幅设定', style: TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text('设置章节和字数'),
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -618,7 +635,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
           children: [
             ListTile(
               leading: Icon(icon),
-              title: Text(title),
+              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
               subtitle: const Text('从预设中选择或由AI自动生成'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -672,7 +689,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
           children: [
             const ListTile(
               leading: Icon(Icons.people_alt_outlined),
-              title: Text('主要角色 (可选)'),
+              title: Text('主要角色', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('选择参与故事的核心人物'),
               contentPadding: EdgeInsets.zero,
             ),

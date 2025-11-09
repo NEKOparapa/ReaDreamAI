@@ -119,7 +119,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
     _debounce?.cancel();
     super.dispose();
   }
-  
+
   void _saveConfig() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -162,7 +162,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       _saveConfig();
     });
   }
-  
+
   Future<void> _onBookSelected(String? bookId) async {
     setState(() {
       _config.selectedBookId = bookId;
@@ -215,7 +215,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       }
 
       await ConfigService().clearWorkbenchMedia();
-      
+
       if (mounted) {
         Navigator.of(context).push(MaterialPageRoute(
           builder: (context) => NovelToShortDramaWorkbenchPage(
@@ -238,7 +238,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       }
     }
   }
-  
+
   void _directEditNavigate() async {
     setState(() => _isLoading = true);
     Book? bookToEdit;
@@ -285,7 +285,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           Expanded(
             child: ListView(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               children: [
                 _buildNovelSelectionSection(),
                 const SizedBox(height: 16),
@@ -314,7 +314,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           children: [
             const ListTile(
               leading: Icon(Icons.menu_book_outlined),
-              title: Text('选择小说'),
+              title: Text('选择小说', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('从书架选择一本小说进行改编'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -334,7 +334,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
                 return DropdownMenuItem<String>(
                   value: entry.id,
                   child:
-                      Text(entry.title, overflow: TextOverflow.ellipsis),
+                  Text(entry.title, overflow: TextOverflow.ellipsis),
                 );
               }).toList(),
             ),
@@ -379,7 +379,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           children: [
             const ListTile(
               leading: Icon(Icons.list_alt_outlined),
-              title: Text('分镜要求 (可选)'),
+              title: Text('分镜要求', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('详细描述生成要求，如风格、重点等'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -409,7 +409,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           children: [
             const ListTile(
               leading: Icon(Icons.account_tree_outlined),
-              title: Text('分镜结构 (可选)'),
+              title: Text('分镜结构', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('设置场景和分镜数量或由AI自动决定'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -449,7 +449,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
           children: [
             ListTile(
               leading: const Icon(Icons.people_outline),
-              title: const Text('主要角色 (可选)'),
+              title: const Text('主要角色', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: const Text('手动选择预设角色卡或由AI自动识别'),
               contentPadding: EdgeInsets.zero,
               trailing: ToggleButtons(
@@ -503,46 +503,46 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
               ),
               child: _config.characterSource == CharacterSourceOption.manual
                   ? _allCharacterCards.isNotEmpty
-                      ? Wrap(
-                          spacing: 8.0,
-                          runSpacing: 8.0,
-                          children: _allCharacterCards.map((card) {
-                            final isSelected =
-                                _config.selectedCharacterIds.contains(card.id);
-                            return FilterChip(
-                              label: Text(card.name),
-                              avatar: card.referenceImagePath != null
-                                  ? CircleAvatar(
-                                      backgroundImage: FileImage(
-                                          File(card.referenceImagePath!)))
-                                  : null,
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setState(() {
-                                  if (selected) {
-                                    _config.selectedCharacterIds.add(card.id);
-                                  } else {
-                                    _config.selectedCharacterIds
-                                        .remove(card.id);
-                                  }
-                                  _saveConfig();
-                                });
-                              },
-                            );
-                          }).toList(),
-                        )
-                      : const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(8.0),
-                            child: Text('没有预设角色卡，请先创建。'),
-                          ),
-                        )
+                  ? Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: _allCharacterCards.map((card) {
+                  final isSelected =
+                  _config.selectedCharacterIds.contains(card.id);
+                  return FilterChip(
+                    label: Text(card.name),
+                    avatar: card.referenceImagePath != null
+                        ? CircleAvatar(
+                        backgroundImage: FileImage(
+                            File(card.referenceImagePath!)))
+                        : null,
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _config.selectedCharacterIds.add(card.id);
+                        } else {
+                          _config.selectedCharacterIds
+                              .remove(card.id);
+                        }
+                        _saveConfig();
+                      });
+                    },
+                  );
+                }).toList(),
+              )
                   : const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text('AI将根据小说内容自动分析并创建主要角色。'),
-                      ),
-                    ),
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text('没有预设角色卡，请先创建。'),
+                ),
+              )
+                  : const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text('AI将根据小说内容自动分析并创建主要角色。'),
+                ),
+              ),
             ),
           ],
         ),
@@ -559,7 +559,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       children: [
         // 标题在左侧，并占据多余空间
         Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 200),
@@ -567,23 +567,23 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
             return FadeTransition(opacity: animation, child: child);
           },
           child: !isAi
-              // 当选择“自定义”时，显示输入框
+          // 当选择“自定义”时，显示输入框
               ? SizedBox(
-                  key: ValueKey('input-$title'),
-                  width: 100,
-                  child: TextFormField(
-                    controller: controller,
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                )
-              // 当选择“AI自动”时，显示一个不占用空间的SizedBox
+            key: ValueKey('input-$title'),
+            width: 100,
+            child: TextFormField(
+              controller: controller,
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                isDense: true,
+              ),
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
+          )
+          // 当选择“AI自动”时，显示一个不占用空间的SizedBox
               : SizedBox(key: ValueKey('placeholder-$title')),
         ),
         const SizedBox(width: 16),
@@ -628,10 +628,10 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
         child: FilledButton.icon(
           icon: _isLoading
               ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: Colors.white))
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.auto_awesome),
           label: Text(_isLoading ? '处理中...' : '生成分镜脚本',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
