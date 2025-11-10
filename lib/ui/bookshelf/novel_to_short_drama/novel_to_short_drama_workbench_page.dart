@@ -1290,7 +1290,8 @@ class _NovelToShortDramaWorkbenchPageState
             maxLines: 6,
           ),
         ),
-        if (isImageRow) ...[
+        // 在安卓平台，首帧图片提示词输入框右边的主要主体信息卡片不显示。
+        if (isImageRow && !Platform.isAndroid) ...[
           const SizedBox(width: 12),
           SizedBox(
             width: 120,
@@ -1305,7 +1306,7 @@ class _NovelToShortDramaWorkbenchPageState
     );
   }
 
-  // 修改：使角色卡片可点击
+  // 使角色卡片可点击
   Widget _buildCompactCharacterInfoCard({
     required Shot shot,
     required TextEditingController mainCharacterController,

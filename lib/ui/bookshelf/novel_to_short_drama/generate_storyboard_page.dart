@@ -447,53 +447,61 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: const Text('主要角色', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: const Text('手动选择预设角色卡或由AI自动识别'),
+            const ListTile(
+              leading: Icon(Icons.people_outline),
+              title: Text('主要角色', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('手动选择预设角色卡或由AI自动识别'),
               contentPadding: EdgeInsets.zero,
-              trailing: ToggleButtons(
-                isSelected: [
-                  _config.characterSource == CharacterSourceOption.manual,
-                  _config.characterSource == CharacterSourceOption.ai,
-                ],
-                onPressed: (int index) {
-                  setState(() {
-                    _config.characterSource = index == 0
-                        ? CharacterSourceOption.manual
-                        : CharacterSourceOption.ai;
-                    _saveConfig();
-                  });
-                },
-                borderRadius: BorderRadius.circular(8),
-                constraints: const BoxConstraints(minHeight: 40, minWidth: 100),
-                children: const [
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_search, size: 18),
-                        SizedBox(width: 8),
-                        Text('手动选择'),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_awesome, size: 18),
-                        SizedBox(width: 8),
-                        Text('AI生成'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
             const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('角色生成方式', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                ToggleButtons(
+                  isSelected: [
+                    _config.characterSource == CharacterSourceOption.manual,
+                    _config.characterSource == CharacterSourceOption.ai,
+                  ],
+                  onPressed: (int index) {
+                    setState(() {
+                      _config.characterSource = index == 0
+                          ? CharacterSourceOption.manual
+                          : CharacterSourceOption.ai;
+                      _saveConfig();
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  constraints: const BoxConstraints(minHeight: 40, minWidth: 100),
+                  children: const [
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.person_search, size: 18),
+                          SizedBox(width: 8),
+                          Text('手动选择'),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, size: 18),
+                          SizedBox(width: 8),
+                          Text('AI生成'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12.0),
@@ -549,6 +557,8 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       ),
     );
   }
+  // ANCHOR: MODIFIED_SECTION_END
+
   Widget _buildCountSelector({
     required String title,
     required bool isAi,
