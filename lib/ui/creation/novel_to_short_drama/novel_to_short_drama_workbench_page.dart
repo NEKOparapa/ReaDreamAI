@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/novel_to_short_drama/novel_to_short_drama_workbench_page.dart
+// lib/ui/creation/novel_to_short_drama/novel_to_short_drama_workbench_page.dart
 
 import 'dart:async';
 import 'dart:io';

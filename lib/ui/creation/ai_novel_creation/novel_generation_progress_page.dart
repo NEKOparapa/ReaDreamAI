@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/ai_novel_creation/novel_generation_progress_page.dart
+// lib/ui/creation/ai_novel_creation/novel_generation_progress_page.dart
 
 import 'dart:async';
 import 'dart:io';

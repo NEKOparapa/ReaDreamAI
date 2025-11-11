@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/ai_novel_creation/edit_and_generate_page.dart
+// lib/ui/creation/ai_novel_creation/edit_and_generate_page.dart
 
 import 'dart:async';
 import 'package:flutter/material.dart';

@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/novel_to_short_drama/dialogs/generate_media_dialog.dart
+// lib/ui/creation/novel_to_short_drama/dialogs/generate_media_dialog.dart
 
 import 'package:flutter/material.dart';
 import '../../../../models/storyboard_script_model.dart';

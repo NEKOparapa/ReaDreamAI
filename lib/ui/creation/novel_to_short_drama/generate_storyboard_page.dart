@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/novel_to_short_drama/generate_storyboard_page.dart
+// lib/ui/creation/novel_to_short_drama/generate_storyboard_page.dart
 
 import 'dart:async';
 import 'dart:io';

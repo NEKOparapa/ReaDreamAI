@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/ai_novel_creation/ai_generate_outline_page.dart
+// lib/ui/creation/ai_novel_creation/ai_generate_outline_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

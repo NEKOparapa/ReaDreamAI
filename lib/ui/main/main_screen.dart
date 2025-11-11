@@ -7,6 +7,7 @@ import '../bookshelf/bookshelf_page.dart';
 import '../api/api_management_page.dart';
 import '../settings/settings_page.dart';
 import '../tasks/task_management_page.dart';
+import '../creation/creation_page.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,9 +21,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const BookshelfPage(),       // 0: 书架页
-    const TaskManagementPage(),  // 1: 任务管理页
-    const ApiManagementPage(),   // 2: API管理页
-    const SettingsPage(),        // 3: 设置页
+    const CreationPage(),        // 1: 创造页
+    const TaskManagementPage(),  // 2: 任务管理页
+    const ApiManagementPage(),   // 3: API管理页
+    const SettingsPage(),        // 4: 设置页
   ];
 
   final List<NavigationItem> _navigationItems = const [
@@ -30,6 +32,11 @@ class _MainScreenState extends State<MainScreen> {
       icon: Icon(Icons.book_outlined),
       selectedIcon: Icon(Icons.book),
       label: '书架',
+    ),
+    NavigationItem(
+      icon: Icon(Icons.auto_awesome_outlined),
+      selectedIcon: Icon(Icons.auto_awesome),
+      label: '创作',
     ),
     NavigationItem(
       icon: Icon(Icons.task_alt_outlined),

@@ -1,4 +1,4 @@
-// lib/ui/bookshelf/novel_to_short_drama/dialogs/generate_prompts_dialog.dart
+// lib/ui/creation/novel_to_short_drama/dialogs/generate_prompts_dialog.dart
 
 import 'package:flutter/material.dart';
 import '../../../../base/config_service.dart';
