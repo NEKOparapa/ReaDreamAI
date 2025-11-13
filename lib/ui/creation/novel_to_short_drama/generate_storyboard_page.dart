@@ -272,10 +272,14 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       appBar: AppBar(
         title: const Text('生成分镜脚本'),
         actions: [
-          IconButton(
+          TextButton.icon(
             icon: const Icon(Icons.edit_note),
-            tooltip: '编辑脚本工作台',
+            label: const Text('编辑分镜脚本'),
             onPressed: _isLoading ? null : _directEditNavigate,
+            style: TextButton.styleFrom(
+              // 确保按钮颜色与AppBar中的图标颜色一致
+              foregroundColor: Theme.of(context).appBarTheme.actionsIconTheme?.color,
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -557,7 +561,6 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
       ),
     );
   }
-  // ANCHOR: MODIFIED_SECTION_END
 
   Widget _buildCountSelector({
     required String title,
