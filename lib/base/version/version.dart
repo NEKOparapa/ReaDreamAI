@@ -2,6 +2,6 @@
 
 class AppVersion {
   static const String appName = 'ReaDreamAI';
-  static const String version = '1.2.0';
+  static const String version = '1.3.0';
   static const String buildNumber = '1';
 }

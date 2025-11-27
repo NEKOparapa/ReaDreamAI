@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'ai_novel_creation/ai_generate_outline_page.dart';
+import 'game_world_creation/generate_game_stage_page.dart';
 import 'novel_to_short_drama/generate_storyboard_page.dart';
 
 class CreationPage extends StatelessWidget {
@@ -21,6 +22,15 @@ class CreationPage extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const GenerateStoryboardPage(),
+      ),
+    );
+  }
+
+  /// 导航到创建游戏世界流程
+  void _navigateToGameWorldCreation(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const GenerateGameStagePage(),
       ),
     );
   }
@@ -45,7 +55,7 @@ class CreationPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // 现有的功能卡片
+          // AI 创作小说
           _buildFeatureCard(
             context,
             icon: Icons.auto_stories_outlined,
@@ -56,6 +66,7 @@ class CreationPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
+          // 小说转短剧
           _buildFeatureCard(
             context,
             icon: Icons.theaters,
@@ -66,7 +77,7 @@ class CreationPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // 新增的功能卡片
+          // AI 创作漫画 (敬请期待)
           _buildFeatureCard(
             context,
             icon: Icons.palette_outlined,
@@ -78,14 +89,15 @@ class CreationPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
+          // 创造游戏世界 (已激活)
           _buildFeatureCard(
             context,
-            icon: Icons.games_outlined,
+            icon: Icons.public, // 图标更新为 public 更贴合"世界"
             title: '创造游戏世界',
             description: '构建引人入胜的游戏世界观与剧情线，编排你的游戏故事',
             gradientColors: [Colors.green.shade700, Colors.blueGrey.shade700],
-            onTap: () => _showComingSoon(context),
-            comingSoon: true,
+            onTap: () => _navigateToGameWorldCreation(context), // 修改了 onTap
+            // comingSoon: true, // 移除了 comingSoon 属性
           ),
         ],
       ),

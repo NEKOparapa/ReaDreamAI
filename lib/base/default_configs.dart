@@ -100,6 +100,76 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
 
+
+  // ---创建游戏世界 ---
+  'gamestage_gen_world_req': '',      // 游戏世界要求
+  'gamestage_gen_destiny_req': '',    // 命运AI要求
+  'gamestage_gen_char_ids': [],         // 手动选择的AI角色ID
+  'gamestage_gen_use_ai_chars': true,   // 是否使用AI生成角色
+  'gamestage_gen_ai_char_count': 3,       // 自定义AI角色数量
+  'gamestage_gen_use_ai_char_count': true,// 是否由AI决定角色数量
+  'gamestage_gen_scene_count': 5,       // 自定义游戏场景数
+  'gamestage_gen_use_ai_scenes': true,  // 是否由AI决定场景数
+
+  //---游戏舞台配置 ---
+  'game_stage_world_background': '在一个名为"艾瑞多"的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
+
+  // 已删除 game_stage_world_rules
+
+  'game_stage_destiny_ai': '故事将围绕"源石"的争夺展开。一个古老的预言暗示，当源石之心被触动时，沉睡的巨龙将会苏醒，为世界带来毁灭或新生。玩家的选择将决定世界的最终命运。',
+
+  'game_stage_player_character': {
+    'name': '莉娜',
+    'identity': '一位年轻的精灵魔法师，也是一位机械工程师学徒',
+    'appearance': '拥有银色的长发和翠绿色的眼眸，常穿着便于活动的皮甲和沾满油污的工装裤。',
+    'status': '健康，但对未来感到迷茫。',
+    'equipment': '一把由自己改造的魔法步枪、一套简易工具。',
+    'backpack': '几块干粮、水袋、一本破旧的机械图纸。'
+  },
+
+  'game_stage_ai_characters': [
+    {
+      'cardName': '神秘铁匠-索林',
+      'name': '索林',
+      'identity': '隐居在深山中的矮人铁匠大师',
+      'appearance': '身材矮壮，有着火红色的胡子，手臂上布满伤疤和纹身。',
+      'personality': '外冷内热，沉默寡言，但对技艺有着极致的追求。',
+      'motivation': '寻找传说中的"星辰之铁"，以锻造出超越神器的武器。',
+      'status': '健康',
+      'other': '似乎知道关于"源石"的古老秘密。',
+      'equipment': '一把巨大的锻造锤、防火皮围裙。',
+      'backpack': '稀有矿石样本、一壶烈酒。'
+    },
+    {
+      'cardName': '黑鸦-凯',
+      'name': '凯',
+      'identity': '"黑鸦"佣兵团的团长',
+      'appearance': '黑发黑瞳，脸上有一道贯穿左眼的伤疤，总是穿着一身黑色的风衣。',
+      'personality': '精明、冷酷，为了利益不择手段。',
+      'motivation': '为"黑鸦"寻找一个安身立命之地，摆脱被大国当做棋子的命运。',
+      'status': '轻伤',
+      'other': '他的佣兵团正在接受一个神秘雇主的委托，目标似乎也是"源石"。',
+      'equipment': '两把附魔匕首、一件轻型锁子甲。',
+      'backpack': '任务卷轴、金币袋、治疗药水。'
+    }
+  ],
+
+  'game_stage_game_scenes': [
+    {
+      'name': '钢之心城',
+      'description': '一座由蒸汽驱动的巨大都市，是矮人工程学与人类商业野心的结晶。城市分为上层富人区和下层工业区，阶级矛盾尖锐。',
+      'subsidiaryScenes': '下层贫民窟、蒸汽市场、城主府。',
+      'status': '表面繁荣，暗流涌动。'
+    },
+    {
+      'name': '迷雾森林',
+      'description': '精灵们的古老家园，森林深处隐藏着被遗忘的遗迹和强大的自然之灵。外来者很容易在变幻莫测的浓雾中迷失方向。',
+      'subsidiaryScenes': '精灵哨站、古树之心、废弃神庙。',
+      'status': '被古老的魔法笼罩，充满了未知的危险与机遇。'
+    }
+  ],
+
+
   // --- 翻译设置 --- 
   'translation_tokens': 2000, // 翻译使用的最大Token数
   'translation_source_lang': 'ja', // 源语言

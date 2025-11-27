@@ -10,7 +10,7 @@ import '../../base/config_service.dart';
 import '../cache_manager/cache_manager.dart';
 import '../llm_service/llm_service.dart';
 import '../task_manager/task_manager_service.dart';
-import '../../base/log/log_service.dart'; // 1. 导入日志服务
+import '../../base/log/log_service.dart';
 
 /// 翻译生成服务
 class TranslationGeneratorService {
