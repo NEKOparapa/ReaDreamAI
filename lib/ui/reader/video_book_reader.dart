@@ -9,7 +9,7 @@ import 'package:path/path.dart' as p;
 import '../../models/bookshelf_entry.dart';
 import '../../models/storyboard_script_model.dart';
 
-// [MODERN UI] - 视频书阅读器页面，采用现代化沉浸式设计
+// 视频书阅读器页面
 class VideoBookReaderPage extends StatefulWidget {
   final BookshelfEntry entry;
   const VideoBookReaderPage({super.key, required this.entry});
