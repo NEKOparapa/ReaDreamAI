@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart'; // 需要引入，以防新增时需要手动补ID
 import '../../../base/config_service.dart';
 import '../../../base/log/log_service.dart';
 
@@ -21,6 +22,9 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   Map<String, dynamic> _playerCharacter = {};
   List<Map<String, dynamic>> _aiCharacters = [];
   List<Map<String, dynamic>> _gameScenes = [];
+  
+  // 第一天事件流（多场景）
+  List<Map<String, dynamic>> _firstDayEvents = [];
 
   // 自动保存的防抖计时器
   Timer? _autoSaveTimer;
@@ -60,6 +64,21 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
 
     final sceneList = _configService.getSetting<List>('game_stage_game_scenes', []);
     _gameScenes = sceneList.map((e) => Map<String, dynamic>.from(e)).toList();
+
+    // 加载第一天事件列表
+    final eventsList = _configService.getSetting<List>('game_stage_first_day_events', []);
+    _firstDayEvents = eventsList.map((e) {
+      final map = Map<String, dynamic>.from(e);
+      // 确保 dialogues 是深拷贝的 List
+      if (map['dialogues'] is List) {
+        map['dialogues'] = List<Map<String, dynamic>>.from(
+          (map['dialogues'] as List).map((d) => Map<String, dynamic>.from(d))
+        );
+      } else {
+        map['dialogues'] = <Map<String, dynamic>>[];
+      }
+      return map;
+    }).toList();
 
     setState(() {});
   }
@@ -102,6 +121,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       await _configService.modifySetting(
         'game_stage_game_scenes',
         _gameScenes,
+      );
+      await _configService.modifySetting(
+        'game_stage_first_day_events',
+        _firstDayEvents,
       );
       
       LogService.instance.info("游戏舞台数据已自动保存");
@@ -162,11 +185,14 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   }
 
   void _addAiCharacter() {
+    // 新增角色时自动生成一个 ID
+    Map<String, dynamic> initial = {'id': const Uuid().v4()};
     _showEditDialog(
       title: '添加 AI 角色',
       fields: _aiCharFields,
-      initialData: {},
+      initialData: initial,
       onSave: (newData) {
+        // 如果编辑过程中没有覆盖 ID (通常不会，因为 fields 里没有 id)，它会保留
         setState(() {
           _aiCharacters.add(newData);
         });
@@ -197,10 +223,12 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   }
 
   void _addGameScene() {
+    // 新增场景时自动生成 ID
+    Map<String, dynamic> initial = {'id': const Uuid().v4()};
     _showEditDialog(
       title: '添加游戏场景',
       fields: _sceneFields,
-      initialData: {},
+      initialData: initial,
       onSave: (newData) {
         setState(() {
           _gameScenes.add(newData);
@@ -231,6 +259,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     _triggerImmediateSave();
   }
 
+  /// 显示编辑对话框
+  /// [initialData] 包含所有原始数据（包括隐藏的 id）
   Future<void> _showEditDialog({
     required String title,
     required Map<String, String> fields,
@@ -274,10 +304,13 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           ),
           FilledButton(
             onPressed: () {
-              final Map<String, dynamic> newData = {};
+              // [修改] 关键：先复制 initialData 以保留 id 等隐藏字段
+              final Map<String, dynamic> newData = Map.from(initialData);
+              // 再用控制器中的值更新可见字段
               controllers.forEach((key, controller) {
                 newData[key] = controller.text;
               });
+              
               onSave(newData);
               Navigator.pop(context);
             },
@@ -288,6 +321,129 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
+  // --- 事件流 (First Day Events) CRUD 逻辑 ---
+
+  void _addEventStep() {
+    setState(() {
+      _firstDayEvents.add({
+        'scene_id': '新场景',
+        'dialogues': <Map<String, dynamic>>[]
+      });
+    });
+    _triggerImmediateSave();
+  }
+  
+  void _deleteEventStep(int index) {
+    setState(() {
+      _firstDayEvents.removeAt(index);
+    });
+    _triggerImmediateSave();
+  }
+
+  void _editEventSceneId(int stepIndex) {
+    final controller = TextEditingController(text: _firstDayEvents[stepIndex]['scene_id'] ?? '');
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('设置发生场景'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(labelText: '场景名称/ID', hintText: '例如：钢之心城'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              setState(() {
+                _firstDayEvents[stepIndex]['scene_id'] = controller.text;
+              });
+              _triggerImmediateSave();
+              Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addEventDialogue(int stepIndex) {
+    _showDialogueEditDialog(
+      title: '添加对话',
+      initialName: '',
+      initialMessage: '',
+      onSave: (name, message) {
+        setState(() {
+          (_firstDayEvents[stepIndex]['dialogues'] as List).add({'name': name, 'message': message});
+        });
+        _triggerImmediateSave();
+      },
+    );
+  }
+
+  void _editEventDialogue(int stepIndex, int dialogueIndex) {
+    final dialogues = _firstDayEvents[stepIndex]['dialogues'] as List;
+    _showDialogueEditDialog(
+      title: '编辑对话',
+      initialName: dialogues[dialogueIndex]['name'] ?? '',
+      initialMessage: dialogues[dialogueIndex]['message'] ?? '',
+      onSave: (name, message) {
+        setState(() {
+          dialogues[dialogueIndex] = {'name': name, 'message': message};
+        });
+        _triggerImmediateSave();
+      },
+    );
+  }
+
+  void _deleteEventDialogue(int stepIndex, int dialogueIndex) {
+    setState(() {
+      (_firstDayEvents[stepIndex]['dialogues'] as List).removeAt(dialogueIndex);
+    });
+    _triggerImmediateSave();
+  }
+
+  Future<void> _showDialogueEditDialog({
+    required String title,
+    required String initialName,
+    required String initialMessage,
+    required Function(String, String) onSave,
+  }) async {
+    final nameController = TextEditingController(text: initialName);
+    final messageController = TextEditingController(text: initialMessage);
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: '角色名', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: messageController,
+              decoration: const InputDecoration(labelText: '对话内容', border: OutlineInputBorder()),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              onSave(nameController.text, messageController.text);
+              Navigator.pop(context);
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
 
   // --- UI 构建 ---
 
@@ -296,7 +452,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('游戏舞台工作台'),
-        // 右上角保存按钮已移除
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -315,6 +470,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             controller: _destinyAiController,
           ),
           const SizedBox(height: 16),
+          
+          // --- 第一天事件（多场景流） ---
+          _buildFirstDayEventsSection(context),
+          const SizedBox(height: 16),
+          
           _buildPlayerCharacterSection(context),
           const SizedBox(height: 16),
           _buildAiCharactersSection(context),
@@ -365,6 +525,223 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- UI 构建：事件流部分 ---
+  Widget _buildFirstDayEventsSection(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.event_note, color: theme.colorScheme.primary, size: 28),
+                    const SizedBox(width: 12),
+                    Text(
+                      '第一天事件',
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                // 添加新场景片段的按钮
+                FilledButton.tonalIcon(
+                  onPressed: _addEventStep,
+                  icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                  label: const Text("添加场景流"),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // 遍历渲染每个事件片段
+            if (_firstDayEvents.isEmpty)
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('暂无事件流程，请添加场景流')))
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _firstDayEvents.length,
+                itemBuilder: (context, index) {
+                  return _buildEventStepCard(context, index);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 构建单个事件场景片段卡片
+  Widget _buildEventStepCard(BuildContext context, int stepIndex) {
+    final theme = Theme.of(context);
+    final eventData = _firstDayEvents[stepIndex];
+    final sceneId = eventData['scene_id'] ?? '未命名场景';
+    final dialogues = (eventData['dialogues'] as List?) ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // --- 头部：场景信息与操作 ---
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                // 序号
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${stepIndex + 1}',
+                    style: TextStyle(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                
+                // 场景名称（点击修改）
+                Expanded(
+                  child: InkWell(
+                    onTap: () => _editEventSceneId(stepIndex),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Row(
+                      children: [
+                        Icon(Icons.location_on, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            sceneId,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.edit, size: 14, color: Colors.grey),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 删除整个片段按钮
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 20),
+                  color: theme.colorScheme.error,
+                  tooltip: '删除此场景流',
+                  onPressed: () => _deleteEventStep(stepIndex),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // --- 对话列表 ---
+          if (dialogues.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Center(
+                child: TextButton.icon(
+                  onPressed: () => _addEventDialogue(stepIndex),
+                  icon: const Icon(Icons.add_comment, size: 16),
+                  label: const Text('在此场景添加对话'),
+                ),
+              ),
+            )
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: dialogues.length,
+              separatorBuilder: (c, i) => Divider(height: 1, indent: 56, color: theme.dividerColor.withOpacity(0.2)),
+              itemBuilder: (context, dIndex) {
+                final item = dialogues[dIndex];
+                return ListTile(
+                  dense: true,
+                  visualDensity: const VisualDensity(vertical: -2),
+                  leading: CircleAvatar(
+                    radius: 14,
+                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    child: Text(
+                      (item['name'] ?? '?').isNotEmpty ? (item['name'] ?? '?').substring(0, 1) : '?',
+                      style: TextStyle(fontSize: 12, color: theme.colorScheme.primary),
+                    ),
+                  ),
+                  title: Row(
+                    children: [
+                      Text(item['name'] ?? '未知', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ],
+                  ),
+                  subtitle: Text(item['message'] ?? '', style: const TextStyle(fontSize: 13)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.edit, size: 16),
+                        onPressed: () => _editEventDialogue(stepIndex, dIndex),
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: const Icon(Icons.close, size: 16),
+                        onPressed: () => _deleteEventDialogue(stepIndex, dIndex),
+                        color: theme.colorScheme.error.withOpacity(0.6),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+            
+          // --- 底部：添加对话按钮 (如果已有对话则显示在底部) ---
+          if (dialogues.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withOpacity(0.5),
+                border: Border(top: BorderSide(color: theme.dividerColor.withOpacity(0.2))),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12))
+              ),
+              child: InkWell(
+                onTap: () => _addEventDialogue(stepIndex),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.add, size: 14, color: theme.colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Text("添加对话", style: TextStyle(fontSize: 12, color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -445,14 +822,13 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     Icon(Icons.people, color: theme.colorScheme.primary, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      'AI角色', // 移除了 (${_aiCharacters.length})
+                      'AI角色',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                // 使用 filledTonal，颜色更和谐
                 IconButton.filledTonal(
                   onPressed: _addAiCharacter,
                   icon: const Icon(Icons.add),
@@ -479,14 +855,14 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0, // 降低海拔，使其更像列表项
-      color: theme.colorScheme.surfaceContainerLow, // 稍微区分背景
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         side: BorderSide(color: theme.dividerColor.withOpacity(0.5), width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
-        shape: const Border(), // 去除 ExpansionTile 展开时的上下边框
+        shape: const Border(),
         leading: Icon(Icons.smart_toy_outlined, color: theme.colorScheme.primary),
         title: Text(
           char['cardName']?.isNotEmpty == true ? char['cardName'] : (char['name'] ?? '未命名角色'),
@@ -516,7 +892,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // 删除按钮：使用 TextButton + 稍微淡化的错误色，更和谐
                     TextButton.icon(
                       onPressed: () => _deleteAiCharacter(index),
                       icon: const Icon(Icons.delete_outline, size: 20),
@@ -526,7 +901,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // 编辑按钮：使用 filledTonal，与添加按钮呼应
                     FilledButton.tonalIcon(
                       onPressed: () => _editAiCharacter(index),
                       icon: const Icon(Icons.edit, size: 18),
@@ -559,7 +933,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     Icon(Icons.map, color: theme.colorScheme.primary, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      '游戏场景', // 移除了 (${_gameScenes.length})
+                      '游戏场景',
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -613,7 +987,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     ),
                   ),
                 ),
-                // 场景卡片右上角的快捷按钮
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   onPressed: () => _editGameScene(index),
@@ -627,7 +1000,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                   onPressed: () => _deleteGameScene(index),
                   tooltip: '删除',
                   style: IconButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error.withOpacity(0.7), // 柔和的删除色
+                    foregroundColor: theme.colorScheme.error.withOpacity(0.7),
                   ),
                 ),
               ],

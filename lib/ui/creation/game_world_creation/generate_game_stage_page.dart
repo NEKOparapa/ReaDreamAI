@@ -16,6 +16,7 @@ enum CharacterSourceOption { ai, manual }
 class GameStageGenerationConfig {
   String worldRequirements;
   String destinyAiRequirements;
+  String firstDayRequirements; // [新增] 首日事件要求
   List<String> selectedCharacterIds;
   CharacterSourceOption characterSource;
   int sceneCount;
@@ -26,6 +27,7 @@ class GameStageGenerationConfig {
   GameStageGenerationConfig({
     required this.worldRequirements,
     required this.destinyAiRequirements,
+    required this.firstDayRequirements,
     required this.selectedCharacterIds,
     required this.characterSource,
     required this.sceneCount,
@@ -39,6 +41,7 @@ class GameStageGenerationConfig {
     return GameStageGenerationConfig(
       worldRequirements: service.getSetting<String>('gamestage_gen_world_req', ''),
       destinyAiRequirements: service.getSetting<String>('gamestage_gen_destiny_req', ''),
+      firstDayRequirements: service.getSetting<String>('gamestage_gen_first_day_req', ''), // 读取
       selectedCharacterIds: List<String>.from(service.getSetting<List>('gamestage_gen_char_ids', [])),
       characterSource: useAiChars ? CharacterSourceOption.ai : CharacterSourceOption.manual,
       sceneCount: service.getSetting<int>('gamestage_gen_scene_count', 5),
@@ -49,14 +52,15 @@ class GameStageGenerationConfig {
   }
 
   Future<void> saveToService(ConfigService service) async {
-    service.modifySetting('gamestage_gen_world_req', worldRequirements);
-    service.modifySetting('gamestage_gen_destiny_req', destinyAiRequirements);
-    service.modifySetting('gamestage_gen_char_ids', selectedCharacterIds);
-    service.modifySetting('gamestage_gen_use_ai_chars', characterSource == CharacterSourceOption.ai);
-    service.modifySetting('gamestage_gen_scene_count', sceneCount);
-    service.modifySetting('gamestage_gen_use_ai_scenes', useAiScenes);
-    service.modifySetting('gamestage_gen_ai_char_count', aiCharacterCount);
-    service.modifySetting('gamestage_gen_use_ai_char_count', useAiCharacterCount);
+    await service.modifySetting('gamestage_gen_world_req', worldRequirements);
+    await service.modifySetting('gamestage_gen_destiny_req', destinyAiRequirements);
+    await service.modifySetting('gamestage_gen_first_day_req', firstDayRequirements); // 保存
+    await service.modifySetting('gamestage_gen_char_ids', selectedCharacterIds);
+    await service.modifySetting('gamestage_gen_use_ai_chars', characterSource == CharacterSourceOption.ai);
+    await service.modifySetting('gamestage_gen_scene_count', sceneCount);
+    await service.modifySetting('gamestage_gen_use_ai_scenes', useAiScenes);
+    await service.modifySetting('gamestage_gen_ai_char_count', aiCharacterCount);
+    await service.modifySetting('gamestage_gen_use_ai_char_count', useAiCharacterCount);
   }
 }
 
@@ -73,8 +77,11 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
 
   List<CharacterCard> _allCharacterCards = [];
   bool _isLoading = false;
+  
+  // 控制器
   final TextEditingController _worldRequirementsController = TextEditingController();
   final TextEditingController _destinyAiRequirementsController = TextEditingController();
+  final TextEditingController _firstDayRequirementsController = TextEditingController(); // [新增]
   late final TextEditingController _sceneCountController;
   late final TextEditingController _aiCharacterCountController;
 
@@ -110,12 +117,14 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   void dispose() {
     _worldRequirementsController.dispose();
     _destinyAiRequirementsController.dispose();
+    _firstDayRequirementsController.dispose();
     _sceneCountController.dispose();
     _aiCharacterCountController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
 
+  // 防抖保存配置
   void _saveConfig() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -126,10 +135,9 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   void _loadCharacterCards() {
     final charList = List<Map<String, dynamic>>.from(
         _configService.getSetting('drawing_character_cards', []));
-    _allCharacterCards =
-        charList.map((e) => CharacterCard.fromJson(e)).toList();
-    _config.selectedCharacterIds
-        .removeWhere((id) => !_allCharacterCards.any((c) => c.id == id));
+    _allCharacterCards = charList.map((e) => CharacterCard.fromJson(e)).toList();
+    // 移除已删除的角色ID
+    _config.selectedCharacterIds.removeWhere((id) => !_allCharacterCards.any((c) => c.id == id));
     setState(() {});
   }
 
@@ -137,6 +145,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     _config = GameStageGenerationConfig.fromService(_configService);
     _worldRequirementsController.text = _config.worldRequirements;
     _destinyAiRequirementsController.text = _config.destinyAiRequirements;
+    _firstDayRequirementsController.text = _config.firstDayRequirements;
 
     _worldRequirementsController.addListener(() {
       _config.worldRequirements = _worldRequirementsController.text;
@@ -146,8 +155,13 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
       _config.destinyAiRequirements = _destinyAiRequirementsController.text;
       _saveConfig();
     });
+    _firstDayRequirementsController.addListener(() {
+      _config.firstDayRequirements = _firstDayRequirementsController.text;
+      _saveConfig();
+    });
   }
 
+  // --- 核心生成逻辑 ---
   void _generateAndNavigate() async {
     if (_worldRequirementsController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -172,10 +186,11 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             .toList();
       }
 
-      // 调用AI服务生成数据
+      // 调用AI服务生成数据 (分两步生成，先世界后事件)
       final generatedData = await GameStageGeneratorService.instance.generateGameStage(
         worldRequirements: _config.worldRequirements,
         destinyAiRequirements: _config.destinyAiRequirements,
+        firstDayRequirements: _config.firstDayRequirements, // 传入首日要求
         characterSource: _config.characterSource,
         useAiCharacterCount: _config.useAiCharacterCount,
         aiCharacterCount: _config.aiCharacterCount,
@@ -183,6 +198,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
         useAiScenes: _config.useAiScenes,
         sceneCount: _config.sceneCount,
       );
+      
       LogService.instance.success('游戏舞台数据生成成功。');
 
       // 将生成的数据保存到ConfigService，供工作台页面读取
@@ -199,7 +215,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
       LogService.instance.error('生成游戏舞台失败', e, s);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('生成游戏舞台失败: $e')),
+          SnackBar(content: Text('生成失败: $e')),
         );
       }
     } finally {
@@ -231,6 +247,11 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
         'game_stage_game_scenes',
         data['game_scenes'] ?? [],
       );
+      // 保存第一天事件（多场景流）
+      await _configService.modifySetting(
+        'game_stage_first_day_events',
+        data['first_day_events'] ?? [],
+      );
   }
 
   @override
@@ -246,10 +267,10 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                 MaterialPageRoute(builder: (context) => const GameStageWorkbenchPage()),
               );
             },
-            icon: const Icon(Icons.edit_note_outlined), // 添加图标
+            icon: const Icon(Icons.edit_note_outlined),
             label: const Text('编辑游戏舞台'),
           ),
-          const SizedBox(width: 8), // 增加一点右边距
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
@@ -311,6 +332,26 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: '例如：围绕一个古老的预言展开',
+                alignLabelWithHint: true,
+                filled: true,
+              ),
+              minLines: 3,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 24),
+            // [新增] 首日事件要求 UI
+            const ListTile(
+              leading: Icon(Icons.start, color: Colors.orange),
+              title: Text('首日事件要求', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('设定游戏第一天发生的具体情节或开场方式'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _firstDayRequirementsController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: '例如：主角在一个废弃的休眠仓醒来，遇到了神秘的向导，随后被迫卷入战斗。',
                 alignLabelWithHint: true,
                 filled: true,
               ),
@@ -399,7 +440,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                     });
                   },
                   borderRadius: BorderRadius.circular(8),
-                  // 修改点：调整 minWidth 为 64，与 _buildCountSelector 保持一致
                   constraints: const BoxConstraints(minHeight: 40, minWidth: 64),
                   children: const [
                     Padding(
@@ -421,7 +461,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               width: double.infinity,
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: AnimatedSwitcher(
@@ -459,8 +499,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                     if (selected) {
                       _config.selectedCharacterIds.add(card.id);
                     } else {
-                      _config.selectedCharacterIds
-                          .remove(card.id);
+                      _config.selectedCharacterIds.remove(card.id);
                     }
                     _saveConfig();
                   });
@@ -487,7 +526,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     );
   }
 
-
   Widget _buildCountSelector({
     required String title,
     required bool isAi,
@@ -506,20 +544,20 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
           },
           child: !isAi
               ? SizedBox(
-            key: ValueKey('input-$title'),
-            width: 100,
-            child: TextFormField(
-              controller: controller,
-              textAlign: TextAlign.center,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                isDense: true,
-              ),
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          )
+                  key: ValueKey('input-$title'),
+                  width: 100,
+                  child: TextFormField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                )
               : SizedBox(key: ValueKey('placeholder-$title')),
         ),
         const SizedBox(width: 16),
@@ -567,7 +605,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.auto_awesome),
-          label: Text(_isLoading ? '生成中...' : '生成游戏舞台',
+          label: Text(_isLoading ? '正在构建世界...' : '生成游戏舞台',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           onPressed: !_isLoading ? _generateAndNavigate : null,
           style: FilledButton.styleFrom(

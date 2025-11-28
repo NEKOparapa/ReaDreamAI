@@ -114,8 +114,6 @@ const Map<String, dynamic> appDefaultConfigs = {
   //---游戏舞台配置 ---
   'game_stage_world_background': '在一个名为"艾瑞多"的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
 
-  // 已删除 game_stage_world_rules
-
   'game_stage_destiny_ai': '故事将围绕"源石"的争夺展开。一个古老的预言暗示，当源石之心被触动时，沉睡的巨龙将会苏醒，为世界带来毁灭或新生。玩家的选择将决定世界的最终命运。',
 
   'game_stage_player_character': {
@@ -129,6 +127,7 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   'game_stage_ai_characters': [
     {
+      'id': 'pre_char_1', // [新增]
       'cardName': '神秘铁匠-索林',
       'name': '索林',
       'identity': '隐居在深山中的矮人铁匠大师',
@@ -141,6 +140,7 @@ const Map<String, dynamic> appDefaultConfigs = {
       'backpack': '稀有矿石样本、一壶烈酒。'
     },
     {
+      'id': 'pre_char_2', // [新增]
       'cardName': '黑鸦-凯',
       'name': '凯',
       'identity': '"黑鸦"佣兵团的团长',
@@ -156,12 +156,14 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   'game_stage_game_scenes': [
     {
+      'id': 'pre_scene_1', // [新增]
       'name': '钢之心城',
       'description': '一座由蒸汽驱动的巨大都市，是矮人工程学与人类商业野心的结晶。城市分为上层富人区和下层工业区，阶级矛盾尖锐。',
       'subsidiaryScenes': '下层贫民窟、蒸汽市场、城主府。',
       'status': '表面繁荣，暗流涌动。'
     },
     {
+      'id': 'pre_scene_2', // [新增]
       'name': '迷雾森林',
       'description': '精灵们的古老家园，森林深处隐藏着被遗忘的遗迹和强大的自然之灵。外来者很容易在变幻莫测的浓雾中迷失方向。',
       'subsidiaryScenes': '精灵哨站、古树之心、废弃神庙。',
@@ -169,6 +171,24 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
 
+  // --- 新增：第一天事件流（多场景） ---
+  'game_stage_first_day_events': [
+    {
+      'scene_id': '钢之心城', // 这里通常引用场景ID或名称
+      'dialogues': [
+        {'name': '莉娜', 'message': '（看着手中的遗物）这东西...到底是什么？'},
+        {'name': '老乞丐', 'message': '嘿，小姑娘，别把那东西露出来，会被“清洁工”盯上的。'}
+      ]
+    },
+    {
+      'scene_id': '蒸汽市场',
+      'dialogues': [
+        {'name': '机械警卫', 'message': '检测到非法魔力波动，请出示证件。'},
+        {'name': '莉娜', 'message': '糟糕，忘了屏蔽它的信号了。'}
+      ]
+    }
+  ],
+  
 
   // --- 翻译设置 --- 
   'translation_tokens': 2000, // 翻译使用的最大Token数
