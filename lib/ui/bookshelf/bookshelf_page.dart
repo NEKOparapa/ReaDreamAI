@@ -12,14 +12,19 @@ import 'package:uuid/uuid.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/file_parser/file_parser.dart';
-import '../reader/book_reader.dart';
 import '../../services/task_manager/task_manager_service.dart';
 import '../../base/log/log_service.dart';
+
+// 导入相关页面
+import '../reader/book_reader.dart';
+import '../reader/video_book_reader.dart';
+import '../../services/game/game_book_reader_page.dart';
+
+// 导入功能弹窗
 import 'generate_illustration_dialog.dart';
 import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
 import 'export_book_dialog.dart';
-import '../reader/video_book_reader.dart';
 
 /// 书架页面 StatefulWidget
 class BookshelfPage extends StatefulWidget {
@@ -359,16 +364,27 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   }
 
   void _openBook(BookshelfEntry entry) async {
-    // 增加对 videoBook 类型的处理
+    // [新增] 游戏书类型跳转
+    if (entry.fileType == 'gameBook') {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => GameBookReaderPage(entry: entry),
+        ),
+      );
+      return; 
+    }
+
+    // 视频书类型跳转
     if (entry.fileType == 'videoBook') {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => VideoBookReaderPage(entry: entry),
         ),
       );
-      return; // 结束函数
+      return;
     }
 
+    // 普通文本/EPUB书跳转
     final book = await CacheManager().loadBookDetail(entry.id);
     if (book != null && mounted) {
       // 在跳转到 BookReaderPage 时，传入记录的章节索引
@@ -393,8 +409,8 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       position: RelativeRect.fromRect(
           globalPosition & const Size(40, 40), Offset.zero & overlay.size),
       items: <PopupMenuEntry>[
-        // --- 仅对非视频书显示的生成选项 ---
-        if (entry.fileType != 'videoBook') ...[
+        // --- 仅对非视频书、非游戏书显示的生成选项 ---
+        if (entry.fileType != 'videoBook' && entry.fileType != 'gameBook') ...[
           PopupMenuItem(
             enabled: entry.status == TaskStatus.notStarted ||
                 entry.status == TaskStatus.failed ||
@@ -574,7 +590,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
       );
     }
 
-    // [修改] 简化 GridView.builder 的逻辑
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 180,
@@ -582,17 +597,15 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
-      // 总数现在就是书籍数量
       itemCount: _entries.length,
       itemBuilder: (context, index) {
-        // 直接渲染书籍条目，不再需要判断索引
         final entry = _entries[index];
         return _buildBookItem(entry);
       },
     );
   }
 
-  /// 构建单个书籍封面的UI，增加videoBook类型判断
+  /// 构建单个书籍封面的UI
   Widget _buildBookItem(BookshelfEntry entry) {
     final hasCover =
         entry.coverImagePath != null && File(entry.coverImagePath!).existsSync();
@@ -659,6 +672,24 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                   ),
                 ),
               ),
+            // 如果是游戏书，在右上角显示游戏图标
+            if (entry.fileType == 'gameBook')
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade800.withOpacity(0.8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.sports_esports,
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -686,13 +717,17 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     ];
     final color = colors[entry.id.hashCode % colors.length];
 
+    IconData icon = Icons.book_outlined;
+    if (entry.fileType == 'gameBook') icon = Icons.sports_esports;
+    else if (entry.fileType == 'videoBook') icon = Icons.movie_creation_outlined;
+
     return Container(
       color: color[300],
       child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.book_outlined, size: 50, color: Colors.white.withOpacity(0.8)),
+            Icon(icon, size: 50, color: Colors.white.withOpacity(0.8)),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),

@@ -1,10 +1,17 @@
 // lib/ui/creation/game_world_creation/game_stage_workbench_page.dart
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart'; // 需要引入，以防新增时需要手动补ID
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:uuid/uuid.dart';
+
 import '../../../base/config_service.dart';
 import '../../../base/log/log_service.dart';
+import '../../../models/bookshelf_entry.dart';
+import '../../../services/cache_manager/cache_manager.dart';
 
 class GameStageWorkbenchPage extends StatefulWidget {
   const GameStageWorkbenchPage({super.key});
@@ -139,7 +146,122 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- CRUD 操作逻辑 ---
+  // --- [新增] 保存为游戏书功能 ---
+
+  Future<void> _saveAsGameBook() async {
+    final titleController = TextEditingController();
+    
+    // 1. 弹出对话框获取书籍标题
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存为游戏书'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('将当前设定的世界、角色和场景打包生成一本可游玩的游戏书。'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: titleController,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: '游戏书标题',
+                hintText: '例如：艾瑞多冒险记',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
+          FilledButton(
+            onPressed: () {
+              if (titleController.text.trim().isNotEmpty) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: const Text('创建'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave != true) return;
+
+    try {
+      // 2. 准备基础数据
+      final bookId = const Uuid().v4();
+      final bookTitle = titleController.text.trim();
+      
+      // 3. 获取缓存目录并创建书籍专属文件夹
+      // 假设 CacheManager 使用的是 appSupportDirectory/Config (ConfigService) 或者 appSupportDirectory/cache
+      // 这里为了兼容性，我们显式获取一个安全的目录来存放书籍数据
+      final appDir = await getApplicationSupportDirectory();
+      // 使用 cache/books 目录
+      final booksDir = Directory(p.join(appDir.path, 'cache', 'books')); 
+      if (!await booksDir.exists()) await booksDir.create(recursive: true);
+      
+      final bookFolder = Directory(p.join(booksDir.path, 'game_book_$bookId'));
+      if (!await bookFolder.exists()) await bookFolder.create(recursive: true);
+
+      // 4. 分开保存配置文件
+      
+      // 4.1 初始配置 (世界观 & 命运AI)
+      await File(p.join(bookFolder.path, 'config_world.json')).writeAsString(jsonEncode({
+        'world_background': _worldBackgroundController.text,
+        'destiny_ai': _destinyAiController.text,
+      }));
+
+      // 4.2 玩家数据 (初始化)
+      await File(p.join(bookFolder.path, 'data_player.json')).writeAsString(jsonEncode(_playerCharacter));
+
+      // 4.3 AI角色数据
+      await File(p.join(bookFolder.path, 'data_ai_characters.json')).writeAsString(jsonEncode(_aiCharacters));
+
+      // 4.4 场景数据
+      await File(p.join(bookFolder.path, 'data_scenes.json')).writeAsString(jsonEncode(_gameScenes));
+
+      // 4.5 游戏状态 (时间、天数、待触发事件)
+      // 将 _firstDayEvents 作为初始的 pending_events
+      await File(p.join(bookFolder.path, 'game_state.json')).writeAsString(jsonEncode({
+        'day': 1,
+        'week': 1,
+        'current_scene_id': _firstDayEvents.isNotEmpty ? _firstDayEvents.first['scene_id'] : null,
+        'logs': [], // 历史记录
+        'pending_events': _firstDayEvents, // 初始待触发事件
+      }));
+
+      // 5. 创建书架条目
+      final entry = BookshelfEntry(
+        id: bookId,
+        title: bookTitle,
+        originalPath: 'Generated from Workbench',
+        fileType: 'gameBook', // 特殊标记，用于识别游戏书
+        subCachePath: bookFolder.path,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+
+      // 6. 更新书架缓存
+      final currentEntries = await CacheManager().loadBookshelf();
+      // 将新书插到最前面
+      currentEntries.insert(0, entry);
+      await CacheManager().saveBookshelf(currentEntries);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('游戏书创建成功！请前往书架查看。')));
+      }
+
+    } catch (e, s) {
+      LogService.instance.error('创建游戏书失败', e, s);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('创建失败: $e')));
+      }
+    }
+  }
+
+  // --- CRUD 操作逻辑 (保持不变) ---
 
   final Map<String, String> _playerFields = {
     'name': '名字',
@@ -185,14 +307,12 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   }
 
   void _addAiCharacter() {
-    // 新增角色时自动生成一个 ID
     Map<String, dynamic> initial = {'id': const Uuid().v4()};
     _showEditDialog(
       title: '添加 AI 角色',
       fields: _aiCharFields,
       initialData: initial,
       onSave: (newData) {
-        // 如果编辑过程中没有覆盖 ID (通常不会，因为 fields 里没有 id)，它会保留
         setState(() {
           _aiCharacters.add(newData);
         });
@@ -223,7 +343,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   }
 
   void _addGameScene() {
-    // 新增场景时自动生成 ID
     Map<String, dynamic> initial = {'id': const Uuid().v4()};
     _showEditDialog(
       title: '添加游戏场景',
@@ -259,8 +378,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     _triggerImmediateSave();
   }
 
-  /// 显示编辑对话框
-  /// [initialData] 包含所有原始数据（包括隐藏的 id）
   Future<void> _showEditDialog({
     required String title,
     required Map<String, String> fields,
@@ -304,13 +421,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           ),
           FilledButton(
             onPressed: () {
-              // [修改] 关键：先复制 initialData 以保留 id 等隐藏字段
               final Map<String, dynamic> newData = Map.from(initialData);
-              // 再用控制器中的值更新可见字段
               controllers.forEach((key, controller) {
                 newData[key] = controller.text;
               });
-              
               onSave(newData);
               Navigator.pop(context);
             },
@@ -452,6 +566,15 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('游戏舞台工作台'),
+        actions: [
+          // [新增] 保存按钮
+          IconButton(
+            onPressed: _saveAsGameBook,
+            icon: const Icon(Icons.save_as_outlined),
+            tooltip: '保存为游戏书',
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -471,7 +594,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           ),
           const SizedBox(height: 16),
           
-          // --- 第一天事件（多场景流） ---
           _buildFirstDayEventsSection(context),
           const SizedBox(height: 16),
           
@@ -484,6 +606,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       ),
     );
   }
+
+  // ... (保留原有的 Widget 构建函数) ...
 
   Widget _buildEditableSection(
     BuildContext context, {
@@ -529,7 +653,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
-  // --- UI 构建：事件流部分 ---
   Widget _buildFirstDayEventsSection(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -553,7 +676,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     ),
                   ],
                 ),
-                // 添加新场景片段的按钮
                 FilledButton.tonalIcon(
                   onPressed: _addEventStep,
                   icon: const Icon(Icons.add_location_alt_outlined, size: 18),
@@ -562,8 +684,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               ],
             ),
             const SizedBox(height: 16),
-            
-            // 遍历渲染每个事件片段
             if (_firstDayEvents.isEmpty)
               const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('暂无事件流程，请添加场景流')))
             else
@@ -581,7 +701,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
-  // 构建单个事件场景片段卡片
   Widget _buildEventStepCard(BuildContext context, int stepIndex) {
     final theme = Theme.of(context);
     final eventData = _firstDayEvents[stepIndex];
@@ -598,12 +717,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- 头部：场景信息与操作 ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                // 序号
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
@@ -620,8 +737,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                
-                // 场景名称（点击修改）
                 Expanded(
                   child: InkWell(
                     onTap: () => _editEventSceneId(stepIndex),
@@ -642,8 +757,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     ),
                   ),
                 ),
-
-                // 删除整个片段按钮
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
                   color: theme.colorScheme.error,
@@ -654,8 +767,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             ),
           ),
           const Divider(height: 1),
-
-          // --- 对话列表 ---
           if (dialogues.isEmpty)
             Padding(
               padding: const EdgeInsets.all(16.0),
@@ -715,8 +826,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 );
               },
             ),
-            
-          // --- 底部：添加对话按钮 (如果已有对话则显示在底部) ---
           if (dialogues.isNotEmpty)
             Container(
               width: double.infinity,
