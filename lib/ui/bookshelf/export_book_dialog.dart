@@ -10,28 +10,21 @@ import '../../services/epub_exporter/epub_exporter.dart';
 import '../../base/log/log_service.dart';
 import '../../services/media_exporter/media_exporter.dart';
 
-enum ExportFormat {
-  epub,
-  mediaPackage,
-  cachePackage,
-}
+enum ExportFormat { epub, mediaPackage, cachePackage }
 
 // 定义对话框内部状态的枚举
 enum _ExportState {
   selecting, // 初始状态，选择格式
   exporting, // 正在导出
-  success,   // 导出成功
-  error,     // 导出失败
+  success, // 导出成功
+  error, // 导出失败
 }
 
 class ExportBookDialog extends StatefulWidget {
   // 接收需要导出的书籍条目
   final BookshelfEntry entry;
 
-  const ExportBookDialog({
-    super.key,
-    required this.entry,
-  });
+  const ExportBookDialog({super.key, required this.entry});
 
   @override
   State<ExportBookDialog> createState() => _ExportBookDialogState();
@@ -83,18 +76,27 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
           final epubBytes = await EpubExporter.generateEpubBytes(book);
 
           setState(() => _message = '请选择保存位置...');
-          final String? outputPath = await FilePicker.platform.saveFile(
+
+          // 传入 bytes 参数
+          final String? epubPath = await FilePicker.platform.saveFile(
             dialogTitle: '导出 EPUB',
             fileName: '${book.title}.epub',
             type: FileType.custom,
             allowedExtensions: ['epub'],
+            bytes: epubBytes, // ndroid/iOS 必须传此参数
           );
 
-          if (outputPath != null) {
-            await File(outputPath).writeAsBytes(epubBytes); // 写入文件
+          if (epubPath != null) {
+            // 区分平台写入逻辑
+            // Android/iOS: saveFile 内部已经利用 bytes 写入了文件，无需再次写入
+            // Desktop: saveFile 忽略 bytes，只返回路径，需要手动写入
+            if (!Platform.isAndroid && !Platform.isIOS) {
+              await File(epubPath).writeAsBytes(epubBytes);
+            }
+
             setState(() {
               _currentState = _ExportState.success;
-              _message = '《${book.title}》已成功导出到:\n$outputPath';
+              _message = '《${book.title}》已成功导出到:\n$epubPath';
             });
           } else {
             setState(() => _currentState = _ExportState.selecting);
@@ -105,23 +107,30 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
         case ExportFormat.mediaPackage:
           setState(() => _message = '正在收集所有媒体文件...');
           // 调用新服务生成 ZIP 字节流
-          final zipBytes = await MediaExporter.exportVideoBookMediaAsZip(widget.entry);
+          final zipBytes = await MediaExporter.exportVideoBookMediaAsZip(
+            widget.entry,
+          );
 
           setState(() => _message = '请选择保存位置...');
-          // 弹出文件保存对话框
-          final String? outputPath = await FilePicker.platform.saveFile(
+
+          // 传入 bytes 参数
+          final String? zipPath = await FilePicker.platform.saveFile(
             dialogTitle: '导出媒体包',
             fileName: '${widget.entry.title}_媒体文件.zip',
             type: FileType.custom,
             allowedExtensions: ['zip'],
+            bytes: zipBytes, // ndroid/iOS 必须传此参数
           );
 
-          if (outputPath != null) {
-            // 将字节流写入用户选择的文件
-            await File(outputPath).writeAsBytes(zipBytes);
+          if (zipPath != null) {
+            // 区分平台写入逻辑
+            if (!Platform.isAndroid && !Platform.isIOS) {
+              await File(zipPath).writeAsBytes(zipBytes);
+            }
+
             setState(() {
               _currentState = _ExportState.success;
-              _message = '《${widget.entry.title}》的媒体文件已成功导出到:\n$outputPath';
+              _message = '《${widget.entry.title}》的媒体文件已成功导出到:\n$zipPath';
             });
           } else {
             // 用户取消保存
@@ -139,10 +148,12 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     } catch (e, s) {
       LogService.instance.error('在对话框中导出失败', e, s);
       // 4. 捕获任何异常，并更新UI为“错误”状态
-      setState(() {
-        _currentState = _ExportState.error;
-        _message = '导出失败: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _currentState = _ExportState.error;
+          _message = '导出失败: $e';
+        });
+      }
     }
   }
 
@@ -201,7 +212,10 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         // 只有在选择状态下才显示关闭按钮
         if (_currentState == _ExportState.selecting)
           IconButton(
