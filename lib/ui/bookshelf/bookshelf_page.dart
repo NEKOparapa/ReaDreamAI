@@ -364,7 +364,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   }
 
   void _openBook(BookshelfEntry entry) async {
-    // [新增] 游戏书类型跳转
+    // 游戏书类型跳转
     if (entry.fileType == 'gameBook') {
       Navigator.of(context).push(
         MaterialPageRoute(
@@ -401,75 +401,76 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
   }
 
   void _showContextMenu(
-      BuildContext context, BookshelfEntry entry, Offset globalPosition) {
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    showMenu(
-      context: context,
-      position: RelativeRect.fromRect(
-          globalPosition & const Size(40, 40), Offset.zero & overlay.size),
-      items: <PopupMenuEntry>[
-        // --- 仅对非视频书、非游戏书显示的生成选项 ---
-        if (entry.fileType != 'videoBook' && entry.fileType != 'gameBook') ...[
+        BuildContext context, BookshelfEntry entry, Offset globalPosition) {
+      final RenderBox overlay =
+          Overlay.of(context).context.findRenderObject() as RenderBox;
+      showMenu(
+        context: context,
+        position: RelativeRect.fromRect(
+            globalPosition & const Size(40, 40), Offset.zero & overlay.size),
+        items: <PopupMenuEntry>[
+
+          if (entry.fileType != 'videoBook' && entry.fileType != 'gameBook') ...[
+            PopupMenuItem(
+              enabled: entry.status == TaskStatus.notStarted ||
+                  entry.status == TaskStatus.failed ||
+                  entry.status == TaskStatus.canceled,
+              onTap: () => _generateIllustrations(entry),
+              child: const Row(children: [
+                Icon(Icons.auto_awesome, color: Colors.blue),
+                SizedBox(width: 8),
+                Text('生成插图')
+              ]),
+            ),
+            PopupMenuItem(
+              enabled: true,
+              onTap: () => _generateVideosFromImages(entry),
+              child: const Row(children: [
+                Icon(Icons.video_library, color: Colors.purple),
+                SizedBox(width: 8),
+                Text('图生视频')
+              ]),
+            ),
+            PopupMenuItem(
+              enabled: entry.translationStatus == TaskStatus.notStarted ||
+                  entry.translationStatus == TaskStatus.failed ||
+                  entry.translationStatus == TaskStatus.canceled,
+              onTap: () => _generateTranslations(entry),
+              child: const Row(children: [
+                Icon(Icons.translate, color: Colors.green),
+                SizedBox(width: 8),
+                Text('生成翻译')
+              ]),
+            ),
+            // 分隔线，仅在有生成选项时显示
+            const PopupMenuDivider(),
+          ],
+          
+          if (entry.fileType != 'gameBook') 
+            PopupMenuItem(
+              onTap: () => _showExportDialog(entry),
+              child: const Row(
+                children: [
+                  Icon(Icons.import_export, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('导出书籍')
+                ],
+              ),
+            ),
+
           PopupMenuItem(
-            enabled: entry.status == TaskStatus.notStarted ||
-                entry.status == TaskStatus.failed ||
-                entry.status == TaskStatus.canceled,
-            onTap: () => _generateIllustrations(entry),
-            child: const Row(children: [
-              Icon(Icons.auto_awesome, color: Colors.blue),
-              SizedBox(width: 8),
-              Text('生成插图')
-            ]),
+            onTap: () => _deleteBook(entry),
+            child: const Row(
+              children: [
+                Icon(Icons.delete, color: Colors.red),
+                SizedBox(width: 8),
+                Text('删除书籍') // 或者根据你的需求改成 '删除数据'
+              ],
+            ),
           ),
-          PopupMenuItem(
-            enabled: true,
-            onTap: () => _generateVideosFromImages(entry),
-            child: const Row(children: [
-              Icon(Icons.video_library, color: Colors.purple),
-              SizedBox(width: 8),
-              Text('图生视频')
-            ]),
-          ),
-          PopupMenuItem(
-            enabled: entry.translationStatus == TaskStatus.notStarted ||
-                entry.translationStatus == TaskStatus.failed ||
-                entry.translationStatus == TaskStatus.canceled,
-            onTap: () => _generateTranslations(entry),
-            child: const Row(children: [
-              Icon(Icons.translate, color: Colors.green),
-              SizedBox(width: 8),
-              Text('生成翻译')
-            ]),
-          ),
-          // 分隔线，仅在有生成选项时显示
-          const PopupMenuDivider(),
         ],
-        
-        // --- 对所有类型书籍都可见的通用选项 ---
-        PopupMenuItem(
-          onTap: () => _showExportDialog(entry),
-          child: const Row(
-            children: [
-              Icon(Icons.import_export, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('导出书籍')
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          onTap: () => _deleteBook(entry),
-          child: const Row(
-            children: [
-              Icon(Icons.delete, color: Colors.red),
-              SizedBox(width: 8),
-              Text('删除书籍')
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+      );
+    }
 
   Future<void> _showExportDialog(BookshelfEntry entry) async {
     await showDialog(
