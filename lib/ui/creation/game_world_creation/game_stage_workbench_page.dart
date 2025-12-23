@@ -144,7 +144,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- 保存为游戏书功能 (已修改) ---
+  // --- 保存为游戏书功能---
 
   Future<void> _saveAsGameBook() async {
     final titleController = TextEditingController();
@@ -201,52 +201,53 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       final bookFolder = Directory(p.join(booksDir.path, bookId));
       if (!await bookFolder.exists()) await bookFolder.create(recursive: true);
 
-      // --- 新增逻辑：创建“初始世界状态”文件夹 (英文命名) ---
+      // 创建“初始世界状态”文件夹
       final initialWorldStateFolder = Directory(p.join(bookFolder.path, 'initial_world_state'));
       if (!await initialWorldStateFolder.exists()) {
         await initialWorldStateFolder.create(recursive: true);
       }
 
-      // 4. 准备要写入的文件内容 (先序列化，保证两份完全一致)
+      // 4. 处理待触发事件（确保有ID和状态）
+      final List<Map<String, dynamic>> pendingEvents = [];
+      for (var evt in _firstDayEvents) {
+        final newEvt = Map<String, dynamic>.from(evt);
+        if (newEvt['id'] == null) {
+          newEvt['id'] = 'init_${const Uuid().v4()}';
+        }
+        newEvt['status'] = 'pending'; // 强制设置为待触发
+        pendingEvents.add(newEvt);
+      }
+
+      // 5. 准备要写入的文件内容
       final Map<String, String> filesContent = {};
 
-      // 4.1 初始配置 (世界观 & 命运AI)
       filesContent['config_world.json'] = jsonEncode({
         'world_background': _worldBackgroundController.text,
         'destiny_ai': _destinyAiController.text,
-      });
-
-      // 4.2 玩家数据
-      filesContent['data_player.json'] = jsonEncode(_playerCharacter);
-
-      // 4.3 AI角色数据
-      filesContent['data_ai_characters.json'] = jsonEncode(_aiCharacters);
-
-      // 4.4 场景数据
-      filesContent['data_scenes.json'] = jsonEncode(_gameScenes);
-
-      // 4.5 游戏状态 (时间、天数、待触发事件)
-      filesContent['game_state.json'] = jsonEncode({
         'day': 1,
         'week': 1,
-        'current_scene_id': _firstDayEvents.isNotEmpty ? _firstDayEvents.first['scene_id'] : null,
-        'logs': [], // 历史记录
-        'pending_events': _firstDayEvents, // 初始待触发事件
+        'current_scene_id': pendingEvents.isNotEmpty ? pendingEvents.first['scene_id'] : null,
       });
 
-      // 5. 执行写入操作
+      filesContent['data_player.json'] = jsonEncode(_playerCharacter);
+      filesContent['data_ai_characters.json'] = jsonEncode(_aiCharacters);
+      filesContent['data_scenes.json'] = jsonEncode(_gameScenes);
 
-      // 5.1 写入到书本根目录 (当前游戏进度用)
+      // === 核心修改 2: event_logbook.json 采用新结构 ===
+      filesContent['event_logbook.json'] = jsonEncode({
+        'pending_events': pendingEvents, // 初始事件放在这里
+        'triggered_events': [],          // 已触发事件（本日）
+        'history_events': [],            // 历史事件（已归档）
+        'logs': [],
+      });
+
+      // 6. 执行写入操作
       for (var entry in filesContent.entries) {
         await File(p.join(bookFolder.path, entry.key)).writeAsString(entry.value);
-      }
-
-      // 5.2 写入到初始状态目录 (备份/重置用)
-      for (var entry in filesContent.entries) {
         await File(p.join(initialWorldStateFolder.path, entry.key)).writeAsString(entry.value);
       }
 
-      // 6. 创建书架条目
+      // 7. 创建书架条目
       final entry = BookshelfEntry(
         id: bookId,
         title: bookTitle,
@@ -257,7 +258,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         updatedAt: DateTime.now(),
       );
 
-      // 7. 更新书架缓存
+      // 8. 更新书架缓存
       final currentEntries = await CacheManager().loadBookshelf();
       // 将新书插到最前面
       currentEntries.insert(0, entry);
@@ -275,7 +276,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- CRUD 操作逻辑---
+
   final Map<String, String> _playerFields = {
     'name': '名字',
     'identity': '身份',
