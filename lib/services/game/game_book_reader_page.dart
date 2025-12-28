@@ -33,6 +33,119 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  // --- 新增：设置面板逻辑 ---
+
+  void _showSettingsPanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16.0),
+              child: Text("设置", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.public, color: Colors.blueAccent),
+              title: const Text("修改世界观 ", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("调整世界的底层逻辑与背景设定", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                _showConfigEditor("世界观设定", "world_background");
+              },
+            ),
+            const Divider(color: Colors.white10, height: 1),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome, color: Colors.purpleAccent),
+              title: const Text("修改故事发展", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("引导 AI 推进剧情的方向与风格", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                _showConfigEditor("故事发展指引", "destiny_ai");
+              },
+            ),
+            const SizedBox(height: 30),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showConfigEditor(String title, String configKey) {
+    // 读取当前值，如果为空则为空字符串
+    final initialValue = _gameManager.worldConfig[configKey]?.toString() ?? '';
+    final TextEditingController controller = TextEditingController(text: initialValue);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: Container(
+          width: double.maxFinite,
+          constraints: const BoxConstraints(maxHeight: 300),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text("此设置将影响后续生成的事件与剧情走向。", style: TextStyle(color: Colors.white38, fontSize: 12)),
+              const SizedBox(height: 12),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  maxLines: null, // 允许无限换行
+                  minLines: 5,
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color(0xFF1E1E1E),
+                    hintText: "在此输入$title...",
+                    hintStyle: const TextStyle(color: Colors.white24),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消', style: TextStyle(color: Colors.white54)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.blueAccent),
+            onPressed: () async {
+              final newValue = controller.text.trim();
+              if (newValue != initialValue) {
+                await _gameManager.updateWorldSetting(configKey, newValue);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("设置已保存，将在下次回合结算或事件生成时生效。"),
+                      backgroundColor: Colors.green,
+                    )
+                  );
+                }
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('保存修改'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 现有逻辑 ---
+
   void _triggerTurnSettlement(bool isNextWeek) async {
     setState(() => _isSettling = true);
     try {
@@ -211,6 +324,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     );
   }
 
+  // --- 修改后的 AI 角色列表展示 ---
   void _showAiCharacterList() {
     final chars = _gameManager.aiCharacters;
     
@@ -223,8 +337,15 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
         return DraggableScrollableSheet(
           expand: false,
           initialChildSize: 0.7,
+          maxChildSize: 0.9,
           builder: (context, scrollController) => Column(
             children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Text('登场角色 (${chars.length})', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -238,10 +359,9 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
                       separatorBuilder: (c, i) => const Divider(color: Colors.white10, height: 1),
                       itemBuilder: (context, index) {
                         final char = chars[index];
-                        String latestMemory = '';
-                        if (char['memory'] is List && (char['memory'] as List).isNotEmpty) {
-                          latestMemory = (char['memory'] as List).last['content'] ?? '';
-                        }
+                        final memories = (char['memory'] as List?) ?? [];
+                        // 倒序显示记忆，最新的在上面
+                        final reversedMemories = memories.reversed.toList();
 
                         return Theme(
                           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -255,24 +375,62 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
                             children: [
                               Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.fromLTRB(72, 0, 16, 16),
+                                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                                color: Colors.black12,
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    if (char['identity'] != null) ...[
-                                      Text('身份: ${char['identity']}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                                      const SizedBox(height: 4),
-                                    ],
-                                    if (char['personality'] != null) ...[
-                                      Text('性格: ${char['personality']}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                                      const SizedBox(height: 8),
-                                    ],
-                                    if (latestMemory.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(6)),
-                                        child: Text('最新记忆: $latestMemory', style: const TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic)),
-                                      ),
+                                    const SizedBox(height: 8),
+                                    // 基础属性
+                                    if (char['identity'] != null) _buildAttributeRow('身份', char['identity']),
+                                    if (char['personality'] != null) _buildAttributeRow('性格', char['personality']),
+                                    
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 10),
+                                      child: Divider(color: Colors.white10),
+                                    ),
+                                    
+                                    // 记忆列表
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.psychology, size: 16, color: Colors.purpleAccent),
+                                        const SizedBox(width: 8),
+                                        Text('记忆档案 (${memories.length})', style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    
+                                    if (reversedMemories.isEmpty)
+                                      const Text("暂无记忆数据", style: TextStyle(color: Colors.white24, fontSize: 12, fontStyle: FontStyle.italic))
+                                    else
+                                      ...reversedMemories.map((mem) {
+                                        final timeVal = mem['time'];
+                                        // 格式化时间，如果是 int 则显示 Day X，兼容旧数据 String
+                                        final timeStr = timeVal is int ? 'Day $timeVal' : '$timeVal';
+                                        final content = mem['content'] ?? '';
+
+                                        return Container(
+                                          margin: const EdgeInsets.only(bottom: 8),
+                                          padding: const EdgeInsets.all(10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.05),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border(left: BorderSide(color: Colors.purple.withOpacity(0.4), width: 3)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(4)),
+                                                child: Text(timeStr, style: const TextStyle(color: Colors.purpleAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(content, style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4)),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
                                   ],
                                 ),
                               )
@@ -286,6 +444,20 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
           ),
         );
       },
+    );
+  }
+  
+  // 辅助构建属性行
+  Widget _buildAttributeRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('$label：', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          Expanded(child: Text(value, style: const TextStyle(color: Colors.white, fontSize: 13))),
+        ],
+      ),
     );
   }
 
@@ -396,7 +568,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Widget _buildTopBar() {
-    // [修改] 使用新的 getter 获取时间信息
     final week = _gameManager.currentWeek;
     final dayOfWeek = _gameManager.currentDayOfWeek;
     final eventStats = _gameManager.getEventStats();
@@ -422,7 +593,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
             ),
             Row(mainAxisSize: MainAxisSize.min, children: [
               IconButton(icon: const Icon(Icons.groups, color: Colors.purpleAccent), onPressed: _showAiCharacterList), 
-              IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white70), onPressed: () {}),
+              IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white70), onPressed: _showSettingsPanel),
             ]),
           ],
         ),

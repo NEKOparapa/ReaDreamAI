@@ -39,31 +39,31 @@ class GameSettlementService {
     required List<Map<String, dynamic>> aiCharacters,
     required List<Map<String, dynamic>> scenes,
     required List<Map<String, dynamic>> triggeredEvents,
-    // [修改] 接收总天数
     required int totalDays,
   }) async {
-    // [修改] 内部计算用于 AI 的时间字符串
+    // 依然计算一个字符串用于 Log 和 AI Prompt 上下文，但存储用 totalDays
     final week = ((totalDays - 1) ~/ 7) + 1;
     final day = ((totalDays - 1) % 7) + 1;
-    final gameTime = '第$week周第$day天 (总第$totalDays天)';
+    final gameTimeStr = '第$week周第$day天 (总第$totalDays天)';
     
-    LogService.instance.info('🎮 开始回合结算: $gameTime');
+    LogService.instance.info('🎮 开始回合结算: $gameTimeStr');
 
-    // 1. 整理历史事件记录
+    // 1. 整理历史事件记录 (存储时使用 totalDays)
     final historyEvents = _recordTriggeredEvents(
       triggeredEvents,
-      gameTime,
+      totalDays, // 传入 int
       scenes,
     );
 
-    // 2. 更新 AI 记忆
+    // 2. 更新 AI 记忆 (存储时使用 totalDays)
     final updatedAiCharacters = await _updateAiCharactersMemoryParallel(
       worldConfig: worldConfig,
       player: player,
       aiCharacters: aiCharacters,
       scenes: scenes,
       triggeredEvents: triggeredEvents,
-      gameTime: gameTime,
+      gameTimeStr: gameTimeStr, // 传给 Prompt
+      totalDays: totalDays,     // 传给存储逻辑
     );
 
     // 3. 更新场景
@@ -86,13 +86,12 @@ class GameSettlementService {
       player: updatedPlayer,
       aiCharacters: updatedAiCharacters,
       scenes: updatedScenes,
-      // 这里的 historyEvents 是本回合刚产生的
       recentHistory: historyEvents, 
-      gameTime: gameTime,
+      gameTime: gameTimeStr,
     );
 
     final summary = _generateSettlementSummary(
-      gameTime,
+      gameTimeStr,
       triggeredEvents,
       newEvents,
       updatedAiCharacters,
@@ -112,7 +111,7 @@ class GameSettlementService {
 
   List<Map<String, dynamic>> _recordTriggeredEvents(
     List<Map<String, dynamic>> triggeredEvents,
-    String gameTime,
+    int totalDays, // 接收 int
     List<Map<String, dynamic>> scenes,
   ) {
     return triggeredEvents.map((event) {
@@ -131,7 +130,7 @@ class GameSettlementService {
 
       return {
         'id': event['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        'game_time': gameTime,
+        'game_time': totalDays, // 这里现在记录数字的游戏天数
         'scene_id': sceneId,
         'scene_name': scene['name'],
         'participants': participants,
@@ -149,7 +148,8 @@ class GameSettlementService {
     required List<Map<String, dynamic>> aiCharacters,
     required List<Map<String, dynamic>> scenes,
     required List<Map<String, dynamic>> triggeredEvents,
-    required String gameTime,
+    required String gameTimeStr,
+    required int totalDays,
   }) async {
     final activeApi = _configService.getActiveLanguageApi();
     final concurrency = activeApi.concurrencyLimit ?? 1;
@@ -175,7 +175,8 @@ class GameSettlementService {
             worldConfig: worldConfig,
             character: char,
             relatedEvents: relatedEvents,
-            gameTime: gameTime,
+            gameTimeStr: gameTimeStr,
+            totalDays: totalDays,
           );
 
           updatedCharacters.add(updatedChar ?? char);
@@ -195,7 +196,8 @@ class GameSettlementService {
     required Map<String, dynamic> worldConfig,
     required Map<String, dynamic> character,
     required List<Map<String, dynamic>> relatedEvents,
-    required String gameTime,
+    required String gameTimeStr,
+    required int totalDays,
   }) async {
     if (relatedEvents.isEmpty) return character;
 
@@ -208,7 +210,7 @@ class GameSettlementService {
 }''';
 
     final userPrompt = '''
-当前时间: $gameTime
+当前时间: $gameTimeStr
 角色信息: ${jsonEncode(character)}
 经历事件: ${jsonEncode(relatedEvents)}
 ''';
@@ -226,7 +228,11 @@ class GameSettlementService {
       final existingMemory = List<Map<String, dynamic>>.from(updatedChar['memory'] ?? []);
       
       if (jsonData['memory_update'] != null) {
-        existingMemory.add({'time': gameTime, 'content': jsonData['memory_update']});
+        // 这里记录 int 类型的 totalDays
+        existingMemory.add({
+          'time': totalDays, 
+          'content': jsonData['memory_update']
+        });
         if (existingMemory.length > 10) existingMemory.removeAt(0);
         updatedChar['memory'] = existingMemory;
       }

@@ -48,8 +48,6 @@ class GameManager {
   /// 计算当前是周几: (总天数-1) % 7 + 1
   int get currentDayOfWeek => ((totalDays - 1) % 7) + 1;
 
-  // [删除] currentSceneId 及其 getter
-
   Future<void> loadGameData() async {
     try {
       if (await _worldConfigFile.exists()) {
@@ -143,6 +141,14 @@ class GameManager {
     scenes = combinedScenes;
   }
 
+  // === 新增：更新世界配置项 ===
+  Future<void> updateWorldSetting(String key, String value) async {
+    worldConfig[key] = value;
+    // 立即保存到配置文件，防止数据丢失
+    await _worldConfigFile.writeAsString(jsonEncode(worldConfig));
+    LogService.instance.info('配置项 [$key] 已更新');
+  }
+
   Future<void> saveGameData() async {
     await _worldConfigFile.writeAsString(jsonEncode(worldConfig));
     await _playerFile.writeAsString(jsonEncode(player));
@@ -182,7 +188,6 @@ class GameManager {
       todayEvents[index]['last_updated'] = DateTime.now().toIso8601String();
       
       await _saveTodayEvents();
-      LogService.instance.info('✅ 事件进度已保存: ${eventData['id']} (Idx: $currentIndex)');
     } else {
       LogService.instance.warn('⚠️ 尝试保存不存在的事件: ${eventData['id']}');
     }
@@ -193,8 +198,6 @@ class GameManager {
       event['id'] = '${event['scene_id']}_${DateTime.now().millisecondsSinceEpoch}';
     }
     
-    // [删除] 更新 current_scene_id 的逻辑
-
     // 标记状态为 playing 并保存
     final index = todayEvents.indexWhere((e) => e['id'] == event['id']);
     if (index != -1) {
