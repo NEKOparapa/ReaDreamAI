@@ -39,10 +39,14 @@ class GameSettlementService {
     required List<Map<String, dynamic>> aiCharacters,
     required List<Map<String, dynamic>> scenes,
     required List<Map<String, dynamic>> triggeredEvents,
-    required int currentDay,
-    required int currentWeek,
+    // [修改] 接收总天数
+    required int totalDays,
   }) async {
-    final gameTime = '第$currentWeek周第$currentDay天';
+    // [修改] 内部计算用于 AI 的时间字符串
+    final week = ((totalDays - 1) ~/ 7) + 1;
+    final day = ((totalDays - 1) % 7) + 1;
+    final gameTime = '第$week周第$day天 (总第$totalDays天)';
+    
     LogService.instance.info('🎮 开始回合结算: $gameTime');
 
     // 1. 整理历史事件记录
@@ -241,9 +245,6 @@ class GameSettlementService {
     Map<String, dynamic> worldConfig,
   ) async {
     if (triggeredEvents.isEmpty) return scenes;
-    
-    // ... (保留原有的场景更新逻辑，省略重复代码以节省篇幅，逻辑不变)
-    // 实际实现中请保留原有代码逻辑，此处为结构展示
     return scenes; 
   }
 
@@ -253,7 +254,6 @@ class GameSettlementService {
     Map<String, dynamic> worldConfig,
   ) async {
     if (triggeredEvents.isEmpty) return player;
-    // ... (保留原有的玩家更新逻辑，省略重复代码)
     return player;
   }
 

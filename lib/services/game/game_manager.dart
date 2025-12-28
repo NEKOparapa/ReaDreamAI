@@ -11,7 +11,7 @@ import 'game_event_ai_service.dart';
 class GameManager {
   final BookshelfEntry entry;
 
-  // config_world.json: 存储世界设定 + 时间进度 + 当前场景
+  // config_world.json: 存储世界设定 + 时间进度
   Map<String, dynamic> worldConfig = {};
   
   Map<String, dynamic> player = {};
@@ -22,8 +22,7 @@ class GameManager {
   // event_logbook.json: 仅用于存储历史归档 (history_events, logs)
   Map<String, dynamic> eventLogbook = {};
   
-  // 新增：今日事件列表 (完全接管 pending_events 和 current_event 的功能)
-  // 对应文件: today_event.json
+  // today_event.json: 管理今日所有动态
   List<Map<String, dynamic>> todayEvents = [];
 
   // 服务实例
@@ -35,17 +34,21 @@ class GameManager {
   File get _playerFile => File(p.join(entry.subCachePath, 'data_player.json'));
   File get _aiCharsFile => File(p.join(entry.subCachePath, 'data_ai_characters.json'));
   File get _scenesFile => File(p.join(entry.subCachePath, 'data_scenes.json'));
-  
-  // 变更：不再混合存储在 logbook 中，历史归档单独存放
   File get _logbookFile => File(p.join(entry.subCachePath, 'event_logbook.json'));
-  
-  // 变更：不再使用 current_event.json，改用 today_event.json 管理今日所有动态
   File get _todayEventFile => File(p.join(entry.subCachePath, 'today_event.json'));
 
-  // --- Getters ---
-  int get day => worldConfig['day'] ?? 1;
-  int get week => worldConfig['week'] ?? 1;
-  String? get currentSceneId => worldConfig['current_scene_id'];
+  // --- Getters: 时间换算逻辑 ---
+  
+  /// 获取游戏总天数 (默认为1)
+  int get totalDays => worldConfig['total_days'] ?? 1;
+
+  /// 计算当前周数: (总天数-1) / 7 + 1
+  int get currentWeek => ((totalDays - 1) ~/ 7) + 1;
+
+  /// 计算当前是周几: (总天数-1) % 7 + 1
+  int get currentDayOfWeek => ((totalDays - 1) % 7) + 1;
+
+  // [删除] currentSceneId 及其 getter
 
   Future<void> loadGameData() async {
     try {
@@ -118,7 +121,6 @@ class GameManager {
     final existingNames = combinedScenes.map((s) => s['name']).toSet();
 
     // 从 todayEvents 中提取临时场景
-    // 只提取状态为 pending 或 playing 的事件的场景，completed 的不再显示临时场景
     final activeEvents = todayEvents.where((e) => e['status'] != 'completed');
     
     for (var event in activeEvents) {
@@ -153,18 +155,16 @@ class GameManager {
   Future<void> _saveTodayEvents() async {
     final data = {
       'date': DateTime.now().toIso8601String(),
-      'game_time_ref': 'W${week}D$day',
+      'game_time_ref': 'W${currentWeek}D$currentDayOfWeek',
       'events': todayEvents,
     };
     await _todayEventFile.writeAsString(jsonEncode(data));
   }
 
-  /// 获取某场景下的待触发/进行中事件
   List<Map<String, dynamic>> getEventsForScene(Map<String, dynamic> scene) {
     final sceneName = scene['name'];
     final sceneId = scene['id'];
 
-    // 只返回 pending 或 playing 状态的事件
     return todayEvents.where((e) {
       final target = e['scene_id'];
       final isMatch = target == sceneName || target == sceneId;
@@ -173,18 +173,14 @@ class GameManager {
     }).toList();
   }
 
-  /// 实时保存当前事件进度到 today_event.json
-  /// 将进度直接更新到 list 中的对应项
   Future<void> saveCurrentEventProgress(Map<String, dynamic> eventData, int currentIndex) async {
     final index = todayEvents.indexWhere((e) => e['id'] == eventData['id']);
     if (index != -1) {
-      // 更新内存中的事件数据
-      todayEvents[index]['dialogues'] = eventData['dialogues']; // 包含AI生成的新对话
-      todayEvents[index]['breakpoint_index'] = currentIndex;  // 记录读到的位置
-      todayEvents[index]['status'] = 'playing';               // 确保状态为进行中
+      todayEvents[index]['dialogues'] = eventData['dialogues']; 
+      todayEvents[index]['breakpoint_index'] = currentIndex;  
+      todayEvents[index]['status'] = 'playing';               
       todayEvents[index]['last_updated'] = DateTime.now().toIso8601String();
       
-      // 持久化到 today_event.json
       await _saveTodayEvents();
       LogService.instance.info('✅ 事件进度已保存: ${eventData['id']} (Idx: $currentIndex)');
     } else {
@@ -192,17 +188,12 @@ class GameManager {
     }
   }
 
-  /// 开始事件
   Future<void> startEvent(Map<String, dynamic> event) async {
     if (event['id'] == null) {
       event['id'] = '${event['scene_id']}_${DateTime.now().millisecondsSinceEpoch}';
     }
     
-    // 更新当前位置
-    if (event['scene_id'] != null) {
-      worldConfig['current_scene_id'] = event['scene_id'];
-      await _worldConfigFile.writeAsString(jsonEncode(worldConfig));
-    }
+    // [删除] 更新 current_scene_id 的逻辑
 
     // 标记状态为 playing 并保存
     final index = todayEvents.indexWhere((e) => e['id'] == event['id']);
@@ -212,11 +203,9 @@ class GameManager {
     }
   }
 
-  /// 结束并结算事件
   Future<void> completeEvent(Map<String, dynamic> finalEventData, {int? breakpointIndex}) async {
     final eventId = finalEventData['id'];
 
-    // 1. 处理对话截取 (Commit 最终发生的剧情)
     List<dynamic> finalDialogues = List.from(finalEventData['dialogues'] ?? []);
     if (breakpointIndex != null && breakpointIndex >= 0 && breakpointIndex < finalDialogues.length) {
       finalDialogues = finalDialogues.sublist(0, breakpointIndex + 1);
@@ -225,23 +214,19 @@ class GameManager {
     final completedEvent = Map<String, dynamic>.from(finalEventData);
     completedEvent['dialogues'] = finalDialogues;
     completedEvent['completed_at'] = DateTime.now().toIso8601String();
-    completedEvent['status'] = 'completed'; // 标记为完成
+    completedEvent['status'] = 'completed'; 
 
-    // 2. 更新 todayEvents 列表中的该事件
     final index = todayEvents.indexWhere((e) => e['id'] == eventId);
     if (index != -1) {
       todayEvents[index] = completedEvent;
     } else {
-      // 理论上不应该走到这，除非是无来源事件
       todayEvents.add(completedEvent);
     }
 
-    // 3. 刷新场景列表（完成的临时事件对应的场景可能不再需要显示）与保存
     _refreshScenesList();
-    await saveGameData(); // 包含保存 _todayEventFile
+    await saveGameData(); 
   }
 
-  /// 调用 AI 生成后续 (保持不变)
   Future<Map<String, dynamic>> generateEventContinuation({
     required List<Map<String, dynamic>> currentDialogues,
     required String userInput,
@@ -268,8 +253,6 @@ class GameManager {
   // --- 回合结算 ---
 
   Future<String> processTurnSettlement({required bool isNextWeek}) async {
-    
-    // 1. 收集今日已完成的事件，准备归档到历史
     final completedEvents = todayEvents.where((e) => e['status'] == 'completed').toList();
 
     try {
@@ -279,31 +262,25 @@ class GameManager {
         aiCharacters: aiCharacters,
         scenes: _persistentScenes, 
         triggeredEvents: completedEvents,
-        currentDay: day,
-        currentWeek: week,
+        totalDays: totalDays, 
       );
 
-      // 更新状态
       player = result.updatedPlayer;
       aiCharacters = result.updatedAiCharacters;
       _persistentScenes = result.updatedScenes;
 
-      // 归档历史 (将今日完成的事件存入总历史)
       final historyEvents = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
       historyEvents.addAll(result.historyEvents);
       eventLogbook['history_events'] = historyEvents;
       
-      // 添加日志
       final logEntry = {
         'time': DateTime.now().toIso8601String(),
-        'game_time': '第$week周 第$day天',
+        'game_time': '第$totalDays天 (W${currentWeek}D$currentDayOfWeek)',
         'completed_events': completedEvents.length,
         'new_events': result.newEvents.length,
       };
       (eventLogbook['logs'] as List).add(logEntry);
 
-      // --- 关键修改：重置今日事件 ---
-      // 将结算生成的 newEvents 放入 todayEvents，覆盖旧数据 (旧数据已归档到 history)
       for (var newEvent in result.newEvents) {
         if (newEvent['id'] == null) {
           newEvent['id'] = 'evt_${DateTime.now().millisecondsSinceEpoch}_${result.newEvents.indexOf(newEvent)}';
@@ -312,28 +289,20 @@ class GameManager {
       }
       todayEvents = result.newEvents;
 
-      // 时间推进
       if (isNextWeek) {
-        worldConfig['week'] = (worldConfig['week'] ?? 1) + 1;
-        worldConfig['day'] = 1;
+        int daysToSkip = 8 - currentDayOfWeek;
+        worldConfig['total_days'] = totalDays + daysToSkip;
       } else {
-        int currentDay = worldConfig['day'] ?? 1;
-        currentDay++;
-        if (currentDay > 7) {
-          worldConfig['week'] = (worldConfig['week'] ?? 1) + 1;
-          worldConfig['day'] = 1;
-        } else {
-          worldConfig['day'] = currentDay;
-        }
+        worldConfig['total_days'] = totalDays + 1;
       }
 
       _refreshScenesList();
-      await saveGameData(); // 统一保存所有文件
+      await saveGameData();
 
       return result.summary;
     } catch (e, s) {
       LogService.instance.error('❌ 回合结算失败', e, s);
-      await saveGameData(); // 即使失败也尝试保存当前状态
+      await saveGameData(); 
       rethrow;
     }
   }

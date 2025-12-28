@@ -21,6 +21,7 @@ class GameStageWorkbenchPage extends StatefulWidget {
 }
 
 class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
+  // ... (省略变量声明和 initState/dispose，保持不变)
   final _configService = ConfigService();
 
   late TextEditingController _worldBackgroundController;
@@ -30,8 +31,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   List<Map<String, dynamic>> _aiCharacters = [];
   List<Map<String, dynamic>> _gameScenes = [];
   List<Map<String, dynamic>> _firstDayEvents = [];
-
-  // 自动保存的防抖计时器
   Timer? _autoSaveTimer;
 
   @override
@@ -48,6 +47,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     super.dispose();
   }
 
+  // ... (省略 _loadDataFromConfig 和 自动保存逻辑，保持不变)
   void _loadDataFromConfig() {
     _worldBackgroundController = TextEditingController(
       text: _configService.getSetting('game_stage_world_background', ''),
@@ -56,7 +56,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       text: _configService.getSetting('game_stage_destiny_ai', ''),
     );
 
-    // 添加监听器以支持文本输入的自动保存
     _worldBackgroundController.addListener(_triggerDebouncedAutoSave);
     _destinyAiController.addListener(_triggerDebouncedAutoSave);
 
@@ -70,11 +69,9 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     final sceneList = _configService.getSetting<List>('game_stage_game_scenes', []);
     _gameScenes = sceneList.map((e) => Map<String, dynamic>.from(e)).toList();
 
-    // 加载第一天事件列表
     final eventsList = _configService.getSetting<List>('game_stage_first_day_events', []);
     _firstDayEvents = eventsList.map((e) {
       final map = Map<String, dynamic>.from(e);
-      // 确保 dialogues 是深拷贝的 List
       if (map['dialogues'] is List) {
         map['dialogues'] = List<Map<String, dynamic>>.from(
           (map['dialogues'] as List).map((d) => Map<String, dynamic>.from(d))
@@ -88,9 +85,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     setState(() {});
   }
 
-  // --- 自动保存逻辑 ---
-
-  /// 触发防抖自动保存 (用于文本输入)
   void _triggerDebouncedAutoSave() {
     if (_autoSaveTimer?.isActive ?? false) _autoSaveTimer!.cancel();
     _autoSaveTimer = Timer(const Duration(milliseconds: 1000), () {
@@ -98,53 +92,30 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     });
   }
 
-  /// 触发立即保存 (用于增删改对象)
   void _triggerImmediateSave() {
     if (_autoSaveTimer?.isActive ?? false) _autoSaveTimer!.cancel();
     _performSave(silent: true);
   }
 
-  /// 执行实际的保存操作
   Future<void> _performSave({bool silent = true}) async {
     try {
-      await _configService.modifySetting(
-        'game_stage_world_background',
-        _worldBackgroundController.text,
-      );
-      await _configService.modifySetting(
-        'game_stage_destiny_ai',
-        _destinyAiController.text,
-      );
-      await _configService.modifySetting(
-        'game_stage_player_character',
-        _playerCharacter,
-      );
-      await _configService.modifySetting(
-        'game_stage_ai_characters',
-        _aiCharacters,
-      );
-      await _configService.modifySetting(
-        'game_stage_game_scenes',
-        _gameScenes,
-      );
-      await _configService.modifySetting(
-        'game_stage_first_day_events',
-        _firstDayEvents,
-      );
+      await _configService.modifySetting('game_stage_world_background', _worldBackgroundController.text);
+      await _configService.modifySetting('game_stage_destiny_ai', _destinyAiController.text);
+      await _configService.modifySetting('game_stage_player_character', _playerCharacter);
+      await _configService.modifySetting('game_stage_ai_characters', _aiCharacters);
+      await _configService.modifySetting('game_stage_game_scenes', _gameScenes);
+      await _configService.modifySetting('game_stage_first_day_events', _firstDayEvents);
       
       LogService.instance.info("游戏舞台数据已自动保存");
-      
       if (!silent && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存成功'), duration: Duration(milliseconds: 800)),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('保存成功'), duration: Duration(milliseconds: 800)));
       }
     } catch (e) {
       LogService.instance.error("游戏舞台自动保存失败", e);
     }
   }
 
-  // --- 保存为游戏书功能---
+  // --- 保存为游戏书功能 ---
 
   Future<void> _saveAsGameBook() async {
     final titleController = TextEditingController();
@@ -194,7 +165,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       
       // 3. 获取缓存目录并创建书籍专属文件夹
       final appDir = await getApplicationSupportDirectory();
-      // 使用 cache/books 目录
       final booksDir = Directory(p.join(appDir.path, 'BookProjectsCache')); 
       if (!await booksDir.exists()) await booksDir.create(recursive: true);
 
@@ -207,14 +177,14 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         await initialWorldStateFolder.create(recursive: true);
       }
 
-      // 4. 处理待触发事件（确保有ID和状态）
+      // 4. 处理待触发事件
       final List<Map<String, dynamic>> pendingEvents = [];
       for (var evt in _firstDayEvents) {
         final newEvt = Map<String, dynamic>.from(evt);
         if (newEvt['id'] == null) {
           newEvt['id'] = 'init_${const Uuid().v4()}';
         }
-        newEvt['status'] = 'pending'; // 强制设置为待触发
+        newEvt['status'] = 'pending'; 
         pendingEvents.add(newEvt);
       }
 
@@ -224,23 +194,20 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       filesContent['config_world.json'] = jsonEncode({
         'world_background': _worldBackgroundController.text,
         'destiny_ai': _destinyAiController.text,
-        'day': 1,
-        'week': 1,
-        'current_scene_id': pendingEvents.isNotEmpty ? pendingEvents.first['scene_id'] : null,
+        'total_days': 1, 
+        // [删除] current_scene_id
       });
 
       filesContent['data_player.json'] = jsonEncode(_playerCharacter);
       filesContent['data_ai_characters.json'] = jsonEncode(_aiCharacters);
       filesContent['data_scenes.json'] = jsonEncode(_gameScenes);
 
-      // 将初始事件写入 today_event.json
       filesContent['today_event.json'] = jsonEncode({
         'date': DateTime.now().toIso8601String(),
         'game_time_ref': 'W1D1',
-        'events': pendingEvents, // 包含待触发的事件
+        'events': pendingEvents,
       });
 
-      // 初始化 event_logbook.json (仅作为历史归档)
       filesContent['event_logbook.json'] = jsonEncode({
         'history_events': [],
         'logs': [],
@@ -257,7 +224,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         id: bookId,
         title: bookTitle,
         originalPath: 'Generated from Workbench',
-        fileType: 'gameBook', // 特殊标记，用于识别游戏书
+        fileType: 'gameBook',
         subCachePath: bookFolder.path,
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
@@ -265,7 +232,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
 
       // 8. 更新书架缓存
       final currentEntries = await CacheManager().loadBookshelf();
-      // 将新书插到最前面
       currentEntries.insert(0, entry);
       await CacheManager().saveBookshelf(currentEntries);
 
@@ -280,8 +246,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       }
     }
   }
-
-
+  
+  // ... (省略编辑和 UI 构建代码，这些不需要修改) ...
   final Map<String, String> _playerFields = {
     'name': '名字',
     'identity': '身份',
@@ -290,8 +256,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     'equipment': '装备',
     'backpack': '背包',
   };
-
-  final Map<String, String> _aiCharFields = {
+   final Map<String, String> _aiCharFields = {
     'cardName': '卡片名称 (用于显示)',
     'name': '名字',
     'identity': '身份',
@@ -454,8 +419,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
-  // --- 事件流 CRUD 逻辑 ---
-
   void _addEventStep() {
     setState(() {
       _firstDayEvents.add({
@@ -578,8 +541,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
-  // --- UI 构建 ---
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -611,10 +572,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             controller: _destinyAiController,
           ),
           const SizedBox(height: 16),
-          
           _buildFirstDayEventsSection(context),
           const SizedBox(height: 16),
-          
           _buildPlayerCharacterSection(context),
           const SizedBox(height: 16),
           _buildAiCharactersSection(context),
@@ -625,13 +584,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
-  Widget _buildEditableSection(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required TextEditingController controller,
-  }) {
-    final theme = Theme.of(context);
+  Widget _buildEditableSection(BuildContext context, {required IconData icon, required String title, required TextEditingController controller}) {
+      final theme = Theme.of(context);
     return Card(
       elevation: 2,
       child: Padding(
@@ -671,7 +625,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
 
   Widget _buildFirstDayEventsSection(BuildContext context) {
     final theme = Theme.of(context);
-
     return Card(
       elevation: 2,
       child: Padding(

@@ -61,7 +61,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   void _onSceneTap(Map<String, dynamic> scene) {
-    // 这里调用的 getEventsForScene 已经修改为从 todayEvents 中获取
     final events = _gameManager.getEventsForScene(scene);
 
     if (events.isEmpty) {
@@ -147,7 +146,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     }
   }
 
-  // --- 信息展示逻辑 (保持不变) ---
+  // --- 信息展示逻辑 ---
 
   void _showPlayerDetail() {
     final player = _gameManager.player;
@@ -339,8 +338,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     );
   }
 
-  // --- UI 构建 ---
-
   @override
   Widget build(BuildContext context) {
     if (_isLoading) return const Scaffold(backgroundColor: Color(0xFF121212), body: Center(child: CircularProgressIndicator()));
@@ -399,8 +396,9 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Widget _buildTopBar() {
-    final day = _gameManager.day;
-    final week = _gameManager.week;
+    // [修改] 使用新的 getter 获取时间信息
+    final week = _gameManager.currentWeek;
+    final dayOfWeek = _gameManager.currentDayOfWeek;
     final eventStats = _gameManager.getEventStats();
 
     return SafeArea(
@@ -414,8 +412,10 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
             IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white70), onPressed: () => Navigator.pop(context)),
             Column(
               children: [
+                // 显示总天数
                 Text("第 $week 周", style: const TextStyle(color: Colors.white38, fontSize: 10)),
-                Text("DAY $day", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                // 显示周 + 天
+                Text("DAY $dayOfWeek", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 if (eventStats['total']! > 0)
                   Text("${eventStats['total']} 个事件待触发", style: TextStyle(color: Colors.amber.withOpacity(0.7), fontSize: 10)),
               ],
@@ -441,11 +441,9 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Widget _buildSceneNode(Map<String, dynamic> scene) {
-    // 使用新方法获取
     final events = _gameManager.getEventsForScene(scene);
     final hasEvent = events.isNotEmpty;
     
-    // 检查是否有进行中的事件
     final isPlaying = events.any((e) => e['status'] == 'playing');
     
     final itemWidth = (MediaQuery.of(context).size.width - 44) / 2;
