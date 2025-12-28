@@ -30,7 +30,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
 
   Future<void> _initGame() async {
     await _gameManager.loadGameData();
-    // 移除：不再检查断点续传
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -62,6 +61,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   void _onSceneTap(Map<String, dynamic> scene) {
+    // 这里调用的 getEventsForScene 已经修改为从 todayEvents 中获取
     final events = _gameManager.getEventsForScene(scene);
 
     if (events.isEmpty) {
@@ -96,11 +96,15 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
                   itemBuilder: (context, index) {
                     final event = events[index];
                     final dialogues = (event['dialogues'] as List?) ?? [];
-                    final preview = dialogues.isNotEmpty ? dialogues.first['message'] : '未知事件';
+                    final preview = dialogues.isNotEmpty ? dialogues.last['message'] : '未知事件'; // 显示最后一句或摘要
+                    final status = event['status'] == 'playing' ? '进行中' : '突发事件';
                     
                     return ListTile(
-                      leading: const Icon(Icons.priority_high, color: Colors.amber),
-                      title: const Text('突发事件', style: TextStyle(color: Colors.white)),
+                      leading: Icon(
+                        event['status'] == 'playing' ? Icons.play_circle_fill : Icons.priority_high, 
+                        color: event['status'] == 'playing' ? Colors.blueAccent : Colors.amber
+                      ),
+                      title: Text(status, style: const TextStyle(color: Colors.white)),
                       subtitle: Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54)),
                       trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 14),
                       onTap: () {
@@ -119,7 +123,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   void _playEvent(Map<String, dynamic> event) async {
-    // 每次都重新开始，不处理 Resume
+    // 调用 Manager 的 startEvent 标记状态
     await _gameManager.startEvent(event);
     setState(() {
       _currentPlayingEvent = event;
@@ -127,7 +131,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Future<void> _onEventFinished() async {
-    // 父组件只负责清理 UI 状态
     if (mounted) {
       setState(() {
         _currentPlayingEvent = null;
@@ -136,7 +139,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Future<void> _onEventExit() async {
-    // 直接退出，不保存进度
+    // 退出时不自动完成，只是关闭 UI，进度已经在 Overlay 中保存
     if (mounted) {
       setState(() {
         _currentPlayingEvent = null;
@@ -144,11 +147,10 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     }
   }
 
-  // --- 信息展示逻辑 ---
+  // --- 信息展示逻辑 (保持不变) ---
 
   void _showPlayerDetail() {
     final player = _gameManager.player;
-    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -351,7 +353,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
             builder: (context) => AlertDialog(
               backgroundColor: const Color(0xFF2A2A2A),
               title: const Text('退出事件？', style: TextStyle(color: Colors.white)),
-              content: const Text('退出后当前事件进度将丢失。', style: TextStyle(color: Colors.white70)),
+              content: const Text('确保已保存进度。未保存的进度将会丢失。', style: TextStyle(color: Colors.white70)),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('取消')),
                 FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('退出')),
@@ -439,11 +441,26 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Widget _buildSceneNode(Map<String, dynamic> scene) {
+    // 使用新方法获取
     final events = _gameManager.getEventsForScene(scene);
     final hasEvent = events.isNotEmpty;
     
+    // 检查是否有进行中的事件
+    final isPlaying = events.any((e) => e['status'] == 'playing');
+    
     final itemWidth = (MediaQuery.of(context).size.width - 44) / 2;
     final isTemporary = scene['is_temporary'] == true;
+
+    Color borderColor = Colors.white10;
+    if (hasEvent) {
+      if (isPlaying) {
+        borderColor = Colors.blueAccent.withOpacity(0.6);
+      } else if (isTemporary) {
+        borderColor = Colors.cyan.withOpacity(0.6);
+      } else {
+        borderColor = Colors.amber.withOpacity(0.6);
+      }
+    }
 
     return GestureDetector(
       onTap: () => _onSceneTap(scene),
@@ -453,10 +470,17 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF252525),
           borderRadius: BorderRadius.circular(12),
-          border: hasEvent 
-              ? Border.all(color: isTemporary ? Colors.cyan.withOpacity(0.6) : Colors.amber.withOpacity(0.6), width: 1.5)
-              : Border.all(color: Colors.white10),
-          gradient: hasEvent ? LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [const Color(0xFF252525), isTemporary ? Colors.cyan.withOpacity(0.15) : Colors.amber.withOpacity(0.1)]) : null,
+          border: Border.all(color: borderColor, width: 1.5),
+          gradient: hasEvent 
+            ? LinearGradient(
+                begin: Alignment.topLeft, 
+                end: Alignment.bottomRight, 
+                colors: [
+                  const Color(0xFF252525), 
+                  isPlaying ? Colors.blue.withOpacity(0.15) : (isTemporary ? Colors.cyan.withOpacity(0.15) : Colors.amber.withOpacity(0.1))
+                ]
+              ) 
+            : null,
         ),
         child: Stack(
           children: [
@@ -464,7 +488,10 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(hasEvent ? (isTemporary ? Icons.crisis_alert : Icons.location_on) : Icons.location_on_outlined, color: hasEvent ? (isTemporary ? Colors.cyanAccent : Colors.amber) : Colors.white24),
+                  Icon(
+                    hasEvent ? (isPlaying ? Icons.play_circle_filled : (isTemporary ? Icons.crisis_alert : Icons.location_on)) : Icons.location_on_outlined, 
+                    color: hasEvent ? (isPlaying ? Colors.blueAccent : (isTemporary ? Colors.cyanAccent : Colors.amber)) : Colors.white24
+                  ),
                   const SizedBox(height: 8),
                   Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: Text(scene['name'] ?? 'Unknown', style: TextStyle(color: hasEvent ? Colors.white : Colors.white70, fontWeight: hasEvent ? FontWeight.bold : FontWeight.normal), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center)),
                   if (hasEvent) Text('${events.length} 个事件', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10)),

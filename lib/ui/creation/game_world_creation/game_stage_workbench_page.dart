@@ -233,11 +233,16 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       filesContent['data_ai_characters.json'] = jsonEncode(_aiCharacters);
       filesContent['data_scenes.json'] = jsonEncode(_gameScenes);
 
-      // === 核心修改 2: event_logbook.json 采用新结构 ===
+      // 将初始事件写入 today_event.json
+      filesContent['today_event.json'] = jsonEncode({
+        'date': DateTime.now().toIso8601String(),
+        'game_time_ref': 'W1D1',
+        'events': pendingEvents, // 包含待触发的事件
+      });
+
+      // 初始化 event_logbook.json (仅作为历史归档)
       filesContent['event_logbook.json'] = jsonEncode({
-        'pending_events': pendingEvents, // 初始事件放在这里
-        'triggered_events': [],          // 已触发事件（本日）
-        'history_events': [],            // 历史事件（已归档）
+        'history_events': [],
         'logs': [],
       });
 
