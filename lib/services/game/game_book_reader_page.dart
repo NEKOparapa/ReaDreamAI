@@ -127,13 +127,11 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
   }
 
   Future<void> _onEventFinished() async {
-    if (_currentPlayingEvent != null) {
-      await _gameManager.completeEvent(_currentPlayingEvent!);
-      if (mounted) {
-        setState(() {
-          _currentPlayingEvent = null;
-        });
-      }
+    // 父组件只负责清理 UI 状态
+    if (mounted) {
+      setState(() {
+        _currentPlayingEvent = null;
+      });
     }
   }
 
@@ -388,6 +386,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
               GalgamePlayerOverlay(
                 event: _currentPlayingEvent!,
                 playerName: _gameManager.player['name'] ?? 'Player',
+                gameManager: _gameManager,
                 onFinished: _onEventFinished,
                 onExit: _onEventExit,
               ),
