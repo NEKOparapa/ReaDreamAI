@@ -33,7 +33,7 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // --- 新增：设置面板逻辑 ---
+  // --- 修改：设置面板逻辑 ---
 
   void _showSettingsPanel() {
     showModalBottomSheet(
@@ -50,6 +50,32 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Text("设置", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
+            
+            // --- 新增：历史与今日事件入口 ---
+            ListTile(
+              leading: const Icon(Icons.history_edu, color: Colors.amberAccent),
+              title: const Text("历史事件", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("回顾过去的旅程与对话", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                _showHistoryEventsPanel(); // 查看历史事件
+              },
+            ),
+            const Divider(color: Colors.white10, height: 1),
+            ListTile(
+              leading: const Icon(Icons.today, color: Colors.greenAccent),
+              title: const Text("今日事件", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("管理当前时间线的事件状态", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                _showTodayEventsPanel(); // 查看今日事件
+              },
+            ),
+            const Divider(color: Colors.white10, height: 1),
+            // -------------------------------
+
             ListTile(
               leading: const Icon(Icons.public, color: Colors.blueAccent),
               title: const Text("修改世界观 ", style: TextStyle(color: Colors.white)),
@@ -73,6 +99,234 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
             ),
             const SizedBox(height: 30),
           ],
+        );
+      },
+    );
+  }
+
+  // --- 新增：历史事件面板 ---
+  void _showHistoryEventsPanel() {
+    final history = _gameManager.historyEvents;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) => Column(
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text('历史足迹 (${history.length})', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: history.isEmpty 
+                  ? const Center(child: Text("暂无历史记录", style: TextStyle(color: Colors.white30)))
+                  : ListView.separated(
+                      controller: scrollController,
+                      itemCount: history.length,
+                      separatorBuilder: (c, i) => const Divider(color: Colors.white10, height: 1),
+                      itemBuilder: (context, index) {
+                        final event = history[index];
+                        final summary = event['summary'] ?? '无摘要';
+                        // 兼容 int 类型的天数
+                        final timeVal = event['game_time'];
+                        final timeStr = timeVal is int ? 'Day $timeVal' : '$timeVal';
+                        final scene = event['scene_name'] ?? '未知地点';
+
+                        return ListTile(
+                          title: Text(summary, style: const TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          subtitle: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(4)),
+                                child: Text(timeStr, style: const TextStyle(color: Colors.amber, fontSize: 10)),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.location_on, size: 12, color: Colors.grey.shade600),
+                              Text(scene, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.remove_red_eye, color: Colors.white30, size: 18),
+                          onTap: () {
+                            // 查看详情
+                            _showEventDetailLog(event);
+                          },
+                        );
+                      },
+                    ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- 新增：查看历史事件详情对话 ---
+  void _showEventDetailLog(Map<String, dynamic> event) {
+    final dialogues = (event['dialogues'] as List?) ?? [];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF2A2A2A),
+        title: Text(event['summary'] ?? '事件回顾', style: const TextStyle(color: Colors.white, fontSize: 16)),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: dialogues.isEmpty 
+            ? const Center(child: Text("无对话记录", style: TextStyle(color: Colors.white30)))
+            : ListView.separated(
+                itemCount: dialogues.length,
+                separatorBuilder: (c, i) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final line = dialogues[index];
+                  final name = line['name'] ?? '???';
+                  final msg = line['message'] ?? '';
+                  final isPlayer = name == _gameManager.player['name'] || name == '玩家';
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: TextStyle(
+                        color: isPlayer ? Colors.blueAccent : Colors.amberAccent, 
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 12
+                      )),
+                      const SizedBox(height: 2),
+                      Text(msg, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    ],
+                  );
+                },
+              ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭')),
+        ],
+      ),
+    );
+  }
+
+  // --- 新增：今日事件管理面板 ---
+  void _showTodayEventsPanel() {
+    // 强制刷新一下UI获取最新状态
+    setState(() {}); 
+    final events = _gameManager.todayEvents;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) {
+        // 使用 StatefulBuilder 允许在 BottomSheet 内部刷新列表
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.7,
+              maxChildSize: 0.9,
+              builder: (context, scrollController) => Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('今日事件 (${events.length})', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text('左滑或点击操作', style: TextStyle(color: Colors.white30, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: events.isEmpty 
+                      ? const Center(child: Text("今日无事发生", style: TextStyle(color: Colors.white30)))
+                      : ListView.separated(
+                          controller: scrollController,
+                          itemCount: events.length,
+                          separatorBuilder: (c, i) => const Divider(color: Colors.white10, height: 1),
+                          itemBuilder: (context, index) {
+                            final event = events[index];
+                            final status = event['status'] ?? 'pending';
+                            final summary = event['summary'] ?? '未知事件';
+                            final scene = event['scene_id'] ?? '未知区域';
+
+                            Color statusColor;
+                            String statusText;
+                            IconData statusIcon;
+
+                            switch(status) {
+                              case 'completed':
+                                statusColor = Colors.grey;
+                                statusText = '已完成';
+                                statusIcon = Icons.check_circle;
+                                break;
+                              case 'playing':
+                                statusColor = Colors.blueAccent;
+                                statusText = '进行中';
+                                statusIcon = Icons.play_circle_fill;
+                                break;
+                              default: // pending
+                                statusColor = Colors.amber;
+                                statusText = '待触发';
+                                statusIcon = Icons.hourglass_empty;
+                            }
+
+                            return ListTile(
+                              leading: Icon(statusIcon, color: statusColor),
+                              title: Text(summary, style: TextStyle(
+                                color: status == 'completed' ? Colors.white38 : Colors.white,
+                                decoration: status == 'completed' ? TextDecoration.lineThrough : null,
+                              )),
+                              subtitle: Text("地点: $scene", style: const TextStyle(color: Colors.white30, fontSize: 12)),
+                              trailing: status == 'completed' 
+                                ? IconButton(
+                                    icon: const Icon(Icons.refresh, color: Colors.greenAccent),
+                                    tooltip: "重新激活",
+                                    onPressed: () async {
+                                      await _gameManager.reactivateEvent(event['id']);
+                                      
+                                      // 1. 刷新 BottomSheet 内部状态
+                                      setSheetState(() {});
+                                      
+                                      // 2. 刷新外部主页面状态（更新地图上的颜色）
+                                      if (mounted) {
+                                        this.setState(() {}); 
+                                      }
+                                      
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("事件已重置为待触发状态"), duration: Duration(milliseconds: 800)),
+                                      );
+                                    },
+                                  )
+                                : null,
+                            );
+                          },
+                        ),
+                  ),
+                ],
+              ),
+            );
+          }
         );
       },
     );
@@ -324,7 +578,6 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
     );
   }
 
-  // --- 修改后的 AI 角色列表展示 ---
   void _showAiCharacterList() {
     final chars = _gameManager.aiCharacters;
     

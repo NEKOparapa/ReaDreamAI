@@ -48,6 +48,13 @@ class GameManager {
   /// 计算当前是周几: (总天数-1) % 7 + 1
   int get currentDayOfWeek => ((totalDays - 1) % 7) + 1;
 
+  /// --- 新增：获取历史事件列表 (按触发时间倒序) ---
+  List<Map<String, dynamic>> get historyEvents {
+    final list = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
+    // 简单的倒序，让最新的显示在最前面
+    return list.reversed.toList();
+  }
+
   Future<void> loadGameData() async {
     try {
       if (await _worldConfigFile.exists()) {
@@ -141,7 +148,7 @@ class GameManager {
     scenes = combinedScenes;
   }
 
-  // === 新增：更新世界配置项 ===
+  // === 更新世界配置项 ===
   Future<void> updateWorldSetting(String key, String value) async {
     worldConfig[key] = value;
     // 立即保存到配置文件，防止数据丢失
@@ -206,13 +213,26 @@ class GameManager {
     }
   }
 
+  /// 重新激活事件（将已完成变为待触发
+  Future<void> reactivateEvent(String eventId) async {
+    final index = todayEvents.indexWhere((e) => e['id'] == eventId);
+    if (index != -1) {
+      // 重置状态
+      todayEvents[index]['status'] = 'pending';
+      // 重置断点进度，使其从头开始
+      todayEvents[index]['breakpoint_index'] = 0;
+      // 移除完成时间
+      todayEvents[index].remove('completed_at');
+      
+      await _saveTodayEvents();
+      _refreshScenesList(); // 刷新场景列表以更新地图标记
+    }
+  }
+
   Future<void> completeEvent(Map<String, dynamic> finalEventData, {int? breakpointIndex}) async {
     final eventId = finalEventData['id'];
 
     List<dynamic> finalDialogues = List.from(finalEventData['dialogues'] ?? []);
-    if (breakpointIndex != null && breakpointIndex >= 0 && breakpointIndex < finalDialogues.length) {
-      finalDialogues = finalDialogues.sublist(0, breakpointIndex + 1);
-    }
 
     final completedEvent = Map<String, dynamic>.from(finalEventData);
     completedEvent['dialogues'] = finalDialogues;
