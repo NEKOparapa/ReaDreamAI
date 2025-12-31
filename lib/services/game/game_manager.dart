@@ -48,7 +48,7 @@ class GameManager {
   /// 计算当前是周几: (总天数-1) % 7 + 1
   int get currentDayOfWeek => ((totalDays - 1) % 7) + 1;
 
-  /// --- 新增：获取历史事件列表 (按触发时间倒序) ---
+  /// 获取历史事件列表 (按触发时间倒序)
   List<Map<String, dynamic>> get historyEvents {
     final list = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
     // 简单的倒序，让最新的显示在最前面
@@ -151,9 +151,15 @@ class GameManager {
   // === 更新世界配置项 ===
   Future<void> updateWorldSetting(String key, String value) async {
     worldConfig[key] = value;
-    // 立即保存到配置文件，防止数据丢失
     await _worldConfigFile.writeAsString(jsonEncode(worldConfig));
     LogService.instance.info('配置项 [$key] 已更新');
+  }
+
+  // === 新增：更新玩家档案 ===
+  Future<void> updatePlayerProfile(Map<String, dynamic> newPlayerData) async {
+    player.addAll(newPlayerData);
+    await _playerFile.writeAsString(jsonEncode(player));
+    LogService.instance.info('玩家档案已更新');
   }
 
   Future<void> saveGameData() async {
@@ -204,8 +210,6 @@ class GameManager {
     if (event['id'] == null) {
       event['id'] = '${event['scene_id']}_${DateTime.now().millisecondsSinceEpoch}';
     }
-    
-    // 标记状态为 playing 并保存
     final index = todayEvents.indexWhere((e) => e['id'] == event['id']);
     if (index != -1) {
       todayEvents[index]['status'] = 'playing';
@@ -213,25 +217,19 @@ class GameManager {
     }
   }
 
-  /// 重新激活事件（将已完成变为待触发
   Future<void> reactivateEvent(String eventId) async {
     final index = todayEvents.indexWhere((e) => e['id'] == eventId);
     if (index != -1) {
-      // 重置状态
       todayEvents[index]['status'] = 'pending';
-      // 重置断点进度，使其从头开始
       todayEvents[index]['breakpoint_index'] = 0;
-      // 移除完成时间
       todayEvents[index].remove('completed_at');
-      
       await _saveTodayEvents();
-      _refreshScenesList(); // 刷新场景列表以更新地图标记
+      _refreshScenesList();
     }
   }
 
   Future<void> completeEvent(Map<String, dynamic> finalEventData, {int? breakpointIndex}) async {
     final eventId = finalEventData['id'];
-
     List<dynamic> finalDialogues = List.from(finalEventData['dialogues'] ?? []);
 
     final completedEvent = Map<String, dynamic>.from(finalEventData);
@@ -274,7 +272,6 @@ class GameManager {
   }
 
   // --- 回合结算 ---
-
   Future<String> processTurnSettlement({required bool isNextWeek}) async {
     final completedEvents = todayEvents.where((e) => e['status'] == 'completed').toList();
 
