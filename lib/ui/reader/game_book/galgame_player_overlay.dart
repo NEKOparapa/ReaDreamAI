@@ -1,8 +1,8 @@
-// lib/ui/game/galgame_player_overlay.dart
+//lib/ui/reader/game_book/galgame_player_overlay.dart
 
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../services/game/game_manager.dart';
+import '../../../../services/game/game_manager.dart';
 
 class GalgamePlayerOverlay extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -81,7 +81,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     super.dispose();
   }
 
-
   /// 显示历史对话
   void _showHistory() {
     showModalBottomSheet(
@@ -147,7 +146,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   // --- 核心逻辑 ---
 
   void _autoSave() {
-    // 依然保留自动保存以防意外退出
     widget.gameManager.saveCurrentEventProgress(_currentEventData, _dialogueIndex);
   }
 
@@ -172,6 +170,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             charIndex++;
             _displayingText = fullText.substring(0, charIndex);
           });
+          // 自动滚动到底部
           if (_textScrollController.hasClients) {
              _textScrollController.jumpTo(_textScrollController.position.maxScrollExtent);
           }
@@ -183,7 +182,10 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   }
 
   void _nextDialogue() {
+    if (_dialogueIndex >= _dialogues.length) return;
+
     final currentFullText = _dialogues[_dialogueIndex]['message'] ?? '';
+    // 如果字还没打完，点击则瞬间显示全
     if (_displayingText.length < currentFullText.length) {
       _typingTimer?.cancel();
       setState(() => _displayingText = currentFullText);
@@ -200,12 +202,15 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
       _startTypingEffect();
       _autoSave();
     } else {
+      // 已经是对白最后一句
       if (_pendingOptions.isNotEmpty) {
+        // 显示暂存的选项
         setState(() {
           _visibleOptions = List.from(_pendingOptions);
           _pendingOptions = [];
         });
       } else if (!_isFreeMode && _visibleOptions.isEmpty) {
+        // 没有后续选项，也不是随心模式 -> 结束事件
         _finishEvent();
       }
     }
@@ -304,7 +309,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     return Positioned.fill(
       child: Stack(
         children: [
-          // 1. 全局点击层
+          // 1. 全局点击层 (黑色半透明遮罩)
           Positioned.fill(
             child: GestureDetector(
               onTap: _isGenerating ? null : _nextDialogue,
@@ -312,7 +317,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
 
-          // 2. 角色立绘
+          // 2. 角色立绘 (简单的 Icon 占位)
           if (name != '系统' && name != '旁白')
             Positioned(
               bottom: 180, 
@@ -372,7 +377,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 顶部栏
+                  // 顶部栏: 名字 + 模式切换 + 进度
                   Row(
                     children: [
                       Container(
@@ -441,7 +446,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
 
-          // 5. 左上角：离开
+          // 5. 左上角：离开按钮
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 20,
@@ -453,7 +458,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
           
-          // 6. 右上角：功能按钮组 (历史、保存、完成)
+          // 6. 右上角：功能按钮组 (历史、完成)
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,

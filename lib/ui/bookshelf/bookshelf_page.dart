@@ -18,7 +18,7 @@ import '../../base/log/log_service.dart';
 // 导入相关页面
 import '../reader/book_reader.dart';
 import '../reader/video_book_reader.dart';
-import '../../services/game/game_book_reader_page.dart';
+import '../reader/game_book/game_book_reader_page.dart';
 
 // 导入功能弹窗
 import 'generate_illustration_dialog.dart';
