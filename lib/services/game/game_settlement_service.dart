@@ -8,22 +8,17 @@ import '../../base/config_service.dart';
 import '../../services/llm_service/llm_service.dart';
 import '../../base/log/log_service.dart';
 
-class SettlementResult {
-  final List<Map<String, dynamic>> historyEvents;
-  final Map<String, dynamic> updatedPlayer;
-  final List<Map<String, dynamic>> updatedAiCharacters;
-  final List<Map<String, dynamic>> updatedScenes;
-  final List<Map<String, dynamic>> newEvents;
-  final String summary;
-
-  SettlementResult({
-    required this.historyEvents,
-    required this.updatedPlayer,
-    required this.updatedAiCharacters,
-    required this.updatedScenes,
-    required this.newEvents,
-    required this.summary,
-  });
+/// 结算上下文：用于在分步结算过程中传递数据
+class SettlementContext {
+  List<Map<String, dynamic>> triggeredEvents = [];
+  List<Map<String, dynamic>> historyEvents = [];
+  List<Map<String, dynamic>> updatedAiCharacters = [];
+  List<Map<String, dynamic>> updatedScenes = [];
+  Map<String, dynamic> updatedPlayer = {};
+  List<Map<String, dynamic>> newEvents = [];
+  String summary = "";
+  int currentTotalDays = 0;
+  String gameTimeStr = "";
 }
 
 class GameSettlementService {
@@ -33,85 +28,91 @@ class GameSettlementService {
   final LlmService _llmService = LlmService.instance;
   final ConfigService _configService = ConfigService();
 
-  Future<SettlementResult> processSettlement({
+  // ---------------------------------------------------------------------------
+  // 分步执行接口
+  // ---------------------------------------------------------------------------
+
+  /// 步骤 1: 归档历史事件
+  List<Map<String, dynamic>> step1_archiveEvents({
+    required List<Map<String, dynamic>> triggeredEvents,
+    required List<Map<String, dynamic>> scenes,
+    required int totalDays,
+  }) {
+    LogService.instance.info('Step 1: 归档事件...');
+    return _recordTriggeredEvents(triggeredEvents, totalDays, scenes);
+  }
+
+  /// 步骤 2: 更新 AI 记忆 (最耗时/易失败)
+  Future<List<Map<String, dynamic>>> step2_updateAiMemories({
     required Map<String, dynamic> worldConfig,
     required Map<String, dynamic> player,
     required List<Map<String, dynamic>> aiCharacters,
-    required List<Map<String, dynamic>> scenes,
     required List<Map<String, dynamic>> triggeredEvents,
+    required String gameTimeStr,
     required int totalDays,
   }) async {
-    // 依然计算一个字符串用于 Log 和 AI Prompt 上下文，但存储用 totalDays
-    final week = ((totalDays - 1) ~/ 7) + 1;
-    final day = ((totalDays - 1) % 7) + 1;
-    final gameTimeStr = '第$week周第$day天 (总第$totalDays天)';
-    
-    LogService.instance.info('🎮 开始回合结算: $gameTimeStr');
-
-    // 1. 整理历史事件记录 (存储时使用 totalDays)
-    final historyEvents = _recordTriggeredEvents(
-      triggeredEvents,
-      totalDays, // 传入 int
-      scenes,
+    LogService.instance.info('Step 2: 更新AI记忆...');
+    return await _updateAiCharactersMemoryParallel(
+      worldConfig: worldConfig,
+      player: player,
+      aiCharacters: aiCharacters,
+      scenes: [], // 记忆更新暂时不需要场景详情，传空优化性能
+      triggeredEvents: triggeredEvents,
+      gameTimeStr: gameTimeStr,
+      totalDays: totalDays,
     );
+  }
 
-    // 2. 更新 AI 记忆 (存储时使用 totalDays)
-    final updatedAiCharacters = await _updateAiCharactersMemoryParallel(
+  /// 步骤 3: 世界状态演化 (场景+玩家)
+  Future<Map<String, dynamic>> step3_updateWorldState({
+    required List<Map<String, dynamic>> scenes,
+    required Map<String, dynamic> player,
+    required List<Map<String, dynamic>> triggeredEvents,
+    required Map<String, dynamic> worldConfig,
+  }) async {
+    LogService.instance.info('Step 3: 更新世界状态...');
+    // 这里可以是并行任务
+    final newScenes = await _updateScenesWithEvents(scenes, triggeredEvents, worldConfig);
+    final newPlayer = await _updatePlayerWithEvents(player, triggeredEvents, worldConfig);
+    
+    return {
+      'scenes': newScenes,
+      'player': newPlayer,
+    };
+  }
+
+  /// 步骤 4: 生成新事件
+  Future<List<Map<String, dynamic>>> step4_generateNewEvents({
+    required Map<String, dynamic> worldConfig,
+    required Map<String, dynamic> player, // 使用更新后的
+    required List<Map<String, dynamic>> aiCharacters, // 使用更新后的
+    required List<Map<String, dynamic>> scenes, // 使用更新后的
+    required List<Map<String, dynamic>> recentHistory,
+    required String gameTimeStr,
+  }) async {
+    LogService.instance.info('Step 4: 生成新事件...');
+    return await _generateNewEventsForAllCharacters(
       worldConfig: worldConfig,
       player: player,
       aiCharacters: aiCharacters,
       scenes: scenes,
-      triggeredEvents: triggeredEvents,
-      gameTimeStr: gameTimeStr, // 传给 Prompt
-      totalDays: totalDays,     // 传给存储逻辑
-    );
-
-    // 3. 更新场景
-    final updatedScenes = await _updateScenesWithEvents(
-      scenes,
-      triggeredEvents,
-      worldConfig,
-    );
-
-    // 4. 更新玩家
-    final updatedPlayer = await _updatePlayerWithEvents(
-      player,
-      triggeredEvents,
-      worldConfig,
-    );
-
-    // 5. 生成新事件 (使用更新后的状态)
-    final newEvents = await _generateNewEventsForAllCharacters(
-      worldConfig: worldConfig,
-      player: updatedPlayer,
-      aiCharacters: updatedAiCharacters,
-      scenes: updatedScenes,
-      recentHistory: historyEvents, 
+      recentHistory: recentHistory,
       gameTime: gameTimeStr,
-    );
-
-    final summary = _generateSettlementSummary(
-      gameTimeStr,
-      triggeredEvents,
-      newEvents,
-      updatedAiCharacters,
-    );
-
-    return SettlementResult(
-      historyEvents: historyEvents,
-      updatedPlayer: updatedPlayer,
-      updatedAiCharacters: updatedAiCharacters,
-      updatedScenes: updatedScenes,
-      newEvents: newEvents,
-      summary: summary,
     );
   }
 
-  // --- 内部方法 ---
+  /// 辅助方法: 生成总结文本
+  String generateSummary(String gameTime, List<Map<String, dynamic>> triggered, List<Map<String, dynamic>> newEvents) {
+    return _generateSettlementSummary(gameTime, triggered, newEvents, []);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 内部逻辑实现 (保持原有逻辑)
+  // ---------------------------------------------------------------------------
 
   List<Map<String, dynamic>> _recordTriggeredEvents(
     List<Map<String, dynamic>> triggeredEvents,
-    int totalDays, // 接收 int
+    int totalDays,
     List<Map<String, dynamic>> scenes,
   ) {
     return triggeredEvents.map((event) {
@@ -130,7 +131,7 @@ class GameSettlementService {
 
       return {
         'id': event['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
-        'game_time': totalDays, // 这里现在记录数字的游戏天数
+        'game_time': totalDays,
         'scene_id': sceneId,
         'scene_name': scene['name'],
         'participants': participants,
@@ -182,6 +183,7 @@ class GameSettlementService {
           updatedCharacters.add(updatedChar ?? char);
         } catch (e) {
           LogService.instance.error('  ❌ AI角色 [${char['name']}] 记忆更新失败: $e');
+          // 失败时不中断，保留旧状态
           updatedCharacters.add(char);
         }
       });
@@ -228,7 +230,6 @@ class GameSettlementService {
       final existingMemory = List<Map<String, dynamic>>.from(updatedChar['memory'] ?? []);
       
       if (jsonData['memory_update'] != null) {
-        // 这里记录 int 类型的 totalDays
         existingMemory.add({
           'time': totalDays, 
           'content': jsonData['memory_update']
@@ -250,6 +251,7 @@ class GameSettlementService {
     List<Map<String, dynamic>> triggeredEvents,
     Map<String, dynamic> worldConfig,
   ) async {
+    // 暂时不做场景变化，保留原样
     if (triggeredEvents.isEmpty) return scenes;
     return scenes; 
   }
@@ -259,6 +261,7 @@ class GameSettlementService {
     List<Map<String, dynamic>> triggeredEvents,
     Map<String, dynamic> worldConfig,
   ) async {
+    // 暂时不做玩家自动变化，保留原样
     if (triggeredEvents.isEmpty) return player;
     return player;
   }
@@ -329,7 +332,7 @@ AI角色: ${jsonEncode(aiCharacters)}
       return validEvents;
     } catch (e) {
       LogService.instance.error('生成新事件失败: $e');
-      return [];
+      throw e; // 抛出异常以便UI捕获
     }
   }
 

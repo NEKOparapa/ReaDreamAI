@@ -1,17 +1,17 @@
-//lib/ui/reader/game_book/game_book_reader_page.dart
+// lib/ui/reader/game_book/game_book_reader_page.dart
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../models/bookshelf_entry.dart';
 import '../../../../services/game/game_manager.dart';
 
-// 引入同级目录下的组件
 import 'galgame_player_overlay.dart';
 import 'components/game_bars.dart';
 import 'components/world_map_view.dart';
 import 'components/player_profile_sheet.dart';
 import 'components/character_list_sheet.dart';
-import 'dialogs/game_menu_dialogs.dart';
+import 'dialogs/game_settlement_ui.dart';
+import 'dialogs/game_settings_ui.dart';
 
 class GameBookReaderPage extends StatefulWidget {
   final BookshelfEntry entry;
@@ -24,7 +24,6 @@ class GameBookReaderPage extends StatefulWidget {
 class _GameBookReaderPageState extends State<GameBookReaderPage> {
   late GameManager _gameManager;
   bool _isLoading = true;
-  bool _isSettling = false;
 
   Map<String, dynamic>? _currentPlayingEvent;
 
@@ -44,24 +43,25 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
 
   /// 触发回合结算
   void _triggerTurnSettlement(bool isNextWeek) async {
-    setState(() => _isSettling = true);
-    try {
-      final summary = await _gameManager.processTurnSettlement(isNextWeek: isNextWeek);
-      if (mounted) {
-        // 调用弹窗组件显示结算结果
-        await GameMenuDialogs.showSettlementDialog(context, summary);
-        setState(() {}); // 刷新页面数据
-      }
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('错误: $e')));
-    } finally {
-      if (mounted) setState(() => _isSettling = false);
+    // 检查是否有正在进行的事件
+    if (_gameManager.todayEvents.any((e) => e['status'] == 'playing')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请先完成正在进行的事件，或将其重置后再结束今日。'), backgroundColor: Colors.orange)
+      );
+      return;
     }
+
+    // 调用独立的结算 UI
+    await GameSettlementUI.show(context, _gameManager, isNextWeek: isNextWeek);
+    
+    // 弹窗关闭后，强制刷新页面以显示新数据
+    if (mounted) setState(() {}); 
   }
 
   /// 点击场景
   void _onSceneTap(Map<String, dynamic> scene) {
-    GameMenuDialogs.showSceneEventsSheet(
+    // 调用设置 UI 中的场景列表功能
+    GameSettingsUI.showSceneEventsSheet(
       context: context,
       scene: scene,
       gameManager: _gameManager,
@@ -125,7 +125,8 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
                   gameManager: _gameManager,
                   onBackTap: () => Navigator.pop(context),
                   onSettingsTap: () {
-                    GameMenuDialogs.showSettingsPanel(context, _gameManager);
+                    // 调用设置面板
+                    GameSettingsUI.showSettingsPanel(context, _gameManager);
                   },
                 ),
                 
@@ -157,27 +158,11 @@ class _GameBookReaderPageState extends State<GameBookReaderPage> {
                       builder: (context) => CharacterListSheet(gameManager: _gameManager),
                     );
                   },
-                  onSettlementTap: _isSettling ? null : () => _triggerTurnSettlement(false),
+                  onSettlementTap: () => _triggerTurnSettlement(false),
                 ),
               ],
             ),
 
-            // 4. 结算 Loading 遮罩
-            if (_isSettling)
-              Container(
-                color: Colors.black.withOpacity(0.7),
-                child: const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 20),
-                      Text("世界线变动中...", style: TextStyle(color: Colors.white, letterSpacing: 2))
-                    ]
-                  )
-                ),
-              ),
-            
             // 5. 播放器 Overlay
             if (_currentPlayingEvent != null)
               GalgamePlayerOverlay(

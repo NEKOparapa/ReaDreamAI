@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import '../../models/bookshelf_entry.dart';
 import '../../base/log/log_service.dart';
-import 'game_settlement_service.dart';
+import 'game_settlement_service.dart'; // 引入 Context 定义
 import 'game_event_ai_service.dart';
 
 class GameManager {
@@ -42,16 +42,15 @@ class GameManager {
   /// 获取游戏总天数 (默认为1)
   int get totalDays => worldConfig['total_days'] ?? 1;
 
-  /// 计算当前周数: (总天数-1) / 7 + 1
+  /// 计算当前周数
   int get currentWeek => ((totalDays - 1) ~/ 7) + 1;
 
-  /// 计算当前是周几: (总天数-1) % 7 + 1
+  /// 计算当前是周几
   int get currentDayOfWeek => ((totalDays - 1) % 7) + 1;
 
   /// 获取历史事件列表 (按触发时间倒序)
   List<Map<String, dynamic>> get historyEvents {
     final list = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
-    // 简单的倒序，让最新的显示在最前面
     return list.reversed.toList();
   }
 
@@ -77,12 +76,8 @@ class GameManager {
       if (await _logbookFile.exists()) {
         eventLogbook = jsonDecode(await _logbookFile.readAsString());
       } else {
-        eventLogbook = {
-          'history_events': [],   
-          'logs': [],
-        };
+        eventLogbook = {'history_events': [], 'logs': []};
       }
-      // 确保 key 存在
       eventLogbook.putIfAbsent('history_events', () => []);
       eventLogbook.putIfAbsent('logs', () => []);
 
@@ -155,7 +150,7 @@ class GameManager {
     LogService.instance.info('配置项 [$key] 已更新');
   }
 
-  // === 新增：更新玩家档案 ===
+  // === 更新玩家档案 ===
   Future<void> updatePlayerProfile(Map<String, dynamic> newPlayerData) async {
     player.addAll(newPlayerData);
     await _playerFile.writeAsString(jsonEncode(player));
@@ -199,10 +194,7 @@ class GameManager {
       todayEvents[index]['breakpoint_index'] = currentIndex;  
       todayEvents[index]['status'] = 'playing';               
       todayEvents[index]['last_updated'] = DateTime.now().toIso8601String();
-      
       await _saveTodayEvents();
-    } else {
-      LogService.instance.warn('⚠️ 尝试保存不存在的事件: ${eventData['id']}');
     }
   }
 
@@ -271,64 +263,66 @@ class GameManager {
     );
   }
 
-  // --- 回合结算 ---
-  Future<String> processTurnSettlement({required bool isNextWeek}) async {
-    final completedEvents = todayEvents.where((e) => e['status'] == 'completed').toList();
-
-    try {
-      final result = await GameSettlementService.instance.processSettlement(
-        worldConfig: worldConfig,
-        player: player,
-        aiCharacters: aiCharacters,
-        scenes: _persistentScenes, 
-        triggeredEvents: completedEvents,
-        totalDays: totalDays, 
-      );
-
-      player = result.updatedPlayer;
-      aiCharacters = result.updatedAiCharacters;
-      _persistentScenes = result.updatedScenes;
-
-      final historyEvents = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
-      historyEvents.addAll(result.historyEvents);
-      eventLogbook['history_events'] = historyEvents;
-      
-      final logEntry = {
-        'time': DateTime.now().toIso8601String(),
-        'game_time': '第$totalDays天 (W${currentWeek}D$currentDayOfWeek)',
-        'completed_events': completedEvents.length,
-        'new_events': result.newEvents.length,
-      };
-      (eventLogbook['logs'] as List).add(logEntry);
-
-      for (var newEvent in result.newEvents) {
-        if (newEvent['id'] == null) {
-          newEvent['id'] = 'evt_${DateTime.now().millisecondsSinceEpoch}_${result.newEvents.indexOf(newEvent)}';
-        }
-        newEvent['status'] = 'pending';
-      }
-      todayEvents = result.newEvents;
-
-      if (isNextWeek) {
-        int daysToSkip = 8 - currentDayOfWeek;
-        worldConfig['total_days'] = totalDays + daysToSkip;
-      } else {
-        worldConfig['total_days'] = totalDays + 1;
-      }
-
-      _refreshScenesList();
-      await saveGameData();
-
-      return result.summary;
-    } catch (e, s) {
-      LogService.instance.error('❌ 回合结算失败', e, s);
-      await saveGameData(); 
-      rethrow;
-    }
-  }
-
   Map<String, int> getEventStats() {
     final pending = todayEvents.where((e) => e['status'] == 'pending' || e['status'] == 'playing').length;
     return {'total': pending};
+  }
+
+  // --- 新增: 支持分步结算的接口 ---
+
+  /// 获取所有已完成的事件（用于结算归档）
+  List<Map<String, dynamic>> getCompletedEvents() {
+    return todayEvents.where((e) => e['status'] == 'completed').toList();
+  }
+
+  /// 获取结算显示用的时间字符串
+  String getSettlementGameTimeStr() {
+     final week = ((totalDays - 1) ~/ 7) + 1;
+     final day = ((totalDays - 1) % 7) + 1;
+     return '第$week周第$day天';
+  }
+
+  /// 应用结算结果 (在 UI 流程全部成功后调用)
+  Future<void> applySettlementResult(SettlementContext ctx, bool isNextWeek) async {
+    // 1. 更新内存数据
+    player = ctx.updatedPlayer;
+    aiCharacters = ctx.updatedAiCharacters;
+    _persistentScenes = ctx.updatedScenes;
+    
+    // 2. 归档历史
+    final historyEvents = List<Map<String, dynamic>>.from(eventLogbook['history_events'] ?? []);
+    historyEvents.addAll(ctx.historyEvents);
+    eventLogbook['history_events'] = historyEvents;
+    
+    // 3. 记录 Log
+    final logEntry = {
+      'time': DateTime.now().toIso8601String(),
+      'game_time': ctx.gameTimeStr,
+      'completed_events': ctx.triggeredEvents.length,
+      'new_events': ctx.newEvents.length,
+    };
+    (eventLogbook['logs'] as List).add(logEntry);
+
+    // 4. 应用新事件
+    for (var newEvent in ctx.newEvents) {
+      if (newEvent['id'] == null) {
+        newEvent['id'] = 'evt_${DateTime.now().millisecondsSinceEpoch}_${ctx.newEvents.indexOf(newEvent)}';
+      }
+      newEvent['status'] = 'pending';
+    }
+    todayEvents = ctx.newEvents;
+
+    // 5. 推进时间
+    if (isNextWeek) {
+      int daysToSkip = 8 - currentDayOfWeek;
+      worldConfig['total_days'] = totalDays + daysToSkip;
+    } else {
+      worldConfig['total_days'] = totalDays + 1;
+    }
+
+    // 6. 保存并刷新
+    _refreshScenesList();
+    await saveGameData();
+    LogService.instance.info("结算数据已应用并保存。");
   }
 }

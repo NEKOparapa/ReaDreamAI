@@ -1,9 +1,9 @@
-//lib/ui/reader/game_book/dialogs/game_menu_dialogs.dart
+// lib/ui/reader/game_book/dialogs/game_settings_ui.dart
 
 import 'package:flutter/material.dart';
 import '../../../../services/game/game_manager.dart';
 
-class GameMenuDialogs {
+class GameSettingsUI {
   
   /// 显示设置面板
   static void showSettingsPanel(BuildContext context, GameManager gameManager) {
@@ -72,6 +72,71 @@ class GameMenuDialogs {
       },
     );
   }
+
+  /// 显示场景事件列表
+  static void showSceneEventsSheet({
+    required BuildContext context,
+    required Map<String, dynamic> scene,
+    required GameManager gameManager,
+    required Function(Map<String, dynamic>) onPlayEvent,
+  }) {
+    final events = gameManager.getEventsForScene(scene);
+
+    if (events.isEmpty) {
+      if (scene['is_temporary'] == true) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('场景【${scene['name']}】当前风平浪静。'), backgroundColor: Colors.grey.shade800, duration: const Duration(milliseconds: 800)),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${scene['name']} 的遭遇', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: events.length,
+                  separatorBuilder: (c, i) => const Divider(color: Colors.white12),
+                  itemBuilder: (context, index) {
+                    final event = events[index];
+                    final dialogues = (event['dialogues'] as List?) ?? [];
+                    final preview = dialogues.isNotEmpty ? dialogues.last['message'] : '未知事件';
+                    final status = event['status'] == 'playing' ? '进行中' : '突发事件';
+                    
+                    return ListTile(
+                      leading: Icon(
+                        event['status'] == 'playing' ? Icons.play_circle_fill : Icons.priority_high, 
+                        color: event['status'] == 'playing' ? Colors.blueAccent : Colors.amber
+                      ),
+                      title: Text(status, style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54)),
+                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 14),
+                      onTap: () {
+                        Navigator.pop(context);
+                        onPlayEvent(event);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // --- 内部私有方法 ---
 
   static void _showHistoryEventsPanel(BuildContext context, GameManager gameManager) {
     final history = gameManager.historyEvents;
@@ -331,84 +396,6 @@ class GameMenuDialogs {
             },
             child: const Text('保存'),
           ),
-        ],
-      ),
-    );
-  }
-
-  /// 显示场景事件列表
-  static void showSceneEventsSheet({
-    required BuildContext context,
-    required Map<String, dynamic> scene,
-    required GameManager gameManager,
-    required Function(Map<String, dynamic>) onPlayEvent,
-  }) {
-    final events = gameManager.getEventsForScene(scene);
-
-    if (events.isEmpty) {
-      if (scene['is_temporary'] == true) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('场景【${scene['name']}】当前风平浪静。'), backgroundColor: Colors.grey.shade800, duration: const Duration(milliseconds: 800)),
-      );
-      return;
-    }
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${scene['name']} 的遭遇', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: events.length,
-                  separatorBuilder: (c, i) => const Divider(color: Colors.white12),
-                  itemBuilder: (context, index) {
-                    final event = events[index];
-                    final dialogues = (event['dialogues'] as List?) ?? [];
-                    final preview = dialogues.isNotEmpty ? dialogues.last['message'] : '未知事件';
-                    final status = event['status'] == 'playing' ? '进行中' : '突发事件';
-                    
-                    return ListTile(
-                      leading: Icon(
-                        event['status'] == 'playing' ? Icons.play_circle_fill : Icons.priority_high, 
-                        color: event['status'] == 'playing' ? Colors.blueAccent : Colors.amber
-                      ),
-                      title: Text(status, style: const TextStyle(color: Colors.white)),
-                      subtitle: Text(preview, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54)),
-                      trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 14),
-                      onTap: () {
-                        Navigator.pop(context);
-                        onPlayEvent(event);
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// 显示结算弹窗
-  static Future<void> showSettlementDialog(BuildContext context, String summary) async {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A2A2A),
-        title: const Text('时之流逝', style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(child: Text(summary, style: const TextStyle(color: Colors.white70))),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('新的一天'))
         ],
       ),
     );
