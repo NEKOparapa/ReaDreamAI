@@ -19,6 +19,8 @@ enum ApiProvider {
   fal,
   // 视频模型
   bailian, 
+  // 音乐模型
+  minimaxi,
   // 通用
   custom,
 }
@@ -172,6 +174,24 @@ final List<ApiPlatformPreset> videoPlatformPresets = [
   ),
 ];
 
+// =================================================================
+// 独立的音乐接口平台预设列表
+// =================================================================
+final List<ApiPlatformPreset> musicPlatformPresets = [
+  const ApiPlatformPreset(
+    provider: ApiProvider.minimaxi, name: 'MiniMax', icon: Icons.music_note,
+    defaultUrl: 'https://api.minimaxi.com/v1',
+    defaultModel: 'music-2.0',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
+  ),
+  const ApiPlatformPreset(
+    provider: ApiProvider.custom, name: '自定义', icon: Icons.settings_ethernet,
+    defaultUrl: '',
+    defaultModel: '',
+    defaultFormat: ApiFormat.none, defaultConcurrency: 2, defaultRpm: 60
+  ),
+];
+
 
 // ApiModel 类
 class ApiModel {
@@ -235,6 +255,21 @@ class ApiModel {
   factory ApiModel.createVideo(String name) {
     // 从视频列表中查找默认预设
     final preset = videoPlatformPresets.firstWhere((p) => p.provider == ApiProvider.bailian);
+    return ApiModel(
+      id: const Uuid().v4(),
+      name: name,
+      url: preset.defaultUrl,
+      provider: preset.provider,
+      format: preset.defaultFormat,
+      model: preset.defaultModel,
+      concurrencyLimit: preset.defaultConcurrency,
+      rpm: preset.defaultRpm,
+    );
+  }
+
+  // 创建音乐接口的工厂方法
+  factory ApiModel.createMusic(String name) {
+    final preset = musicPlatformPresets.firstWhere((p) => p.provider == ApiProvider.minimaxi);
     return ApiModel(
       id: const Uuid().v4(),
       name: name,

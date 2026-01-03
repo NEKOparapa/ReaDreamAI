@@ -7,9 +7,10 @@ import '../../services/api_tester/api_tester_service.dart';
 import 'api_settings_page.dart';
 import 'drawing_api_settings_page.dart';
 import 'video_api_settings_page.dart';
+import 'music_api_settings_page.dart';
 
-// 用于区分接口类型的枚举
-enum ApiType { language, drawing, video }
+// 用于区分接口类型的枚举，增加 music
+enum ApiType { language, drawing, video, music }
 
 class ApiManagementPage extends StatefulWidget {
   const ApiManagementPage({super.key});
@@ -19,6 +20,23 @@ class ApiManagementPage extends StatefulWidget {
 }
 
 class _ApiManagementPageState extends State<ApiManagementPage> {
+  
+  // 处理“更多”菜单点击
+  void _onMoreMenuSelected(String value) {
+    if (value == 'music') {
+      // 跳转到独立的音乐接口管理页面
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(title: const Text('音乐接口')),
+            body: const _ApiInterfaceView(apiType: ApiType.music),
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -29,33 +47,62 @@ class _ApiManagementPageState extends State<ApiManagementPage> {
         body: SafeArea(
           child: Column(
             children: [
-              // 使用 Padding 和 Container 来创建带有圆角背景的 TabBar
+              // 使用 Row 将 TabBar 和 更多按钮 并排
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: Container(
-                  padding: const EdgeInsets.all(4.0), // TabBar 周围的内边距
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  child: TabBar(
-                    tabs: const [
-                      Tab(text: '语言'),
-                      Tab(text: '绘画'),
-                      Tab(text: '视频'),
-                    ],
-                    // 移除 TabBar 默认的底部下划线
-                    dividerColor: Colors.transparent,
-                    // 设置指示器为圆角矩形（胶囊样式）
-                    indicator: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      borderRadius: BorderRadius.circular(8.0),
+                child: Row(
+                  children: [
+                    // Expanded 让 TabBar 占据左侧主要空间
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(4.0),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: TabBar(
+                          tabs: const [
+                            Tab(text: '语言'),
+                            Tab(text: '绘画'),
+                            Tab(text: '视频'),
+                          ],
+                          dividerColor: Colors.transparent,
+                          indicator: BoxDecoration(
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          labelColor: theme.colorScheme.onPrimary,
+                          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    // 设置选中和未选中标签的文字颜色
-                    labelColor: theme.colorScheme.onPrimary,
-                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                  ),
+                    const SizedBox(width: 8),
+                    // 右侧的“更多”按钮
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(12.0),
+                      ),
+                      child: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz),
+                        tooltip: '更多接口',
+                        onSelected: _onMoreMenuSelected,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'music',
+                            child: ListTile(
+                              leading: Icon(Icons.music_note_outlined),
+                              title: Text('音乐接口'),
+                              contentPadding: EdgeInsets.zero,
+                              dense: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
@@ -76,7 +123,7 @@ class _ApiManagementPageState extends State<ApiManagementPage> {
   }
 }
 
-/// 经过改进的接口视图
+/// 经过改进的接口视图 (已适配 ApiType.music)
 class _ApiInterfaceView extends StatefulWidget {
   final ApiType apiType;
 
@@ -94,34 +141,28 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
   
   String get _configKey {
     switch (widget.apiType) {
-      case ApiType.language:
-        return 'languageApis';
-      case ApiType.drawing:
-        return 'drawingApis';
-      case ApiType.video:
-        return 'videoApis';
+      case ApiType.language: return 'languageApis';
+      case ApiType.drawing: return 'drawingApis';
+      case ApiType.video: return 'videoApis';
+      case ApiType.music: return 'musicApis';
     }
   }
 
   String get _activeIdKey {
     switch (widget.apiType) {
-      case ApiType.language:
-        return 'activeLanguageApiId';
-      case ApiType.drawing:
-        return 'activeDrawingApiId';
-      case ApiType.video:
-        return 'activeVideoApiId';
+      case ApiType.language: return 'activeLanguageApiId';
+      case ApiType.drawing: return 'activeDrawingApiId';
+      case ApiType.video: return 'activeVideoApiId';
+      case ApiType.music: return 'activeMusicApiId';
     }
   }
 
   String get _newApiName {
     switch (widget.apiType) {
-      case ApiType.language:
-        return '新语言接口';
-      case ApiType.drawing:
-        return '新绘画接口';
-      case ApiType.video:
-        return '新视频接口';
+      case ApiType.language: return '新语言接口';
+      case ApiType.drawing: return '新绘画接口';
+      case ApiType.video: return '新视频接口';
+      case ApiType.music: return '新音乐接口';
     }
   }
 
@@ -162,6 +203,10 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
         newApi = ApiModel.createVideo(_newApiName);
         page = VideoApiSettingsPage(apiModel: newApi);
         break;
+      case ApiType.music:
+        newApi = ApiModel.createMusic(_newApiName);
+        page = MusicApiSettingsPage(apiModel: newApi);
+        break;
     }
 
     final result = await Navigator.push<ApiModel>(
@@ -182,6 +227,9 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
         break;
       case ApiType.video:
         page = VideoApiSettingsPage(apiModel: apiToEdit);
+        break;
+      case ApiType.music:
+        page = MusicApiSettingsPage(apiModel: apiToEdit);
         break;
     }
 
@@ -219,7 +267,6 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
 
   Future<void> _deleteApi(String apiId) async {
     final apiToDelete = _apiList.firstWhere((api) => api.id == apiId);
-
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -270,6 +317,9 @@ class _ApiInterfaceViewState extends State<_ApiInterfaceView> {
           break;
         case ApiType.video:
           result = await _apiTesterService.testVideoApi(api); 
+          break;
+        case ApiType.music:
+          result = await _apiTesterService.testMusicApi(api);
           break;
       }
 
@@ -384,6 +434,9 @@ class _ApiCard extends StatelessWidget {
       // 视频模型
       case ApiProvider.bailian:
         return Icons.sports_volleyball;
+      // 音乐模型
+      case ApiProvider.minimaxi:
+        return Icons.music_note_outlined;
       // 通用
       case ApiProvider.custom:
         return Icons.settings_ethernet;
