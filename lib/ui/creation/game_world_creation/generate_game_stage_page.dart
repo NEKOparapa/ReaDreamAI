@@ -16,7 +16,7 @@ enum CharacterSourceOption { ai, manual }
 class GameStageGenerationConfig {
   String worldRequirements;
   String destinyAiRequirements;
-  String firstDayRequirements; // [新增] 首日事件要求
+  String firstDayRequirements;
   List<String> selectedCharacterIds;
   CharacterSourceOption characterSource;
   int sceneCount;
@@ -81,7 +81,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   // 控制器
   final TextEditingController _worldRequirementsController = TextEditingController();
   final TextEditingController _destinyAiRequirementsController = TextEditingController();
-  final TextEditingController _firstDayRequirementsController = TextEditingController(); // [新增]
+  final TextEditingController _firstDayRequirementsController = TextEditingController();
   late final TextEditingController _sceneCountController;
   late final TextEditingController _aiCharacterCountController;
 
@@ -303,7 +303,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
           children: [
             const ListTile(
               leading: Icon(Icons.public_outlined),
-              title: Text('游戏世界要求', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text('游戏世界描述', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('描述世界观、核心元素等'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -322,7 +322,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             const SizedBox(height: 24),
             const ListTile(
               leading: Icon(Icons.alt_route_outlined),
-              title: Text('命运AI要求', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text('故事发展方向', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('设定世界故事走向'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -339,10 +339,10 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               maxLines: 5,
             ),
             const SizedBox(height: 24),
-            // [新增] 首日事件要求 UI
+            // 首日事件要求 UI
             const ListTile(
               leading: Icon(Icons.start, color: Colors.orange),
-              title: Text('首日事件要求', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text('首日事件内容', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: Text('设定游戏第一天发生的具体情节或开场方式'),
               contentPadding: EdgeInsets.zero,
             ),

@@ -21,7 +21,6 @@ class GameStageWorkbenchPage extends StatefulWidget {
 }
 
 class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
-  // ... (省略变量声明和 initState/dispose，保持不变)
   final _configService = ConfigService();
 
   late TextEditingController _worldBackgroundController;
@@ -115,7 +114,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- 保存为游戏书功能 ---
 
   Future<void> _saveAsGameBook() async {
     final titleController = TextEditingController();
@@ -195,7 +193,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         'world_background': _worldBackgroundController.text,
         'destiny_ai': _destinyAiController.text,
         'total_days': 1, 
-        // [删除] current_scene_id
       });
 
       filesContent['data_player.json'] = jsonEncode(_playerCharacter);
@@ -247,7 +244,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
   
-  // ... (省略编辑和 UI 构建代码，这些不需要修改) ...
   final Map<String, String> _playerFields = {
     'name': '名字',
     'identity': '身份',
@@ -545,7 +541,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('游戏舞台工作台'),
+        title: const Text('游戏舞台'),
         actions: [
           IconButton(
             onPressed: _saveAsGameBook,
@@ -568,17 +564,19 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           _buildEditableSection(
             context,
             icon: Icons.alt_route,
-            title: '命运AI',
+            title: '故事发展',
             controller: _destinyAiController,
           ),
           const SizedBox(height: 16),
-          _buildFirstDayEventsSection(context),
-          const SizedBox(height: 16),
+          // 移动了顺序：先展示玩家、AI、场景
           _buildPlayerCharacterSection(context),
           const SizedBox(height: 16),
           _buildAiCharactersSection(context),
           const SizedBox(height: 16),
           _buildGameScenesSection(context),
+          const SizedBox(height: 16),
+          // 移动首日事件到最后
+          _buildFirstDayEventsSection(context),
         ],
       ),
     );
@@ -640,7 +638,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     Icon(Icons.event_note, color: theme.colorScheme.primary, size: 28),
                     const SizedBox(width: 12),
                     Text(
-                      '第一天事件',
+                      '首日事件',
                       style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -648,13 +646,13 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 FilledButton.tonalIcon(
                   onPressed: _addEventStep,
                   icon: const Icon(Icons.add_location_alt_outlined, size: 18),
-                  label: const Text("添加场景流"),
+                  label: const Text("添加新事件"),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             if (_firstDayEvents.isEmpty)
-              const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('暂无事件流程，请添加场景流')))
+              const Center(child: Padding(padding: EdgeInsets.all(24), child: Text('暂无事件流程，请添加新事件')))
             else
               ListView.builder(
                 shrinkWrap: true,
@@ -729,7 +727,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
                   color: theme.colorScheme.error,
-                  tooltip: '删除此场景流',
+                  tooltip: '删除此事件',
                   onPressed: () => _deleteEventStep(stepIndex),
                 ),
               ],
