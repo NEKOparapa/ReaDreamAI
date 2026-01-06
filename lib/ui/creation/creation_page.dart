@@ -66,7 +66,7 @@ class CreationPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // 小说转短剧
+          // 小说转短剧 (添加 isBeta)
           _buildFeatureCard(
             context,
             icon: Icons.theaters,
@@ -74,6 +74,7 @@ class CreationPage extends StatelessWidget {
             description: '将精彩的文字故事转换为影视分镜，开启短剧创作之旅',
             gradientColors: [const Color.fromARGB(255, 193, 100, 159), const Color.fromARGB(255, 208, 151, 169)],
             onTap: () => _navigateToNovelToShortDrama(context),
+            isBeta: true, // 标记为测试版
           ),
           const SizedBox(height: 16),
           
@@ -89,22 +90,22 @@ class CreationPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           
-          // 创造游戏世界 (已激活)
+          // 创造游戏世界 (添加 isBeta)
           _buildFeatureCard(
             context,
-            icon: Icons.public, // 图标更新为 public 更贴合"世界"
+            icon: Icons.public,
             title: '创造游戏世界',
             description: '构建引人入胜的游戏世界观与剧情线，编排你的游戏故事',
             gradientColors: [Colors.green.shade700, Colors.blueGrey.shade700],
-            onTap: () => _navigateToGameWorldCreation(context), // 修改了 onTap
-            // comingSoon: true, // 移除了 comingSoon 属性
+            onTap: () => _navigateToGameWorldCreation(context),
+            isBeta: true, // 标记为测试版
           ),
         ],
       ),
     );
   }
 
-  /// 构建功能卡片 (统一的横向卡片布局)
+  /// 构建功能卡片
   Widget _buildFeatureCard(
     BuildContext context, {
     required IconData icon,
@@ -113,6 +114,7 @@ class CreationPage extends StatelessWidget {
     required List<Color> gradientColors,
     required VoidCallback onTap,
     bool comingSoon = false,
+    bool isBeta = false, // 新增参数
   }) {
     final theme = Theme.of(context);
     
@@ -184,7 +186,8 @@ class CreationPage extends StatelessWidget {
                                   fontSize: 18,
                                 ),
                               ),
-                              if (comingSoon) ...[
+                              // 统一处理标签显示逻辑
+                              if (comingSoon || isBeta) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -192,14 +195,17 @@ class CreationPage extends StatelessWidget {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
+                                    // 样式完全保持一致
                                     color: Colors.white.withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    '敬请期待',
+                                    // 优先显示敬请期待，否则显示 beta
+                                    comingSoon ? '敬请期待' : 'beta', 
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: Colors.white,
                                       fontSize: 10,
+                                      height: 1.2, // 微调行高保证居中
                                     ),
                                   ),
                                 ),
