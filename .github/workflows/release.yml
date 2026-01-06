@@ -1,45 +1,33 @@
 name: Build and Deploy Pre-release
 
 on:
-  workflow_dispatch: # 允许你从 Actions 选项卡手动运行此工作流
+  workflow_dispatch:
   push:
-    # 只有当推送到 main 分支时才触发
     branches:
       - main
 
-# 授予写入仓库内容的权限，以便创建和删除 Release
 permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build and Release Pre-release
+  # =======================================================
+  # Job 1: 构建 Windows 版本 (必须用 Windows Runner)
+  # =======================================================
+  build-windows:
+    name: Build Windows
     runs-on: windows-latest
-
     steps:
-      # 步骤1：检出代码
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # 步骤2：设置 Java 和 Flutter 环境
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
 
-      # 步骤3：安装项目依赖
       - name: Install dependencies
         run: flutter pub get
 
-      # =======================================================
-      # 步骤4：构建 Windows release 版本的应用
-      # =======================================================
       - name: Build Windows executable
         run: flutter build windows --release
 
@@ -48,74 +36,88 @@ jobs:
         run: |
           Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "ReaDreamAI-beta-windows.zip" -Force
 
-      # =======================================================
-      # 步骤5：构建 Android APK
-      # =======================================================
+      # 上传产物供发布 Job 使用
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: ReaDreamAI-beta-windows.zip
+
+  # =======================================================
+  # Job 2: 构建 Android 版本 (使用 Ubuntu Runner 更稳更快)
+  # =======================================================
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest # 改用 Ubuntu
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          # 开启 Gradle 缓存，减少重复下载，降低 403 风险
+          cache: 'gradle' 
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Install dependencies
+        run: flutter pub get
+
       - name: Setup Android Keystore and Properties
-        shell: pwsh
+        # Ubuntu 使用 bash，且需要 base64 解码工具
         run: |
-          # 解码 Base64 密钥库并写入到 app 目录
-          $keystoreBase64 = "${{ secrets.KEYSTORE_BASE64 }}"
-          $keystorePath = "android/app/upload-keystore.jks"
-          [IO.File]::WriteAllBytes($keystorePath, [Convert]::FromBase64String($keystoreBase64))
-          echo "Keystore decoded and saved to $keystorePath"
-
-          # 创建 key.properties 文件
-          $keyPropertiesPath = "android/key.properties"
-          # 关键修复：storeFile 的路径是相对于 android/app/build.gradle 的，所以直接写文件名即可
-          "storeFile=upload-keystore.jks" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8
-          "keyAlias=${{ secrets.KEY_ALIAS }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
-          "keyPassword=${{ secrets.KEY_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
-          "storePassword=${{ secrets.STORE_PASSWORD }}" | Out-File -FilePath $keyPropertiesPath -Encoding UTF8 -Append
-          echo "key.properties file created successfully."
-
-      # 可选：验证密钥库和配置文件是否正确创建
-      - name: Verify Keystore and Properties
-        shell: pwsh
-        run: |
-          echo "=== Checking keystore file ==="
-          if (Test-Path "android/app/upload-keystore.jks") {
-            echo "✓ Keystore found at android/app/upload-keystore.jks"
-          } else {
-            echo "✗ Keystore NOT found!"
-            exit 1
-          }
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
           
-          echo "`n=== key.properties content ==="
-          Get-Content "android/key.properties"
-      
-          
-      - name: Build Android APK (ARM64)
+          echo "storeFile=upload-keystore.jks" > android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
+
+      - name: Build Android APK
         run: flutter build apk --release --target-platform android-arm64
-        
-      - name: Rename APK for release
-        shell: pwsh
-        run: |
-          # 直接使用实际生成的文件名
-          $sourceApkPath = "build\app\outputs\flutter-apk\app-release.apk"
-          $destinationPath = "build\app\outputs\flutter-apk\ReaDreamAI-beta-android.apk"
-          
-          if (Test-Path $sourceApkPath) {
-            Copy-Item -Path $sourceApkPath -Destination $destinationPath
-            echo "✓ APK copied to $destinationPath"
-          } else {
-            echo "✗ APK not found!"
-            Get-ChildItem -Path "build\app\outputs\flutter-apk" | Format-Table Name, Length
-            exit 1
-          }
 
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/ReaDreamAI-beta-android.apk
 
+      # 上传产物供发布 Job 使用
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: build/app/outputs/flutter-apk/ReaDreamAI-beta-android.apk
 
-      # 步骤6：删除旧的预览版，以便发布同名新版
+  # =======================================================
+  # Job 3: 发布 Release (等待前两个任务完成)
+  # =======================================================
+  release:
+    name: Create Release
+    needs: [build-windows, build-android] # 依赖上面两个任务
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release
+
       - name: Delete old pre-releases
         uses: dev-drprasad/delete-tag-and-release@v1.1
         with:
           tag_name: Beta
-          delete_release: true # 删除标签对应的 Release
+          delete_release: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true # 如果没有旧版本，允许继续执行
-          
-      # 步骤7：创建 GitHub Pre-release 并上传所有产物
+        continue-on-error: true
+
       - name: Create GitHub Pre-release
         uses: softprops/action-gh-release@v2
         with:
@@ -124,8 +126,7 @@ jobs:
           draft: false
           prerelease: true
           generate_release_notes: true
-          # 上传打包好的 Windows zip 和重命名后的 Android APK
           files: |
             ReaDreamAI-beta-windows.zip
-            build/app/outputs/flutter-apk/ReaDreamAI-beta-android.apk
+            ReaDreamAI-beta-android.apk
           token: ${{ secrets.GITHUB_TOKEN }}
