@@ -110,6 +110,10 @@ const Map<String, dynamic> appDefaultConfigs = {
   'gamestage_gen_use_ai_char_count': true,// 是否由AI决定角色数量
   'gamestage_gen_scene_count': 5,       // 自定义游戏场景数
   'gamestage_gen_use_ai_scenes': true,  // 是否由AI决定场景数
+  'gamestage_gen_gen_char_imgs': false, // 是否生成角色立绘
+  'gamestage_gen_gen_scene_imgs': false, // 是否生成场景图片
+  'gamestage_gen_gen_scene_music': false, // 是否生成场景音乐
+
 
   //---游戏舞台配置 ---
   'game_stage_world_background': '在一个名为"艾瑞多"的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',

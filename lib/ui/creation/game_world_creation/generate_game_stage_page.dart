@@ -24,6 +24,11 @@ class GameStageGenerationConfig {
   int aiCharacterCount;
   bool useAiCharacterCount;
 
+  // 新增：媒体生成配置
+  bool generateCharImages;
+  bool generateSceneImages;
+  bool generateSceneMusic;
+
   GameStageGenerationConfig({
     required this.worldRequirements,
     required this.destinyAiRequirements,
@@ -34,6 +39,9 @@ class GameStageGenerationConfig {
     required this.useAiScenes,
     required this.aiCharacterCount,
     required this.useAiCharacterCount,
+    required this.generateCharImages,
+    required this.generateSceneImages,
+    required this.generateSceneMusic,
   });
 
   factory GameStageGenerationConfig.fromService(ConfigService service) {
@@ -41,26 +49,32 @@ class GameStageGenerationConfig {
     return GameStageGenerationConfig(
       worldRequirements: service.getSetting<String>('gamestage_gen_world_req', ''),
       destinyAiRequirements: service.getSetting<String>('gamestage_gen_destiny_req', ''),
-      firstDayRequirements: service.getSetting<String>('gamestage_gen_first_day_req', ''), // 读取
+      firstDayRequirements: service.getSetting<String>('gamestage_gen_first_day_req', ''),
       selectedCharacterIds: List<String>.from(service.getSetting<List>('gamestage_gen_char_ids', [])),
       characterSource: useAiChars ? CharacterSourceOption.ai : CharacterSourceOption.manual,
       sceneCount: service.getSetting<int>('gamestage_gen_scene_count', 5),
       useAiScenes: service.getSetting<bool>('gamestage_gen_use_ai_scenes', true),
       aiCharacterCount: service.getSetting<int>('gamestage_gen_ai_char_count', 3),
       useAiCharacterCount: service.getSetting<bool>('gamestage_gen_use_ai_char_count', true),
+      generateCharImages: service.getSetting<bool>('gamestage_gen_gen_char_imgs', false),
+      generateSceneImages: service.getSetting<bool>('gamestage_gen_gen_scene_imgs', false),
+      generateSceneMusic: service.getSetting<bool>('gamestage_gen_gen_scene_music', false),
     );
   }
 
   Future<void> saveToService(ConfigService service) async {
     await service.modifySetting('gamestage_gen_world_req', worldRequirements);
     await service.modifySetting('gamestage_gen_destiny_req', destinyAiRequirements);
-    await service.modifySetting('gamestage_gen_first_day_req', firstDayRequirements); // 保存
+    await service.modifySetting('gamestage_gen_first_day_req', firstDayRequirements);
     await service.modifySetting('gamestage_gen_char_ids', selectedCharacterIds);
     await service.modifySetting('gamestage_gen_use_ai_chars', characterSource == CharacterSourceOption.ai);
     await service.modifySetting('gamestage_gen_scene_count', sceneCount);
     await service.modifySetting('gamestage_gen_use_ai_scenes', useAiScenes);
     await service.modifySetting('gamestage_gen_ai_char_count', aiCharacterCount);
     await service.modifySetting('gamestage_gen_use_ai_char_count', useAiCharacterCount);
+    await service.modifySetting('gamestage_gen_gen_char_imgs', generateCharImages);
+    await service.modifySetting('gamestage_gen_gen_scene_imgs', generateSceneImages);
+    await service.modifySetting('gamestage_gen_gen_scene_music', generateSceneMusic);
   }
 }
 
@@ -186,17 +200,21 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             .toList();
       }
 
-      // 调用AI服务生成数据 (分两步生成，先世界后事件)
+      // 调用AI服务生成数据 (包含世界、事件、以及可选的媒体资源)
       final generatedData = await GameStageGeneratorService.instance.generateGameStage(
         worldRequirements: _config.worldRequirements,
         destinyAiRequirements: _config.destinyAiRequirements,
-        firstDayRequirements: _config.firstDayRequirements, // 传入首日要求
+        firstDayRequirements: _config.firstDayRequirements, 
         characterSource: _config.characterSource,
         useAiCharacterCount: _config.useAiCharacterCount,
         aiCharacterCount: _config.aiCharacterCount,
         selectedCharacters: selectedCharactersJson,
         useAiScenes: _config.useAiScenes,
         sceneCount: _config.sceneCount,
+        // 传递新开关
+        generateCharImages: _config.generateCharImages,
+        generateSceneImages: _config.generateSceneImages,
+        generateSceneMusic: _config.generateSceneMusic,
       );
       
       LogService.instance.success('游戏舞台数据生成成功。');
@@ -386,6 +404,27 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                 _saveConfig();
               },
             ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              title: const Text('生成场景插图'),
+              subtitle: const Text('调用绘图接口生成环境氛围图'),
+              value: _config.generateSceneImages,
+              onChanged: (val) {
+                setState(() => _config.generateSceneImages = val);
+                _saveConfig();
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+            SwitchListTile(
+              title: const Text('生成场景音乐'),
+              subtitle: const Text('调用音乐接口生成背景音乐(BGM)'),
+              value: _config.generateSceneMusic,
+              onChanged: (val) {
+                setState(() => _config.generateSceneMusic = val);
+                _saveConfig();
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
           ],
         ),
       ),
@@ -418,7 +457,19 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                 _saveConfig();
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            
+            SwitchListTile(
+              title: const Text('生成角色立绘'),
+              subtitle: const Text('调用绘图接口为生成的角色创建形象图'),
+              value: _config.generateCharImages,
+              onChanged: (val) {
+                setState(() => _config.generateCharImages = val);
+                _saveConfig();
+              },
+              contentPadding: EdgeInsets.zero,
+            ),
+            const Divider(),
 
             // 2. 角色设定方式（手动/AI）
             Row(

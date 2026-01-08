@@ -64,21 +64,20 @@ class ConfigService {
   Future<void> _synchronizeAndSaveDefaults() async {
     bool needsSave = false;
 
-    // 定义需要特殊处理的预设列表键，提前定义
+    // 定义需要特殊处理的预设列表键
     const List<String> presetListKeys = [
       'prompt_cards',
       'drawing_style_tags',
       'drawing_negative_tags',
       'drawing_other_tags',
       'drawing_character_cards',
-      'writing_background_cards', // 新增
-      'writing_style_cards',      // 新增
+      'writing_background_cards',
+      'writing_style_cards',
     ];
+
     // 第一个循环处理所有非列表的默认配置项
     for (final entry in appDefaultConfigs.entries) {
-      // 如果这个键不在特殊处理列表里，并且用户的配置中不存在这个键
       if (!presetListKeys.contains(entry.key) && !_config.containsKey(entry.key)) {
-        // 那么就直接从默认配置中添加它，无论它是不是List
         _config[entry.key] = entry.value;
         needsSave = true;
       }
@@ -91,7 +90,6 @@ class ConfigService {
 
       final mergedList = _mergePresetLists(userList: userList, defaultList: defaultList);
 
-      // 如果合并后的列表与用户现有列表不同，则标记为需要保存
       if (jsonEncode(mergedList) != jsonEncode(userList)) {
         _config[key] = mergedList;
         needsSave = true;
@@ -111,12 +109,9 @@ class ConfigService {
   }) {
     // 筛选出用户自定义的项（非系统预设）
     final userCustomItems = userList.where((item) => item['isSystemPreset'] != true).toList();
-    
     final List<Map<String, dynamic>> mergedList = List.from(defaultList);
-
     // 将用户自定义的项添加回去
     mergedList.addAll(userCustomItems);
-
     return mergedList;
   }
   
@@ -150,7 +145,7 @@ class ConfigService {
     return _configDirectoryPath;
   }
   
-  /// 返回包含 character, image, video 子文件夹路径的 Map
+  /// 返回包含 character, image, video 子文件夹路径的 Map (旧工作台用)
   Future<Map<String, Directory>> getOrCreateWorkbenchDirs() async {
     final configDir = Directory(getConfigDirectoryPath());
     final workbenchDir = Directory(p.join(configDir.path, 'Workbench'));
@@ -173,6 +168,33 @@ class ConfigService {
     };
   }
 
+  /// 获取或创建 游戏舞台(GameWorkbench) 专用目录
+  Future<Map<String, Directory>> getOrCreateGameWorkbenchDirs() async {
+    final configDir = Directory(getConfigDirectoryPath());
+    final gameWorkbenchDir = Directory(p.join(configDir.path, 'GameWorkbench'));
+
+    // 1. 角色文件夹
+    final characterDir = Directory(p.join(gameWorkbenchDir.path, 'character'));
+    
+    // 2. 场景文件夹
+    final sceneBaseDir = Directory(p.join(gameWorkbenchDir.path, 'scene'));
+    final sceneImageDir = Directory(p.join(sceneBaseDir.path, 'image'));
+    final sceneMusicDir = Directory(p.join(sceneBaseDir.path, 'music'));
+
+    // 创建目录
+    for (final dir in [characterDir, sceneImageDir, sceneMusicDir]) {
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+    }
+
+    return {
+      'character': characterDir,
+      'scene_image': sceneImageDir,
+      'scene_music': sceneMusicDir,
+    };
+  }
+
   // 清空工作台媒体文件，清空Workbench下的 image, video, character 文件夹内容
   Future<void> clearWorkbenchMedia() async {
     final logger = LogService.instance;
@@ -183,7 +205,6 @@ class ConfigService {
       final videoDir = workbenchDirs['video']!;
       final characterDir = workbenchDirs['character']!;
 
-      // 定义一个内部函数来清空目录
       Future<void> _clearDirectory(Directory dir) async {
         if (await dir.exists()) {
           final entities = dir.list();
@@ -230,7 +251,6 @@ class ConfigService {
   /// 保存全部配置文件方法
   Future<void> save() async {
     final file = File(_configPath);
-    // 确保父目录存在
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
     }
@@ -267,21 +287,16 @@ class ConfigService {
     return _getActiveApi('activeLanguageApiId', 'languageApis', '语言接口');
   }
 
-  /// 根据ID获取特定的语言接口，如果ID无效或为null，则返回当前激活的接口
+  /// 根据ID获取特定的语言接口
   ApiModel getLanguageApiById(String? apiId) {
-    // 如果ID为null，直接返回激活的接口
     if (apiId == null) {
       return getActiveLanguageApi();
     }
-
     final apisJson = getSetting<List>('languageApis', []);
     final apis = apisJson.map((json) => ApiModel.fromJson(json as Map<String, dynamic>)).toList();
-
     try {
-      // 尝试查找指定ID的接口
       return apis.firstWhere((api) => api.id == apiId);
     } catch (e) {
-      // 如果找不到（例如，接口被删除），记录警告并返回当前激活的接口作为后备
       LogService.instance.warn("未找到ID为 '$apiId' 的语言接口，已回退到当前激活的接口。");
       return getActiveLanguageApi();
     }
@@ -295,6 +310,11 @@ class ConfigService {
   /// 获取正在激活的视频接口
   ApiModel getActiveVideoApi() {
     return _getActiveApi('activeVideoApiId', 'videoApis', '视频接口');
+  }
+  
+  /// 获取正在激活的音乐接口
+  ApiModel getActiveMusicApi() {
+    return _getActiveApi('activeMusicApiId', 'musicApis', '音乐接口');
   }
 
   /// 通用的获取激活API的逻辑
