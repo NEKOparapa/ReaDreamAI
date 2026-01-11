@@ -1,7 +1,6 @@
 // lib/ui/creation/game_world_creation/generate_game_stage_page.dart
 
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../base/config_service.dart';
@@ -12,7 +11,6 @@ import 'game_stage_workbench_page.dart';
 
 enum CharacterSourceOption { ai, manual }
 
-// 用于管理和持久化此页面配置的类
 class GameStageGenerationConfig {
   String worldRequirements;
   String destinyAiRequirements;
@@ -91,7 +89,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
 
   List<CharacterCard> _allCharacterCards = [];
   bool _isLoading = false;
-  
+
   // 控制器
   final TextEditingController _worldRequirementsController = TextEditingController();
   final TextEditingController _destinyAiRequirementsController = TextEditingController();
@@ -150,7 +148,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     final charList = List<Map<String, dynamic>>.from(
         _configService.getSetting('drawing_character_cards', []));
     _allCharacterCards = charList.map((e) => CharacterCard.fromJson(e)).toList();
-    // 移除已删除的角色ID
     _config.selectedCharacterIds.removeWhere((id) => !_allCharacterCards.any((c) => c.id == id));
     setState(() {});
   }
@@ -184,14 +181,12 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
       return;
     }
 
-    // 保存当前UI上的所有配置，确保生成时使用的是最新值
     await _config.saveToService(_configService);
     LogService.instance.info('开始生成游戏舞台，已保存当前页面配置。');
 
     setState(() => _isLoading = true);
 
     try {
-      // 准备传递给AI服务的参数
       List<Map<String, dynamic>>? selectedCharactersJson;
       if (_config.characterSource == CharacterSourceOption.manual) {
         selectedCharactersJson = _allCharacterCards
@@ -200,28 +195,23 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             .toList();
       }
 
-      // 调用AI服务生成数据 (包含世界、事件、以及可选的媒体资源)
       final generatedData = await GameStageGeneratorService.instance.generateGameStage(
         worldRequirements: _config.worldRequirements,
         destinyAiRequirements: _config.destinyAiRequirements,
-        firstDayRequirements: _config.firstDayRequirements, 
+        firstDayRequirements: _config.firstDayRequirements,
         characterSource: _config.characterSource,
         useAiCharacterCount: _config.useAiCharacterCount,
         aiCharacterCount: _config.aiCharacterCount,
         selectedCharacters: selectedCharactersJson,
         useAiScenes: _config.useAiScenes,
         sceneCount: _config.sceneCount,
-        // 传递新开关
         generateCharImages: _config.generateCharImages,
         generateSceneImages: _config.generateSceneImages,
         generateSceneMusic: _config.generateSceneMusic,
       );
-      
-      LogService.instance.success('游戏舞台数据生成成功。');
 
-      // 将生成的数据保存到ConfigService，供工作台页面读取
+      LogService.instance.success('游戏舞台数据生成成功。');
       await _saveGeneratedDataToConfig(generatedData);
-      LogService.instance.info('已将生成的数据保存至配置，准备跳转。');
 
       if (mounted) {
         Navigator.push(
@@ -243,33 +233,97 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     }
   }
 
-  /// 辅助方法，用于将生成的数据保存到配置文件
   Future<void> _saveGeneratedDataToConfig(Map<String, dynamic> data) async {
-      await _configService.modifySetting(
-        'game_stage_world_background',
-        data['world_background'] ?? '',
-      );
-      await _configService.modifySetting(
-        'game_stage_destiny_ai',
-        data['destiny_ai'] ?? '',
-      );
-      await _configService.modifySetting(
-        'game_stage_player_character',
-        data['player_character'] ?? {},
-      );
-      await _configService.modifySetting(
-        'game_stage_ai_characters',
-        data['ai_characters'] ?? [],
-      );
-      await _configService.modifySetting(
-        'game_stage_game_scenes',
-        data['game_scenes'] ?? [],
-      );
-      // 保存第一天事件（多场景流）
-      await _configService.modifySetting(
-        'game_stage_first_day_events',
-        data['first_day_events'] ?? [],
-      );
+    await _configService.modifySetting('game_stage_world_background', data['world_background'] ?? '');
+    await _configService.modifySetting('game_stage_destiny_ai', data['destiny_ai'] ?? '');
+    await _configService.modifySetting('game_stage_player_character', data['player_character'] ?? {});
+    await _configService.modifySetting('game_stage_ai_characters', data['ai_characters'] ?? []);
+    await _configService.modifySetting('game_stage_game_scenes', data['game_scenes'] ?? []);
+    await _configService.modifySetting('game_stage_first_day_events', data['first_day_events'] ?? []);
+  }
+
+  // --- 样式组件：统一设置行 ---
+  Widget _buildSettingRow({
+    required String title,
+    required String subtitle,
+    required Widget trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[700],
+                    fontSize: 14.0,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          trailing,
+        ],
+      ),
+    );
+  }
+
+  // --- 样式组件：数量控制器 ---
+  Widget _buildCountControl({
+    required bool isAi,
+    required TextEditingController controller,
+    required ValueChanged<bool> onAiToggle,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          child: !isAi
+              ? Container(
+                  width: 60,
+                  margin: const EdgeInsets.only(right: 8),
+                  child: TextFormField(
+                    controller: controller,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      isDense: true,
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        ToggleButtons(
+          isSelected: [!isAi, isAi],
+          onPressed: (index) {
+            onAiToggle(index == 1);
+          },
+          borderRadius: BorderRadius.circular(8),
+          constraints: const BoxConstraints(minHeight: 36, minWidth: 48),
+          children: const [
+            Text('手动'),
+            Text('自动'),
+          ],
+        ),
+      ],
+    );
   }
 
   @override
@@ -357,7 +411,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               maxLines: 5,
             ),
             const SizedBox(height: 24),
-            // 首日事件要求 UI
             const ListTile(
               leading: Icon(Icons.start, color: Colors.orange),
               title: Text('首日事件内容', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -384,19 +437,25 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
 
   Widget _buildSceneStructureSection() {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const ListTile(
-              leading: Icon(Icons.map_outlined),
-              title: Text('游戏场景', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('设置游戏场景的数量或由AI自动决定'),
-              contentPadding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.map_outlined),
+                const SizedBox(width: 16),
+                Text('场景生成设置', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              ],
             ),
-            const SizedBox(height: 8),
-            _buildCountSelector(
-              title: '游戏场景数',
+          ),
+          const Divider(),
+
+          // 1. 游戏场景数
+          _buildSettingRow(
+            title: '游戏场景数',
+            subtitle: '设置场景数量或由AI自动决定',
+            trailing: _buildCountControl(
               isAi: _config.useAiScenes,
               controller: _sceneCountController,
               onAiToggle: (isAi) {
@@ -404,29 +463,35 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                 _saveConfig();
               },
             ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              title: const Text('生成场景插图'),
-              subtitle: const Text('调用绘图接口生成环境氛围图'),
+          ),
+
+          // 2. 场景插图
+          _buildSettingRow(
+            title: '生成场景插图',
+            subtitle: '调用绘图接口生成环境氛围图',
+            trailing: Switch(
               value: _config.generateSceneImages,
               onChanged: (val) {
                 setState(() => _config.generateSceneImages = val);
                 _saveConfig();
               },
-              contentPadding: EdgeInsets.zero,
             ),
-            SwitchListTile(
-              title: const Text('生成场景音乐'),
-              subtitle: const Text('调用音乐接口生成背景音乐(BGM)'),
+          ),
+
+          // 3. 场景音乐
+          _buildSettingRow(
+            title: '生成场景音乐',
+            subtitle: '调用音乐接口生成背景音乐(BGM)',
+            trailing: Switch(
               value: _config.generateSceneMusic,
               onChanged: (val) {
                 setState(() => _config.generateSceneMusic = val);
                 _saveConfig();
               },
-              contentPadding: EdgeInsets.zero,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
@@ -434,22 +499,38 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   Widget _buildCharacterSettingsSection() {
     final theme = Theme.of(context);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ListTile(
-              leading: Icon(Icons.people_outline),
-              title: Text('AI 角色', style: TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('设置角色数量，并手动选择或由AI自动生成'),
-              contentPadding: EdgeInsets.zero,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+            child: Row(
+              children: [
+                const Icon(Icons.people_outline),
+                const SizedBox(width: 16),
+                Text('角色生成设置', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+              ],
             ),
-            const SizedBox(height: 8),
+          ),
+          const Divider(),
 
-            // 1. 角色数量设置项
-            _buildCountSelector(
-              title: '角色数量',
+          // 1. 生成角色立绘
+          _buildSettingRow(
+            title: '生成角色立绘',
+            subtitle: '调用绘图接口为生成的角色创建形象图',
+            trailing: Switch(
+              value: _config.generateCharImages,
+              onChanged: (val) {
+                setState(() => _config.generateCharImages = val);
+                _saveConfig();
+              },
+            ),
+          ),
+
+          // 2. 角色数量
+          _buildSettingRow(
+            title: '角色数量',
+            subtitle: '设定游戏世界中的主要角色数',
+            trailing: _buildCountControl(
               isAi: _config.useAiCharacterCount,
               controller: _aiCharacterCountController,
               onAiToggle: (isAi) {
@@ -457,58 +538,40 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                 _saveConfig();
               },
             ),
-            const SizedBox(height: 12),
-            
-            SwitchListTile(
-              title: const Text('生成角色立绘'),
-              subtitle: const Text('调用绘图接口为生成的角色创建形象图'),
-              value: _config.generateCharImages,
-              onChanged: (val) {
-                setState(() => _config.generateCharImages = val);
-                _saveConfig();
-              },
-              contentPadding: EdgeInsets.zero,
-            ),
-            const Divider(),
+          ),
 
-            // 2. 角色设定方式（手动/AI）
-            Row(
-              children: [
-                Expanded(
-                  child: Text('角色设定', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                ),
-                ToggleButtons(
-                  isSelected: [
-                    _config.characterSource == CharacterSourceOption.manual,
-                    _config.characterSource == CharacterSourceOption.ai,
-                  ],
-                  onPressed: (int index) {
-                    setState(() {
-                      _config.characterSource = index == 0
-                          ? CharacterSourceOption.manual
-                          : CharacterSourceOption.ai;
-                      _saveConfig();
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  constraints: const BoxConstraints(minHeight: 40, minWidth: 64),
-                  children: const [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('手动选择'),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('AI生成'),
-                    ),
-                  ],
-                ),
+          // 3. 角色设定方式
+          _buildSettingRow(
+            title: '角色设定',
+            subtitle: '手动选择现有卡片或由AI生成',
+            trailing: ToggleButtons(
+              isSelected: [
+                _config.characterSource == CharacterSourceOption.manual,
+                _config.characterSource == CharacterSourceOption.ai,
+              ],
+              onPressed: (int index) {
+                setState(() {
+                  _config.characterSource = index == 0
+                      ? CharacterSourceOption.manual
+                      : CharacterSourceOption.ai;
+                  _saveConfig();
+                });
+              },
+              borderRadius: BorderRadius.circular(8),
+              constraints: const BoxConstraints(minHeight: 36, minWidth: 48),
+              children: const [
+                Text('手动'),
+                Text('自动'),
               ],
             ),
-            const SizedBox(height: 16),
-            
-            // 3. 角色设定详情区域
-            Container(
+          ),
+
+          const Divider(),
+
+          // 4. 角色设定详情区域
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
@@ -522,8 +585,8 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                     : _buildAiCharacterGenerator(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -536,14 +599,10 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             runSpacing: 8.0,
             children: _allCharacterCards.map((card) {
               final isSelected =
-              _config.selectedCharacterIds.contains(card.id);
+                  _config.selectedCharacterIds.contains(card.id);
               return FilterChip(
                 label: Text(card.name),
-                avatar: card.referenceImagePath != null
-                    ? CircleAvatar(
-                    backgroundImage: FileImage(
-                        File(card.referenceImagePath!)))
-                    : null,
+                // 移除了 avatar 属性，不再显示图片
                 selected: isSelected,
                 onSelected: (selected) {
                   setState(() {
@@ -577,61 +636,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     );
   }
 
-  Widget _buildCountSelector({
-    required String title,
-    required bool isAi,
-    required TextEditingController controller,
-    required ValueChanged<bool> onAiToggle,
-  }) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-        ),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          transitionBuilder: (child, animation) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-          child: !isAi
-              ? SizedBox(
-                  key: ValueKey('input-$title'),
-                  width: 100,
-                  child: TextFormField(
-                    controller: controller,
-                    textAlign: TextAlign.center,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                      isDense: true,
-                    ),
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  ),
-                )
-              : SizedBox(key: ValueKey('placeholder-$title')),
-        ),
-        const SizedBox(width: 16),
-        ToggleButtons(
-          isSelected: [!isAi, isAi],
-          onPressed: (index) {
-            onAiToggle(index == 1);
-          },
-          borderRadius: BorderRadius.circular(8),
-          constraints: const BoxConstraints(minHeight: 40, minWidth: 64),
-          children: const [
-            Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('自定义')),
-            Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Text('AI自动')),
-          ],
-        ),
-      ],
-    );
-  }
-
   Widget _buildBottomActionBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -651,10 +655,10 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
         child: FilledButton.icon(
           icon: _isLoading
               ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: Colors.white))
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white))
               : const Icon(Icons.auto_awesome),
           label: Text(_isLoading ? '正在构建世界...' : '生成游戏舞台',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),

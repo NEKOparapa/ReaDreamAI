@@ -1,5 +1,6 @@
-//lib/ui/reader/game_book/components/world_map_view.dart
+// lib/ui/reader/game_book/components/world_map_view.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../services/game/game_manager.dart';
 
@@ -36,6 +37,8 @@ class WorldMapView extends StatelessWidget {
     // 计算宽度，保持两列布局
     final itemWidth = (MediaQuery.of(context).size.width - 44) / 2;
     final isTemporary = scene['is_temporary'] == true;
+    final imagePath = scene['imagePath'] as String?;
+    final hasImage = imagePath != null && File(imagePath).existsSync();
 
     Color borderColor = Colors.white10;
     if (hasEvent) {
@@ -57,7 +60,14 @@ class WorldMapView extends StatelessWidget {
           color: const Color(0xFF252525),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: borderColor, width: 1.5),
-          gradient: hasEvent 
+          // --- 背景图片逻辑 ---
+          image: hasImage 
+            ? DecorationImage(
+                image: FileImage(File(imagePath!)),
+                fit: BoxFit.cover,
+              )
+            : null,
+          gradient: (!hasImage && hasEvent) 
             ? LinearGradient(
                 begin: Alignment.topLeft, 
                 end: Alignment.bottomRight, 
@@ -70,24 +80,49 @@ class WorldMapView extends StatelessWidget {
         ),
         child: Stack(
           children: [
+            // --- 图片遮罩层 (确保文字可读) ---
+            if (hasImage)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10.5), // 略小于外框
+                  color: Colors.black.withOpacity(0.6), // 半透明黑色遮罩
+                ),
+              ),
+
             Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     hasEvent ? (isPlaying ? Icons.play_circle_filled : (isTemporary ? Icons.crisis_alert : Icons.location_on)) : Icons.location_on_outlined, 
-                    color: hasEvent ? (isPlaying ? Colors.blueAccent : (isTemporary ? Colors.cyanAccent : Colors.amber)) : Colors.white24
+                    // 如果有背景图，Icon颜色调亮，否则使用标准色
+                    color: hasEvent 
+                        ? (isPlaying ? Colors.blueAccent : (isTemporary ? Colors.cyanAccent : Colors.amber)) 
+                        : (hasImage ? Colors.white70 : Colors.white24)
                   ),
                   const SizedBox(height: 8),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Text(
                       scene['name'] ?? 'Unknown',
-                      style: TextStyle(color: hasEvent ? Colors.white : Colors.white70, fontWeight: hasEvent ? FontWeight.bold : FontWeight.normal),
+                      style: TextStyle(
+                        color: hasEvent ? Colors.white : Colors.white70, 
+                        fontWeight: hasEvent ? FontWeight.bold : FontWeight.normal,
+                        // 在图片上增加文字阴影
+                        shadows: hasImage ? [const Shadow(color: Colors.black, offset: Offset(1, 1), blurRadius: 3)] : null,
+                      ),
                       maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center
                     )
                   ),
-                  if (hasEvent) Text('${events.length} 个事件', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10)),
+                  if (hasEvent) 
+                    Text(
+                      '${events.length} 个事件', 
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6), 
+                        fontSize: 10,
+                        shadows: hasImage ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+                      )
+                    ),
                 ],
               ),
             ),

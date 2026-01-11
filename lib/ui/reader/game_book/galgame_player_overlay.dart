@@ -1,7 +1,9 @@
-//lib/ui/reader/game_book/galgame_player_overlay.dart
+// lib/ui/reader/game_book/galgame_player_overlay.dart
 
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import '../../../../services/game/game_manager.dart';
 
 class GalgamePlayerOverlay extends StatefulWidget {
@@ -30,9 +32,9 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   late List<Map<String, dynamic>> _dialogues;
   
   // --- 状态控制 ---
-  int _dialogueIndex = 0;           // 当前播放到的对话索引
-  bool _isFreeMode = false;         // 是否开启随心模式
-  bool _isGenerating = false;       // 是否正在请求 AI
+  int _dialogueIndex = 0;           
+  bool _isFreeMode = false;         
+  bool _isGenerating = false;       
   
   // --- 选项管理 ---
   List<String> _visibleOptions = []; 
@@ -44,6 +46,10 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   final ScrollController _textScrollController = ScrollController();
   final TextEditingController _inputController = TextEditingController();
 
+  // --- 资源控制器 ---
+  VideoPlayerController? _bgmController;
+  String? _backgroundImagePath;
+
   @override
   void initState() {
     super.initState();
@@ -54,7 +60,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
         .toList();
     _currentEventData['dialogues'] = _dialogues;
     
-    // 2. 恢复进度 (读取 today_event.json 中的断点)
+    // 2. 恢复进度
     final savedIndex = widget.event['breakpoint_index'];
     if (savedIndex != null && savedIndex is int && savedIndex > 0 && savedIndex < _dialogues.length) {
       _dialogueIndex = savedIndex;
@@ -70,7 +76,56 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
       _pendingOptions = initialOptions;
     }
 
+    // 加载场景资源（背景图 & BGM）
+    _loadSceneResources();
+
     _startTypingEffect();
+  }
+
+  /// 加载场景对应的背景和音乐
+  void _loadSceneResources() {
+    // 尝试获取场景 ID 或名称
+    final sceneId = widget.event['scene_id'] ?? widget.event['scene_name'];
+    if (sceneId == null) return;
+
+    // 在 GameManager 中查找场景数据
+    final scene = widget.gameManager.scenes.firstWhere(
+      (s) => s['id'] == sceneId || s['name'] == sceneId,
+      orElse: () => {},
+    );
+
+    if (scene.isEmpty) return;
+
+    // 1. 设置背景图
+    if (scene['imagePath'] != null) {
+      final file = File(scene['imagePath']);
+      if (file.existsSync()) {
+        setState(() {
+          _backgroundImagePath = scene['imagePath'];
+        });
+      }
+    }
+
+    // 2. 播放背景音乐
+    if (scene['musicPath'] != null) {
+      final file = File(scene['musicPath']);
+      if (file.existsSync()) {
+        _playBgm(file);
+      }
+    }
+  }
+
+  /// 自动播放 BGM 逻辑
+  Future<void> _playBgm(File file) async {
+    try {
+      _bgmController = VideoPlayerController.file(file);
+      await _bgmController!.initialize();
+      await _bgmController!.setLooping(true); // 循环播放
+      await _bgmController!.setVolume(0.2);   // 音量设置低一点
+      await _bgmController!.play();
+    } catch (e) {
+      debugPrint("BGM播放失败: $e");
+    }
   }
 
   @override
@@ -78,12 +133,46 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     _typingTimer?.cancel();
     _inputController.dispose();
     _textScrollController.dispose();
+    _bgmController?.dispose();
     super.dispose();
   }
 
-  /// 显示历史对话
+  /// 查找角色立绘路径
+  String? _getCharacterImagePath(String name) {
+    // 1. 排除玩家
+    if (name == widget.playerName || name == '玩家' || name == '你') {
+      return null; 
+    }
+    
+    // 2. 清洗名字（去掉可能存在的括号状态，例如 "艾莉 (生气)" -> "艾莉"）
+    String cleanName = name.split('（').first.split('(').first.trim();
+
+    try {
+      // 3. 尝试查找 (支持包含匹配)
+      final character = widget.gameManager.aiCharacters.firstWhere(
+        (c) {
+          final charName = c['name']?.toString() ?? '';
+          final cardName = c['cardName']?.toString() ?? '';
+          // 只要名字包含，或者被包含，都算匹配
+          return charName == cleanName || 
+                 cardName == cleanName ||
+                 (charName.isNotEmpty && cleanName.contains(charName));
+        },
+        orElse: () => {},
+      );
+
+      if (character.isNotEmpty && character['imagePath'] != null) {
+        return character['imagePath'];
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }
+
+
   void _showHistory() {
-    showModalBottomSheet(
+     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
@@ -109,7 +198,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                 child: ListView.separated(
                   controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  // 只显示到当前进度的对话
                   itemCount: _dialogueIndex + 1,
                   separatorBuilder: (c, i) => const Divider(color: Colors.white10),
                   itemBuilder: (context, index) {
@@ -142,9 +230,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
       },
     );
   }
-
-  // --- 核心逻辑 ---
-
+  
   void _autoSave() {
     widget.gameManager.saveCurrentEventProgress(_currentEventData, _dialogueIndex);
   }
@@ -170,7 +256,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             charIndex++;
             _displayingText = fullText.substring(0, charIndex);
           });
-          // 自动滚动到底部
           if (_textScrollController.hasClients) {
              _textScrollController.jumpTo(_textScrollController.position.maxScrollExtent);
           }
@@ -185,7 +270,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     if (_dialogueIndex >= _dialogues.length) return;
 
     final currentFullText = _dialogues[_dialogueIndex]['message'] ?? '';
-    // 如果字还没打完，点击则瞬间显示全
     if (_displayingText.length < currentFullText.length) {
       _typingTimer?.cancel();
       setState(() => _displayingText = currentFullText);
@@ -197,20 +281,17 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     if (_dialogueIndex < _dialogues.length - 1) {
       setState(() {
         _dialogueIndex++;
-        _visibleOptions = []; // 翻页隐藏旧选项
+        _visibleOptions = []; 
       });
       _startTypingEffect();
       _autoSave();
     } else {
-      // 已经是对白最后一句
       if (_pendingOptions.isNotEmpty) {
-        // 显示暂存的选项
         setState(() {
           _visibleOptions = List.from(_pendingOptions);
           _pendingOptions = [];
         });
       } else if (!_isFreeMode && _visibleOptions.isEmpty) {
-        // 没有后续选项，也不是随心模式 -> 结束事件
         _finishEvent();
       }
     }
@@ -305,32 +386,79 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     final isPlayer = name == widget.playerName || name == '玩家';
     final progress = '${_dialogueIndex + 1}/${_dialogues.length}';
     final showNextIndicator = !_isGenerating; 
+    
+    // 获取角色立绘路径
+    final imagePath = _getCharacterImagePath(name);
+    final hasImage = imagePath != null && File(imagePath).existsSync();
 
     return Positioned.fill(
       child: Stack(
         children: [
-          // 1. 全局点击层 (黑色半透明遮罩)
+          // 1. 全局点击层 + 动态背景层
           Positioned.fill(
             child: GestureDetector(
               onTap: _isGenerating ? null : _nextDialogue,
-              child: Container(color: Colors.black.withOpacity(0.85)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // 1.1 背景图层
+                  if (_backgroundImagePath != null)
+                    Image.file(
+                      File(_backgroundImagePath!),
+                      fit: BoxFit.cover,
+                    )
+                  else
+                    // 无图时设为透明，以便看到下方的地图
+                    const SizedBox.shrink(), 
+
+                  // 1.2 遮罩层
+                  Container(
+                    // 根据是否有图调整透明度
+                    // 有图时保持 0.6 稍微压暗
+                    // 无图时设为 0.75 半透明，既能看清地图，又能衬托白色文字
+                    color: _backgroundImagePath != null 
+                        ? Colors.black.withOpacity(0.6) 
+                        : Colors.black.withOpacity(0.75),
+                  ),
+                ],
+              ),
             ),
           ),
 
-          // 2. 角色立绘 (简单的 Icon 占位)
+          // 2. 角色立绘
           if (name != '系统' && name != '旁白')
             Positioned(
               bottom: 180, 
-              left: isPlayer ? null : 20,
-              right: isPlayer ? 20 : null,
+              // 如果是玩家则靠右(或者不显示)，如果是NPC则靠左显示
+              left: isPlayer ? null : -40,
+              right: isPlayer ? -40 : null,
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: 0.4,
-                child: Icon(
-                  isPlayer ? Icons.person : Icons.smart_toy, 
-                  size: 300, 
-                  color: isPlayer ? Colors.blue : Colors.purple
-                ),
+                opacity: 1.0,
+                child: hasImage 
+                  ? Container(
+                      height: 500, // 立绘高度
+                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+                      // 增加立绘阴影，使其在背景上更突出
+                      decoration: const BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(color: Colors.black26, blurRadius: 20, spreadRadius: 5)
+                        ]
+                      ),
+                      child: Image.file(
+                        File(imagePath!),
+                        fit: BoxFit.contain,
+                        alignment: Alignment.bottomCenter,
+                      ),
+                    )
+                  : Opacity(
+                      opacity: 0.4,
+                      child: Icon(
+                        isPlayer ? Icons.person : Icons.smart_toy, 
+                        size: 300, 
+                        color: isPlayer ? Colors.blue : Colors.purple
+                      ),
+                    ),
               ),
             ),
 
@@ -458,14 +586,13 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
           
-          // 6. 右上角：功能按钮组 (历史、完成)
+          // 6. 右上角：功能按钮组
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 历史记录
                 IconButton(
                   onPressed: _showHistory,
                   icon: const Icon(Icons.history, color: Colors.white70),
@@ -473,7 +600,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   style: IconButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
                 ),
                 const SizedBox(width: 8),
-                // 完成按钮
                 TextButton.icon(
                   onPressed: _finishEvent,
                   icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),

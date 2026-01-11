@@ -1,5 +1,6 @@
-//lib/ui/reader/game_book/components/character_list_sheet.dart
+// lib/ui/reader/game_book/components/character_list_sheet.dart
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../services/game/game_manager.dart';
 
@@ -66,6 +67,10 @@ class CharacterListSheet extends StatelessWidget {
     final other = char['other'] ?? ''; 
     final equipment = char['equipment'];
     final backpack = char['backpack'];
+    
+    // 获取图片路径
+    final imagePath = char['imagePath'] as String?;
+    final hasImage = imagePath != null && File(imagePath).existsSync();
 
     return Container(
       decoration: BoxDecoration(
@@ -78,15 +83,20 @@ class CharacterListSheet extends StatelessWidget {
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          // 头像
+          // 头像: 如果有图片则显示缩略图，否则显示文字
           leading: Container(
             width: 52, height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.purple.withOpacity(0.1),
               border: Border.all(color: Colors.purpleAccent.withOpacity(0.5), width: 1.5),
+              image: hasImage 
+                  ? DecorationImage(image: FileImage(File(imagePath!)), fit: BoxFit.cover)
+                  : null,
             ),
-            child: Center(child: Text(char['name']?[0] ?? '?', style: const TextStyle(color: Colors.purpleAccent, fontSize: 22, fontWeight: FontWeight.bold))),
+            child: !hasImage 
+                ? Center(child: Text(char['name']?[0] ?? '?', style: const TextStyle(color: Colors.purpleAccent, fontSize: 22, fontWeight: FontWeight.bold)))
+                : null,
           ),
           // 名字
           title: Text(
@@ -116,6 +126,28 @@ class CharacterListSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // --- 新增: 详情页大图 ---
+                  if (hasImage) ...[
+                    Container(
+                      height: 300,
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white10),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.file(
+                          File(imagePath!),
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                        ),
+                      ),
+                    ),
+                  ],
+
                   // --- 板块 1: 基础信息 ---
                   _buildSectionHeader("基础信息", Icons.person_outline),
                   

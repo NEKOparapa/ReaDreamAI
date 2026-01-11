@@ -128,7 +128,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- 导出为游戏书 ---
+  // --- 导出为游戏书 (核心修改部分) ---
 
   Future<void> _saveAsGameBook() async {
     final titleController = TextEditingController();
@@ -171,6 +171,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     if (shouldSave != true) return;
 
     try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('正在打包资源生成游戏书...')));
+      }
+
       final bookId = const Uuid().v4();
       final bookTitle = titleController.text.trim();
       
@@ -181,12 +185,61 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       final bookFolder = Directory(p.join(booksDir.path, bookId));
       if (!await bookFolder.exists()) await bookFolder.create(recursive: true);
 
+      // 1. 创建资源目录 assets
+      final assetsFolder = Directory(p.join(bookFolder.path, 'assets'));
+      if (!await assetsFolder.exists()) await assetsFolder.create(recursive: true);
+
       final initialWorldStateFolder = Directory(p.join(bookFolder.path, 'initial_world_state'));
       if (!await initialWorldStateFolder.exists()) {
         await initialWorldStateFolder.create(recursive: true);
       }
 
-      // 处理待触发事件
+      // --- 辅助函数：复制资源文件并返回新路径 ---
+      Future<String?> copyAsset(String? sourcePath, String prefix) async {
+        if (sourcePath == null || sourcePath.isEmpty) return null;
+        final sourceFile = File(sourcePath);
+        if (!await sourceFile.exists()) return null;
+
+        try {
+          final extension = p.extension(sourcePath);
+          final newFileName = '${prefix}_${const Uuid().v4()}$extension';
+          final newPath = p.join(assetsFolder.path, newFileName);
+          await sourceFile.copy(newPath);
+          return newPath; // 返回新位置的绝对路径
+        } catch (e) {
+          LogService.instance.error('资源复制失败: $sourcePath', e);
+          return null; // 复制失败则字段置空或保留原值(视需求定，这里置空防止死链)
+        }
+      }
+
+      // --- 准备数据：深度拷贝并处理媒体路径 ---
+
+      // 2. 处理 AI 角色 (复制立绘)
+      // 使用 jsonDecode/Encode 做一次简单的深度拷贝，避免修改了 Workbench 的原始数据
+      final List<Map<String, dynamic>> exportAiCharacters = 
+          List<Map<String, dynamic>>.from(jsonDecode(jsonEncode(_aiCharacters)));
+
+      for (var char in exportAiCharacters) {
+        if (char['imagePath'] != null) {
+          // 复制图片到 assets 目录，并更新 export 数据中的路径
+          char['imagePath'] = await copyAsset(char['imagePath'], 'char_img_${char['id'] ?? 'unknown'}');
+        }
+      }
+
+      // 3. 处理 场景 (复制图片和音乐)
+      final List<Map<String, dynamic>> exportScenes = 
+          List<Map<String, dynamic>>.from(jsonDecode(jsonEncode(_gameScenes)));
+
+      for (var scene in exportScenes) {
+        if (scene['imagePath'] != null) {
+          scene['imagePath'] = await copyAsset(scene['imagePath'], 'scene_img_${scene['id'] ?? 'unknown'}');
+        }
+        if (scene['musicPath'] != null) {
+          scene['musicPath'] = await copyAsset(scene['musicPath'], 'scene_bgm_${scene['id'] ?? 'unknown'}');
+        }
+      }
+
+      // 4. 处理 待触发事件 (初始化)
       final List<Map<String, dynamic>> pendingEvents = [];
       for (var evt in _firstDayEvents) {
         final newEvt = Map<String, dynamic>.from(evt);
@@ -197,7 +250,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         pendingEvents.add(newEvt);
       }
 
-      // 准备写入文件
+      // 5. 组装文件内容
       final Map<String, String> filesContent = {};
 
       filesContent['config_world.json'] = jsonEncode({
@@ -206,9 +259,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         'total_days': 1, 
       });
 
+      // 使用处理过路径的 export 数据
       filesContent['data_player.json'] = jsonEncode(_playerCharacter);
-      filesContent['data_ai_characters.json'] = jsonEncode(_aiCharacters);
-      filesContent['data_scenes.json'] = jsonEncode(_gameScenes);
+      filesContent['data_ai_characters.json'] = jsonEncode(exportAiCharacters); 
+      filesContent['data_scenes.json'] = jsonEncode(exportScenes);
 
       filesContent['today_event.json'] = jsonEncode({
         'date': DateTime.now().toIso8601String(),
@@ -221,13 +275,13 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         'logs': [],
       });
 
-      // 写入文件
+      // 6. 写入文件
       for (var entry in filesContent.entries) {
         await File(p.join(bookFolder.path, entry.key)).writeAsString(entry.value);
         await File(p.join(initialWorldStateFolder.path, entry.key)).writeAsString(entry.value);
       }
 
-      // 更新书架
+      // 7. 更新书架
       final entry = BookshelfEntry(
         id: bookId,
         title: bookTitle,
@@ -243,20 +297,21 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       await CacheManager().saveBookshelf(currentEntries);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('游戏书创建成功！请前往书架查看。')));
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('游戏书创建成功！资源已打包。')));
       }
 
     } catch (e, s) {
       LogService.instance.error('创建游戏书失败', e, s);
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('创建失败: $e')));
       }
     }
   }
 
   // --- 资源生成逻辑 (图片/音乐) ---
-  // 修改点：改为调用 Service 方法，支持使用已保存的 Prompt
-
+  
   Future<void> _regenerateCharacterImage(int index) async {
     final char = _aiCharacters[index];
     // 获取当前保存的 Prompt，如果没有则为空字符串
@@ -941,8 +996,12 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         shape: const Border(),
         leading: CircleAvatar(
           backgroundColor: theme.colorScheme.primaryContainer,
-          backgroundImage: imagePath != null ? FileImage(File(imagePath)) : null,
-          child: imagePath == null ? Icon(Icons.smart_toy_outlined, color: theme.colorScheme.primary) : null,
+          backgroundImage: (imagePath != null && File(imagePath).existsSync()) 
+              ? FileImage(File(imagePath)) 
+              : null,
+          child: (imagePath == null || !File(imagePath).existsSync()) 
+              ? Icon(Icons.smart_toy_outlined, color: theme.colorScheme.primary) 
+              : null,
         ),
         title: Text(
           char['cardName']?.isNotEmpty == true ? char['cardName'] : (char['name'] ?? '未命名角色'),
@@ -961,7 +1020,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               children: [
                 const Divider(),
                 // 角色立绘展示
-                if (imagePath != null)
+                if (imagePath != null && File(imagePath).existsSync())
                    Container(
                      height: 200,
                      width: double.infinity,
@@ -1109,7 +1168,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 场景图
-            if (imagePath != null)
+            if (imagePath != null && File(imagePath).existsSync())
               Container(
                 height: 150,
                 width: double.infinity,
@@ -1190,14 +1249,18 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        musicPath == null ? '暂无背景音乐' : '场景BGM.wav',
+                        (musicPath == null || !File(musicPath).existsSync()) 
+                          ? '暂无背景音乐' 
+                          : '场景BGM.wav',
                         style: TextStyle(
-                          color: musicPath == null ? Colors.grey : theme.colorScheme.onSurface,
+                          color: (musicPath == null || !File(musicPath).existsSync()) 
+                            ? Colors.grey 
+                            : theme.colorScheme.onSurface,
                           fontSize: 13,
                         ),
                       ),
                     ),
-                    if (musicPath != null)
+                    if (musicPath != null && File(musicPath).existsSync())
                       IconButton(
                         onPressed: () => _playAudio(musicPath),
                         icon: Icon(isPlayingThis ? Icons.pause_circle_filled : Icons.play_circle_filled),
