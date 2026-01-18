@@ -13,7 +13,6 @@ import '../../../base/config_service.dart';
 import '../../../base/log/log_service.dart';
 import '../../../models/bookshelf_entry.dart';
 import '../../../services/cache_manager/cache_manager.dart';
-// 引入 GameStageGeneratorService 用于统一调用生成逻辑
 import '../../../services/task_executor/game_stage_generator_service.dart';
 
 class GameStageWorkbenchPage extends StatefulWidget {
@@ -84,7 +83,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     final eventsList = _configService.getSetting<List>('game_stage_first_day_events', []);
     _firstDayEvents = eventsList.map((e) {
       final map = Map<String, dynamic>.from(e);
-      // 深度拷贝 dialogues 列表，防止引用问题
       if (map['dialogues'] is List) {
         map['dialogues'] = List<Map<String, dynamic>>.from(
           (map['dialogues'] as List).map((d) => Map<String, dynamic>.from(d))
@@ -128,7 +126,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- 导出为游戏书 (核心修改部分) ---
+  // --- 导出为游戏书 ---
 
   Future<void> _saveAsGameBook() async {
     final titleController = TextEditingController();
@@ -185,7 +183,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       final bookFolder = Directory(p.join(booksDir.path, bookId));
       if (!await bookFolder.exists()) await bookFolder.create(recursive: true);
 
-      // 1. 创建资源目录 assets
       final assetsFolder = Directory(p.join(bookFolder.path, 'assets'));
       if (!await assetsFolder.exists()) await assetsFolder.create(recursive: true);
 
@@ -194,7 +191,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         await initialWorldStateFolder.create(recursive: true);
       }
 
-      // --- 辅助函数：复制资源文件并返回新路径 ---
       Future<String?> copyAsset(String? sourcePath, String prefix) async {
         if (sourcePath == null || sourcePath.isEmpty) return null;
         final sourceFile = File(sourcePath);
@@ -205,28 +201,22 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           final newFileName = '${prefix}_${const Uuid().v4()}$extension';
           final newPath = p.join(assetsFolder.path, newFileName);
           await sourceFile.copy(newPath);
-          return newPath; // 返回新位置的绝对路径
+          return newPath; 
         } catch (e) {
           LogService.instance.error('资源复制失败: $sourcePath', e);
-          return null; // 复制失败则字段置空或保留原值(视需求定，这里置空防止死链)
+          return null; 
         }
       }
 
-      // --- 准备数据：深度拷贝并处理媒体路径 ---
-
-      // 2. 处理 AI 角色 (复制立绘)
-      // 使用 jsonDecode/Encode 做一次简单的深度拷贝，避免修改了 Workbench 的原始数据
       final List<Map<String, dynamic>> exportAiCharacters = 
           List<Map<String, dynamic>>.from(jsonDecode(jsonEncode(_aiCharacters)));
 
       for (var char in exportAiCharacters) {
         if (char['imagePath'] != null) {
-          // 复制图片到 assets 目录，并更新 export 数据中的路径
           char['imagePath'] = await copyAsset(char['imagePath'], 'char_img_${char['id'] ?? 'unknown'}');
         }
       }
 
-      // 3. 处理 场景 (复制图片和音乐)
       final List<Map<String, dynamic>> exportScenes = 
           List<Map<String, dynamic>>.from(jsonDecode(jsonEncode(_gameScenes)));
 
@@ -239,7 +229,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         }
       }
 
-      // 4. 处理 待触发事件 (初始化)
       final List<Map<String, dynamic>> pendingEvents = [];
       for (var evt in _firstDayEvents) {
         final newEvt = Map<String, dynamic>.from(evt);
@@ -250,7 +239,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         pendingEvents.add(newEvt);
       }
 
-      // 5. 组装文件内容
       final Map<String, String> filesContent = {};
 
       filesContent['config_world.json'] = jsonEncode({
@@ -259,7 +247,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         'total_days': 1, 
       });
 
-      // 使用处理过路径的 export 数据
       filesContent['data_player.json'] = jsonEncode(_playerCharacter);
       filesContent['data_ai_characters.json'] = jsonEncode(exportAiCharacters); 
       filesContent['data_scenes.json'] = jsonEncode(exportScenes);
@@ -275,13 +262,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         'logs': [],
       });
 
-      // 6. 写入文件
       for (var entry in filesContent.entries) {
         await File(p.join(bookFolder.path, entry.key)).writeAsString(entry.value);
         await File(p.join(initialWorldStateFolder.path, entry.key)).writeAsString(entry.value);
       }
 
-      // 7. 更新书架
       final entry = BookshelfEntry(
         id: bookId,
         title: bookTitle,
@@ -314,13 +299,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   
   Future<void> _regenerateCharacterImage(int index) async {
     final char = _aiCharacters[index];
-    // 获取当前保存的 Prompt，如果没有则为空字符串
     final prompt = char['imagePrompt'] as String? ?? '';
 
     try {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('正在生成角色立绘，请稍候...')));
       
-      // 调用 Service 的公共方法
       final path = await GameStageGeneratorService.instance.regenerateCharacterImage(
         characterData: char,
         prompt: prompt,
@@ -389,7 +372,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     }
   }
 
-  // --- 新增：提示词编辑对话框 ---
+  // --- 提示词编辑对话框 ---
 
   void _editPrompt({
     required String title,
@@ -441,7 +424,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
   // --- 音频播放逻辑 ---
 
   Future<void> _playAudio(String path) async {
-    // 如果点击的是正在播放的音频
     if (_currentPlayingPath == path && _audioController != null) {
       if (_audioController!.value.isPlaying) {
         await _audioController!.pause();
@@ -453,7 +435,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       return;
     }
 
-    // 停止并释放之前的控制器
     if (_audioController != null) {
       await _audioController!.dispose();
       _audioController = null;
@@ -469,7 +450,6 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       _audioController = VideoPlayerController.file(file);
       await _audioController!.initialize();
       
-      // 监听播放完成
       _audioController!.addListener(() {
         if (_audioController!.value.isCompleted) {
           setState(() {
@@ -978,10 +958,84 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
     );
   }
 
+  /// 封装：构建带操作按钮（编辑提示词、重新生成）的图片展示区域
+  Widget _buildImageAreaWithActions(
+    BuildContext context, {
+    required String? imagePath,
+    required bool isContainMode, // true for character (contain), false for scene (cover)
+    required VoidCallback onEditPrompt,
+    required VoidCallback onRegenerate,
+    String? regenerateTooltip,
+  }) {
+    final theme = Theme.of(context);
+    final hasImage = imagePath != null && File(imagePath).existsSync();
+
+    return Stack(
+      children: [
+        Container(
+          height: 200,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            color: hasImage ? Colors.black12 : theme.colorScheme.surfaceContainerHighest,
+            image: hasImage
+                ? DecorationImage(
+                    image: FileImage(File(imagePath)),
+                    fit: isContainMode ? BoxFit.contain : BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: !hasImage
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.image_not_supported_outlined, 
+                           size: 40, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5)),
+                      const SizedBox(height: 8),
+                      Text("暂无图片", style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                )
+              : null,
+        ),
+        // 右上角操作按钮区
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.6),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.text_fields, size: 18, color: Colors.white),
+                  tooltip: '查看/编辑绘图提示词',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onEditPrompt,
+                ),
+                Container(width: 1, height: 16, color: Colors.white24),
+                IconButton(
+                  icon: const Icon(Icons.refresh, size: 18, color: Colors.white),
+                  tooltip: regenerateTooltip ?? (hasImage ? '重新生成' : '生成图片'),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onRegenerate,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAiCharacterCard(BuildContext context, Map<String, dynamic> char, int index) {
     final theme = Theme.of(context);
     final imagePath = char['imagePath'] as String?;
-    // 读取当前提示词，若无则为空字符串
     final imagePrompt = char['imagePrompt'] as String? ?? '';
 
     return Card(
@@ -1019,49 +1073,27 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Divider(),
-                // 角色立绘展示
-                if (imagePath != null && File(imagePath).existsSync())
-                   Container(
-                     height: 200,
-                     width: double.infinity,
-                     margin: const EdgeInsets.only(bottom: 16),
-                     decoration: BoxDecoration(
-                       borderRadius: BorderRadius.circular(8),
-                       image: DecorationImage(
-                         image: FileImage(File(imagePath)),
-                         fit: BoxFit.contain, // 立绘完整展示
-                       ),
-                       color: Colors.black12,
-                     ),
-                   ),
-                
-                Row(
-                  children: [
-                     Expanded(child: _buildDetailRow(context, '外貌', char['appearance'] ?? '')),
-                     // 提示词编辑按钮
-                     IconButton(
-                       icon: const Icon(Icons.text_fields, size: 18),
-                       tooltip: '查看/编辑绘图提示词',
-                       onPressed: () => _editPrompt(
-                         title: '编辑角色提示词',
-                         initialPrompt: imagePrompt,
-                         onSave: (newPrompt) {
-                           setState(() {
-                             _aiCharacters[index]['imagePrompt'] = newPrompt;
-                           });
-                           _triggerImmediateSave();
-                         },
-                       ),
-                     ),
-                     // 立绘生成按钮
-                     IconButton.filledTonal(
-                       onPressed: () => _regenerateCharacterImage(index),
-                       icon: const Icon(Icons.refresh, size: 18),
-                       tooltip: imagePath == null ? '生成立绘' : '重新生成立绘',
-                     )
-                  ],
+                // 角色立绘展示区域（右上角带按钮）
+                _buildImageAreaWithActions(
+                  context,
+                  imagePath: imagePath,
+                  isContainMode: true,
+                  onEditPrompt: () => _editPrompt(
+                    title: '编辑角色提示词',
+                    initialPrompt: imagePrompt,
+                    onSave: (newPrompt) {
+                      setState(() {
+                        _aiCharacters[index]['imagePrompt'] = newPrompt;
+                      });
+                      _triggerImmediateSave();
+                    },
+                  ),
+                  onRegenerate: () => _regenerateCharacterImage(index),
+                  regenerateTooltip: imagePath == null ? '生成立绘' : '重新生成立绘',
                 ),
                 
+                const SizedBox(height: 12),
+                _buildDetailRow(context, '外貌', char['appearance'] ?? ''),
                 _buildDetailRow(context, '性格', char['personality'] ?? ''),
                 _buildDetailRow(context, '动机', char['motivation'] ?? ''),
                 _buildDetailRow(context, '状态', char['status'] ?? ''),
@@ -1167,21 +1199,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 场景图
-            if (imagePath != null && File(imagePath).existsSync())
-              Container(
-                height: 150,
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  image: DecorationImage(
-                    image: FileImage(File(imagePath)),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-
+            // 第一行：场景名称（左） + 编辑/删除按钮（右）
             Row(
               children: [
                 Expanded(
@@ -1192,30 +1210,10 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     ),
                   ),
                 ),
-                // 场景图提示词按钮
-                IconButton(
-                  onPressed: () => _editPrompt(
-                    title: '编辑场景图提示词',
-                    initialPrompt: imagePrompt,
-                    onSave: (val) {
-                      setState(() => _gameScenes[index]['imagePrompt'] = val);
-                      _triggerImmediateSave();
-                    },
-                  ),
-                  icon: const Icon(Icons.text_fields, size: 20),
-                  tooltip: '查看/修改提示词',
-                ),
-                // 场景图生成按钮
-                IconButton(
-                  onPressed: () => _regenerateSceneImage(index),
-                  icon: const Icon(Icons.image_outlined),
-                  tooltip: imagePath == null ? '生成场景图' : '重新生成场景图',
-                  style: IconButton.styleFrom(foregroundColor: theme.colorScheme.primary),
-                ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   onPressed: () => _editGameScene(index),
-                  tooltip: '编辑信息',
+                  tooltip: '编辑场景信息',
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
@@ -1227,7 +1225,26 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+
+            // 第二行：场景图片（带悬浮按钮）
+            _buildImageAreaWithActions(
+              context,
+              imagePath: imagePath,
+              isContainMode: false,
+              onEditPrompt: () => _editPrompt(
+                title: '编辑场景图提示词',
+                initialPrompt: imagePrompt,
+                onSave: (val) {
+                  setState(() => _gameScenes[index]['imagePrompt'] = val);
+                  _triggerImmediateSave();
+                },
+              ),
+              onRegenerate: () => _regenerateSceneImage(index),
+              regenerateTooltip: imagePath == null ? '生成场景图' : '重新生成场景图',
+            ),
             
+            const SizedBox(height: 12),
             const Divider(),
 
             _buildDetailRow(context, '场景说明', scene['description'] ?? ''),

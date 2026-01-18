@@ -139,10 +139,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
 
   /// 查找角色立绘路径
   String? _getCharacterImagePath(String name) {
-    // 1. 排除玩家
-    if (name == widget.playerName || name == '玩家' || name == '你') {
-      return null; 
-    }
+    // 1. 排除特定名称 (如不想显示玩家头像，取消下方注释)
+    // if (name == '玩家' || name == '你') return null;
     
     // 2. 清洗名字（去掉可能存在的括号状态，例如 "艾莉 (生气)" -> "艾莉"）
     String cleanName = name.split('（').first.split('(').first.trim();
@@ -391,6 +389,20 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     final imagePath = _getCharacterImagePath(name);
     final hasImage = imagePath != null && File(imagePath).existsSync();
 
+    // --- 1. 响应式尺寸计算 (大幅增加比例) ---
+    final screenSize = MediaQuery.of(context).size;
+    
+    // 设置为屏幕高度的 32% (约1/3屏幕)，并限制最大最小值
+    final double portraitHeight = (screenSize.height * 0.32).clamp(180.0, 450.0);
+    // 保持 3:4 宽高比
+    final double portraitWidth = portraitHeight * 0.75;
+    
+    // --- 2. 垂直定位计算 ---
+    final double portraitTopOffset = -(portraitHeight - 12);
+
+    // 对话框高度
+    final double boxHeight = _isFreeMode ? 240 : 180;
+
     return Positioned.fill(
       child: Stack(
         children: [
@@ -408,14 +420,11 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                       fit: BoxFit.cover,
                     )
                   else
-                    // 无图时设为透明，以便看到下方的地图
+                    // 无图时透明
                     const SizedBox.shrink(), 
 
-                  // 1.2 遮罩层
+                  // 1.2 遮罩层 (无图时加深背景)
                   Container(
-                    // 根据是否有图调整透明度
-                    // 有图时保持 0.6 稍微压暗
-                    // 无图时设为 0.75 半透明，既能看清地图，又能衬托白色文字
                     color: _backgroundImagePath != null 
                         ? Colors.black.withOpacity(0.6) 
                         : Colors.black.withOpacity(0.75),
@@ -425,47 +434,11 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
 
-          // 2. 角色立绘
-          if (name != '系统' && name != '旁白')
-            Positioned(
-              bottom: 180, 
-              // 如果是玩家则靠右(或者不显示)，如果是NPC则靠左显示
-              left: isPlayer ? null : -40,
-              right: isPlayer ? -40 : null,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: 1.0,
-                child: hasImage 
-                  ? Container(
-                      height: 500, // 立绘高度
-                      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
-                      // 增加立绘阴影，使其在背景上更突出
-                      decoration: const BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(color: Colors.black26, blurRadius: 20, spreadRadius: 5)
-                        ]
-                      ),
-                      child: Image.file(
-                        File(imagePath!),
-                        fit: BoxFit.contain,
-                        alignment: Alignment.bottomCenter,
-                      ),
-                    )
-                  : Opacity(
-                      opacity: 0.4,
-                      child: Icon(
-                        isPlayer ? Icons.person : Icons.smart_toy, 
-                        size: 300, 
-                        color: isPlayer ? Colors.blue : Colors.purple
-                      ),
-                    ),
-              ),
-            ),
-
-          // 3. 选项区域
+          // 2. 选项区域 (动态避让大立绘)
           if (_visibleOptions.isNotEmpty && !_isGenerating)
             Positioned(
-              bottom: _isFreeMode ? 280 : 220,
+              // 计算位置：在对话框上方，再加立绘高度的一半多一点，确保不遮挡
+              bottom: boxHeight + portraitHeight * 0.6, 
               left: 20,
               right: 20,
               child: Column(
@@ -490,91 +463,168 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
               ),
             ),
 
-          // 4. 对话框主体
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-              height: _isFreeMode ? 240 : 180,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E1E).withOpacity(0.98),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isPlayer ? Colors.blue.withOpacity(0.3) : Colors.amber.withOpacity(0.3), width: 2),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20, spreadRadius: 5)],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 顶部栏: 名字 + 模式切换 + 进度
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isPlayer ? Colors.blue.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
-                          borderRadius: const BorderRadius.only(topLeft: Radius.circular(14), bottomRight: Radius.circular(14)),
-                        ),
-                        child: Text(name, style: TextStyle(color: isPlayer ? Colors.blueAccent : Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 16)),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: Icon(_isFreeMode ? Icons.chat_bubble : Icons.auto_stories, size: 20, color: _isFreeMode ? Colors.cyanAccent : Colors.white30),
-                        tooltip: _isFreeMode ? '切换回阅读模式' : '切换到随心模式',
-                        onPressed: () => setState(() => _isFreeMode = !_isFreeMode),
-                      ),
-                      Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12))),
+          // 3. 对话框主体 + 悬浮立绘
+          Positioned(
+            bottom: 40,
+            left: 16,
+            right: 16,
+            child: Stack(
+              clipBehavior: Clip.none, // 允许立绘溢出显示
+              alignment: Alignment.bottomCenter,
+              children: [
+                // 3.1 对话框容器
+                Container(
+                  height: boxHeight,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E1E).withOpacity(0.98),
+                    borderRadius: BorderRadius.circular(16),
+                    // 根据说话人阵营切换边框颜色
+                    border: Border.all(
+                      color: isPlayer ? Colors.blue.withOpacity(0.5) : Colors.amber.withOpacity(0.5), 
+                      width: 2
+                    ),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 20, spreadRadius: 2)
                     ],
                   ),
-                  
-                  // 文本区域
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _nextDialogue,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-                        child: SingleChildScrollView(
-                          controller: _textScrollController,
-                          child: Text(_displayingText, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 18, height: 1.5, fontFamily: 'serif')),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 3.1.1 顶部栏 (名字 + 按钮)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // 名字标签
+                          Container(
+                            // NPC(左侧立绘)时增加左边距，玩家(右侧立绘)时无需左边距
+                            margin: EdgeInsets.only(left: (!isPlayer && hasImage) ? 10 : 0),
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isPlayer ? Colors.blue.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(14),
+                                bottomRight: Radius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              name, 
+                              style: TextStyle(
+                                color: isPlayer ? Colors.blueAccent : Colors.amberAccent, 
+                                fontWeight: FontWeight.bold, 
+                                fontSize: 16
+                              )
+                            ),
+                          ),
+                          
+                          const Spacer(),
+                          
+                          // 模式切换
+                          IconButton(
+                            icon: Icon(_isFreeMode ? Icons.chat_bubble : Icons.auto_stories, size: 20, color: _isFreeMode ? Colors.cyanAccent : Colors.white30),
+                            onPressed: () => setState(() => _isFreeMode = !_isFreeMode),
+                          ),
+                          // 进度文本
+                          Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12))),
+                          
+                          // 玩家名字右侧微调 (如果玩家有头像在右边，稍微空一点)
+                          if (isPlayer && hasImage) const SizedBox(width: 10),
+                        ],
+                      ),
+                      
+                      // 3.1.2 文本显示区
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: _nextDialogue,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+                            child: SingleChildScrollView(
+                              controller: _textScrollController,
+                              child: Text(_displayingText, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 18, height: 1.5, fontFamily: 'serif')),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 3.1.3 底部输入框/指示图标
+                      if (_isFreeMode)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.white12))),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _inputController,
+                                  style: const TextStyle(color: Colors.white),
+                                  enabled: !_isGenerating,
+                                  decoration: InputDecoration(
+                                    hintText: _isGenerating ? 'AI 正在构思...' : '输入你的行动或对话...',
+                                    hintStyle: const TextStyle(color: Colors.white24),
+                                    isDense: true, border: InputBorder.none,
+                                  ),
+                                  onSubmitted: (_) => _handleUserInput(),
+                                ),
+                              ),
+                              if (_isGenerating)
+                                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent))
+                              else
+                                IconButton(icon: const Icon(Icons.send, color: Colors.cyanAccent), onPressed: _handleUserInput),
+                            ],
+                          ),
+                        )
+                      else if (showNextIndicator)
+                        Align(alignment: Alignment.bottomRight, child: Padding(padding: const EdgeInsets.all(12.0), child: Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.white.withOpacity(0.3), size: 20))),
+                    ],
+                  ),
+                ),
+
+                // 3.2 悬浮的立绘头像 (Stack 顶层)
+                if (hasImage && name != '系统' && name != '旁白')
+                  Positioned(
+                    // 向上偏移：几乎完全在对话框外部
+                    top: portraitTopOffset, 
+                    // 水平定位：NPC居左，玩家居右
+                    left: isPlayer ? null : 20, 
+                    right: isPlayer ? 20 : null,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: 1.0,
+                      child: Container(
+                        height: portraitHeight, // 响应式大尺寸
+                        width: portraitWidth,
+                        // 样式：圆角+边框+阴影
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF222222), 
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isPlayer ? Colors.blue.withOpacity(0.8) : Colors.amber.withOpacity(0.8), 
+                            width: 3
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5), 
+                              blurRadius: 10, 
+                              offset: const Offset(4, 4)
+                            )
+                          ],
+                        ),
+                        // 裁剪图片内容
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(9), 
+                          child: Image.file(
+                            File(imagePath!),
+                            fit: BoxFit.cover, 
+                            alignment: Alignment.topCenter, // 聚焦头部/上半身
+                          ),
                         ),
                       ),
                     ),
                   ),
-
-                  // 底部输入/指示
-                  if (_isFreeMode)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.white12))),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _inputController,
-                              style: const TextStyle(color: Colors.white),
-                              enabled: !_isGenerating,
-                              decoration: InputDecoration(
-                                hintText: _isGenerating ? 'AI 正在构思...' : '输入你的行动或对话...',
-                                hintStyle: const TextStyle(color: Colors.white24),
-                                isDense: true, border: InputBorder.none,
-                              ),
-                              onSubmitted: (_) => _handleUserInput(),
-                            ),
-                          ),
-                          if (_isGenerating)
-                            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent))
-                          else
-                            IconButton(icon: const Icon(Icons.send, color: Colors.cyanAccent), onPressed: _handleUserInput),
-                        ],
-                      ),
-                    )
-                  else if (showNextIndicator)
-                    Align(alignment: Alignment.bottomRight, child: Padding(padding: const EdgeInsets.all(12.0), child: Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.white.withOpacity(0.3), size: 20))),
-                ],
-              ),
+              ],
             ),
           ),
 
-          // 5. 左上角：离开按钮
+          // 4. 左上角：离开按钮
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 20,
@@ -586,7 +636,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
           
-          // 6. 右上角：功能按钮组
+          // 5. 右上角：功能按钮组
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             right: 20,
