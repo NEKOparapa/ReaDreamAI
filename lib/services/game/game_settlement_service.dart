@@ -131,6 +131,7 @@ class GameSettlementService {
 
       return {
         'id': event['id'] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        'title': event['title'] ?? event['summary'], // 保存标题
         'game_time': totalDays,
         'scene_id': sceneId,
         'scene_name': scene['name'],
@@ -289,6 +290,7 @@ class GameSettlementService {
 输出JSON数组:
 [
   {
+    "title": "事件标题",
     "scene_id": "发生场景名称",
     "event_type": "事件类型",
     "generated_by": "主要触发角色名",
@@ -319,6 +321,7 @@ AI角色: ${jsonEncode(aiCharacters)}
         if (eventData is! Map) continue;
         validEvents.add({
           'id': '${eventData['generated_by'] ?? 'event'}_${DateTime.now().millisecondsSinceEpoch}_${validEvents.length}',
+          'title': eventData['title'] ?? eventData['summary'], // 如果AI没生成title，兜底用summary
           'scene_id': eventData['scene_id'],
           'event_type': eventData['event_type'],
           'generated_by': eventData['generated_by'],
@@ -343,7 +346,8 @@ AI角色: ${jsonEncode(aiCharacters)}
     if (newEvents.isNotEmpty) {
       buffer.writeln('✨ 产生了 ${newEvents.length} 个新事件：');
       for (final event in newEvents) {
-        buffer.writeln('  • [${event['scene_id']}] ${event['summary']}');
+        final title = event['title'] ?? event['summary'];
+        buffer.writeln('  • [${event['scene_id']}] $title');
       }
     } else {
       buffer.writeln('🌙 暂时风平浪静。');

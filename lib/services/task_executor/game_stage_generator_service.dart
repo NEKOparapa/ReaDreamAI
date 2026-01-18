@@ -87,7 +87,7 @@ class GameStageGeneratorService {
     LogService.instance.info('ℹ️ [配置] 并发数: $concurrency, API: ${activeApi.name}');
 
     // ==========================================
-    // 步骤 1: 生成基础世界信息 (世界观、角色、场景)
+    // 步骤 1: 生成基础世界信息 (标题、世界观、角色、场景)
     // ==========================================
     LogService.instance.info('🔄 [步骤 1/4] 生成世界背景、角色与场景...');
     
@@ -108,7 +108,7 @@ class GameStageGeneratorService {
       // 必须确保所有对象都有 ID，因为后续步骤需要引用这些 ID
       _ensureIds(baseStageData);
       
-      LogService.instance.success('✅ [步骤 1/4] 基础数据生成完毕。');
+      LogService.instance.success('✅ [步骤 1/4] 基础数据生成完毕。标题: ${baseStageData['book_title']}');
     } catch (e, s) {
       LogService.instance.error('❌ [步骤 1/4] 基础数据生成失败，终止任务。', e, s);
       rethrow;
@@ -337,15 +337,16 @@ class GameStageGeneratorService {
 请严格按照以下JSON格式输出，确保逻辑自洽：
 ```json
 {
+  "book_title": "根据世界观起一个富有吸引力的游戏书标题", 
   "world_background": "详细的世界观描述...",
-  "destiny_ai": "基于'命运AI要求'的故事走向或核心矛盾...",
+  "destiny_ai": "故事走向或核心矛盾...",
   "player_character": {
     "name": "...", "identity": "...", "appearance": "...", 
     "status": "...", "equipment": "...", "backpack": "..."
   },
   "ai_characters": [
     {
-      "id": "char_uuid", // 请务必生成唯一ID
+      "id": "char_uuid", // 唯一ID
       "cardName": "卡片名", "name": "...", "identity": "...", "appearance": "...", 
       "personality": "...", "motivation": "...", "status": "...", 
       "other": "...", "equipment": "...", "backpack": "..."
@@ -353,7 +354,7 @@ class GameStageGeneratorService {
   ],
   "game_scenes": [
     {
-      "id": "scene_uuid", // 请务必生成唯一ID
+      "id": "scene_uuid", // 唯一ID
       "name": "...", "description": "...", "subsidiaryScenes": "...", "status": "..."
     }
   ]
@@ -388,7 +389,9 @@ class GameStageGeneratorService {
     );
 
     final jsonStr = _extractJsonString(response);
-    return _parseJsonWithRepair(jsonStr);
+    final data = _parseJsonWithRepair(jsonStr);
+
+    return data;
   }
 
   /// Step 2的具体实现：单个角色的事件生成
@@ -425,6 +428,7 @@ class GameStageGeneratorService {
 ### 输出格式 (JSON)
 ```json
 {
+  "title": "事件标题",
   "scene_id": "必须对应 available_scenes 中的某个 id",
   "dialogues": [
     {"name": "...", "message": "..."},
@@ -455,6 +459,11 @@ ${jsonEncode(targetCharacter)}
 
     // 简单校验
     if (eventData is Map<String, dynamic>) {
+       // 确保 title 存在
+       if (eventData['title'] == null || eventData['title'].toString().isEmpty) {
+         eventData['title'] = "未命名事件";
+       }
+
        // 确保 scene_id 有效，如果无效或AI瞎编了一个，修正为第一个场景
        final scenes = baseData['game_scenes'] as List;
        final hasScene = scenes.any((s) => s['id'] == eventData['scene_id']);

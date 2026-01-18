@@ -116,6 +116,8 @@ const Map<String, dynamic> appDefaultConfigs = {
 
 
   //---游戏舞台配置 ---
+  'game_stage_book_title': '艾瑞多编年史', 
+
   'game_stage_world_background': '在一个名为"艾瑞多"的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
 
   'game_stage_destiny_ai': '故事将围绕"源石"的争夺展开。一个古老的预言暗示，当源石之心被触动时，沉睡的巨龙将会苏醒，为世界带来毁灭或新生。玩家的选择将决定世界的最终命运。',
@@ -131,7 +133,7 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   'game_stage_ai_characters': [
     {
-      'id': 'pre_char_1', // [新增]
+      'id': 'pre_char_1', 
       'cardName': '神秘铁匠-索林',
       'name': '索林',
       'identity': '隐居在深山中的矮人铁匠大师',
@@ -141,10 +143,13 @@ const Map<String, dynamic> appDefaultConfigs = {
       'status': '健康',
       'other': '似乎知道关于"源石"的古老秘密。',
       'equipment': '一把巨大的锻造锤、防火皮围裙。',
-      'backpack': '稀有矿石样本、一壶烈酒。'
+      'backpack': '稀有矿石样本、一壶烈酒。',
+      // [可选] 预留媒体字段，防止空值警告
+      'imagePath': null,
+      'imagePrompt': ''
     },
     {
-      'id': 'pre_char_2', // [新增]
+      'id': 'pre_char_2', 
       'cardName': '黑鸦-凯',
       'name': '凯',
       'identity': '"黑鸦"佣兵团的团长',
@@ -154,38 +159,51 @@ const Map<String, dynamic> appDefaultConfigs = {
       'status': '轻伤',
       'other': '他的佣兵团正在接受一个神秘雇主的委托，目标似乎也是"源石"。',
       'equipment': '两把附魔匕首、一件轻型锁子甲。',
-      'backpack': '任务卷轴、金币袋、治疗药水。'
+      'backpack': '任务卷轴、金币袋、治疗药水。',
+      'imagePath': null,
+      'imagePrompt': ''
     }
   ],
 
   'game_stage_game_scenes': [
     {
-      'id': 'pre_scene_1', // [新增]
+      'id': 'pre_scene_1', 
       'name': '钢之心城',
       'description': '一座由蒸汽驱动的巨大都市，是矮人工程学与人类商业野心的结晶。城市分为上层富人区和下层工业区，阶级矛盾尖锐。',
       'subsidiaryScenes': '下层贫民窟、蒸汽市场、城主府。',
-      'status': '表面繁荣，暗流涌动。'
+      'status': '表面繁荣，暗流涌动。',
+      // [可选] 预留媒体字段
+      'imagePath': null,
+      'imagePrompt': '',
+      'musicPath': null,
+      'musicPrompt': ''
     },
     {
-      'id': 'pre_scene_2', // [新增]
+      'id': 'pre_scene_2', 
       'name': '迷雾森林',
       'description': '精灵们的古老家园，森林深处隐藏着被遗忘的遗迹和强大的自然之灵。外来者很容易在变幻莫测的浓雾中迷失方向。',
       'subsidiaryScenes': '精灵哨站、古树之心、废弃神庙。',
-      'status': '被古老的魔法笼罩，充满了未知的危险与机遇。'
+      'status': '被古老的魔法笼罩，充满了未知的危险与机遇。',
+      'imagePath': null,
+      'imagePrompt': '',
+      'musicPath': null,
+      'musicPrompt': ''
     }
   ],
 
   // --- 新增：第一天事件流（多场景） ---
   'game_stage_first_day_events': [
     {
-      'scene_id': '钢之心城', // 这里通常引用场景ID或名称
+      'title': '遗物之谜', // [更新] 添加 title 字段，对应 Workbench 显示
+      'scene_id': 'pre_scene_1', // [更新] 尽量使用 ID 对应，如果 ID 对应不上 Workbench 会尝试用名字匹配
       'dialogues': [
         {'name': '莉娜', 'message': '（看着手中的遗物）这东西...到底是什么？'},
         {'name': '老乞丐', 'message': '嘿，小姑娘，别把那东西露出来，会被“清洁工”盯上的。'}
       ]
     },
     {
-      'scene_id': '蒸汽市场',
+      'title': '市场惊魂', // [更新] 添加 title 字段
+      'scene_id': 'pre_scene_1', // 依然发生在钢之心城
       'dialogues': [
         {'name': '机械警卫', 'message': '检测到非法魔力波动，请出示证件。'},
         {'name': '莉娜', 'message': '糟糕，忘了屏蔽它的信号了。'}

@@ -234,6 +234,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   }
 
   Future<void> _saveGeneratedDataToConfig(Map<String, dynamic> data) async {
+    await _configService.modifySetting('game_stage_book_title', data['book_title'] ?? '未命名世界');
     await _configService.modifySetting('game_stage_world_background', data['world_background'] ?? '');
     await _configService.modifySetting('game_stage_destiny_ai', data['destiny_ai'] ?? '');
     await _configService.modifySetting('game_stage_player_character', data['player_character'] ?? {});
