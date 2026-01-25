@@ -7,17 +7,19 @@ import 'package:file_picker/file_picker.dart';
 import '../../models/bookshelf_entry.dart';
 import '../../services/cache_manager/cache_manager.dart';
 import '../../services/epub_exporter/epub_exporter.dart';
-import '../../base/log/log_service.dart';
 import '../../services/media_exporter/media_exporter.dart';
+import '../../services/txt_exporter/txt_exporter.dart'; // [新增] 导入 TXT 导出服务
+import '../../base/log/log_service.dart';
 
-enum ExportFormat { epub, mediaPackage, cachePackage }
+// [修改] 添加 txt 格式枚举
+enum ExportFormat { epub, mediaPackage, cachePackage, txt }
 
 // 定义对话框内部状态的枚举
 enum _ExportState {
   selecting, // 初始状态，选择格式
   exporting, // 正在导出
-  success, // 导出成功
-  error, // 导出失败
+  success,   // 导出成功
+  error,     // 导出失败
 }
 
 class ExportBookDialog extends StatefulWidget {
@@ -77,19 +79,16 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
 
           setState(() => _message = '请选择保存位置...');
 
-          // 传入 bytes 参数
           final String? epubPath = await FilePicker.platform.saveFile(
             dialogTitle: '导出 EPUB',
             fileName: '${book.title}.epub',
             type: FileType.custom,
             allowedExtensions: ['epub'],
-            bytes: epubBytes, // ndroid/iOS 必须传此参数
+            bytes: epubBytes, // Android/iOS 必须传此参数
           );
 
           if (epubPath != null) {
-            // 区分平台写入逻辑
-            // Android/iOS: saveFile 内部已经利用 bytes 写入了文件，无需再次写入
-            // Desktop: saveFile 忽略 bytes，只返回路径，需要手动写入
+            // 桌面端需要手动写入
             if (!Platform.isAndroid && !Platform.isIOS) {
               await File(epubPath).writeAsBytes(epubBytes);
             }
@@ -103,7 +102,40 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
           }
           break;
 
-        // 处理媒体包导出的逻辑
+        // [新增] TXT (ZIP) 导出逻辑
+        case ExportFormat.txt:
+          setState(() => _message = '正在加载书籍详情...');
+          final book = await CacheManager().loadBookDetail(widget.entry.id);
+          if (book == null) {
+            throw Exception('加载书籍详情失败，无法导出。');
+          }
+
+          setState(() => _message = '正在生成 TXT 压缩包...');
+          // 调用新的服务生成 ZIP 数据
+          final zipBytes = await TxtExporter.exportBookToTxtZip(book);
+
+          setState(() => _message = '请选择保存位置...');
+          final String? zipPath = await FilePicker.platform.saveFile(
+            dialogTitle: '导出 TXT',
+            fileName: '${book.title}_txt.zip', // 保存为 zip
+            type: FileType.custom,
+            allowedExtensions: ['zip'],
+            bytes: zipBytes,
+          );
+
+          if (zipPath != null) {
+            if (!Platform.isAndroid && !Platform.isIOS) {
+              await File(zipPath).writeAsBytes(zipBytes);
+            }
+            setState(() {
+              _currentState = _ExportState.success;
+              _message = '《${book.title}》的文本已打包导出到:\n$zipPath';
+            });
+          } else {
+            setState(() => _currentState = _ExportState.selecting);
+          }
+          break;
+
         case ExportFormat.mediaPackage:
           setState(() => _message = '正在收集所有媒体文件...');
           // 调用新服务生成 ZIP 字节流
@@ -113,17 +145,15 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
 
           setState(() => _message = '请选择保存位置...');
 
-          // 传入 bytes 参数
           final String? zipPath = await FilePicker.platform.saveFile(
             dialogTitle: '导出媒体包',
             fileName: '${widget.entry.title}_媒体文件.zip',
             type: FileType.custom,
             allowedExtensions: ['zip'],
-            bytes: zipBytes, // ndroid/iOS 必须传此参数
+            bytes: zipBytes,
           );
 
           if (zipPath != null) {
-            // 区分平台写入逻辑
             if (!Platform.isAndroid && !Platform.isIOS) {
               await File(zipPath).writeAsBytes(zipBytes);
             }
@@ -278,20 +308,32 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
         ],
       );
     }
-    // 如果是普通书籍
+    // 如果是普通书籍 (TXT/EPUB)
     else {
       return Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           RadioListTile<ExportFormat>(
             title: const Text('EPUB 格式'),
-            subtitle: const Text('标准电子书格式，兼容大多数阅读器。'),
+            subtitle: const Text('标准电子书格式，保留样式和插图。'),
             value: ExportFormat.epub,
             groupValue: _selectedFormat,
             onChanged: (value) => setState(() => _selectedFormat = value),
             activeColor: Theme.of(context).colorScheme.primary,
           ),
           const Divider(height: 8),
+
+          // [新增] TXT 选项
+          RadioListTile<ExportFormat>(
+            title: const Text('TXT 纯文本'),
+            subtitle: const Text('包含标题、简介、章节内容，不含媒体资源。'),
+            value: ExportFormat.txt,
+            groupValue: _selectedFormat,
+            onChanged: (value) => setState(() => _selectedFormat = value),
+            activeColor: Theme.of(context).colorScheme.primary,
+          ),
+          const Divider(height: 8),
+
           RadioListTile<ExportFormat>(
             title: const Text('缓存包 (开发中)'),
             subtitle: const Text('用于备份或迁移，包含所有元数据和媒体文件。'),
@@ -307,7 +349,7 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
   /// 构建导出中界面
   Widget _buildProgressContent() {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center, // 垂直居中
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const CircularProgressIndicator(),
         const SizedBox(height: 24),
@@ -319,7 +361,7 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
   /// 构建成功或失败的结果界面
   Widget _buildResultContent({required bool isError}) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center, // 垂直居中
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
           isError ? Icons.error_outline : Icons.check_circle_outline,
@@ -332,7 +374,7 @@ class _ExportBookDialogState extends State<ExportBookDialog> {
     );
   }
 
-  /// [修改] 根据当前状态构建底部操作按钮
+  /// 根据当前状态构建底部操作按钮
   Widget _buildActions() {
     // 辅助函数：检查当前选中的格式是否可用
     bool isExportEnabled() {
