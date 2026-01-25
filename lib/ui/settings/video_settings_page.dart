@@ -1,7 +1,10 @@
+// lib/ui/settings/video_settings_page.dart
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../base/config_service.dart';
 import '../../base/default_configs.dart';
-import 'widgets/settings_widgets.dart'; // 复用设置组件
+import 'widgets/settings_widgets.dart';
 
 class VideoSettingsPage extends StatefulWidget {
   const VideoSettingsPage({super.key});
@@ -13,19 +16,58 @@ class VideoSettingsPage extends StatefulWidget {
 class _VideoSettingsPageState extends State<VideoSettingsPage> {
   final ConfigService _configService = ConfigService();
 
-  late int _selectedDuration; // 类型从 String 改为 int
+  late TextEditingController _durationController; // 改为文本控制器
   late String _selectedResolution;
-
-  final List<int> _durationOptions = [5, 10]; // 选项列表改为 int 类型
+  
+  String? _durationErrorText; // 错误提示文本
 
   final List<String> _resolutionOptions = ['720p', '1080p'];
 
   @override
   void initState() {
     super.initState();
-    // 从ConfigService加载设置，如果未设置则使用默认值
-    _selectedDuration = _configService.getSetting<int>('video_gen_duration', appDefaultConfigs['video_gen_duration']);
-    _selectedResolution = _configService.getSetting('video_gen_resolution', appDefaultConfigs['video_gen_resolution']);
+    // 加载当前时长并初始化控制器
+    int duration = _configService.getSetting<int>(
+      'video_gen_duration', 
+      appDefaultConfigs['video_gen_duration']
+    );
+    _durationController = TextEditingController(text: duration.toString());
+    
+    _selectedResolution = _configService.getSetting(
+      'video_gen_resolution', 
+      appDefaultConfigs['video_gen_resolution']
+    );
+  }
+
+  @override
+  void dispose() {
+    _durationController.dispose(); // 释放控制器
+    super.dispose();
+  }
+
+  /// 验证并保存时长
+  void _validateAndSaveDuration(String value) {
+    final duration = int.tryParse(value);
+    
+    if (duration == null) {
+      setState(() {
+        _durationErrorText = '请输入有效数字';
+      });
+      return;
+    }
+    
+    if (duration < 3 || duration > 999) {
+      setState(() {
+        _durationErrorText = '时长必须在 3-999 秒之间';
+      });
+      return;
+    }
+    
+    // 验证通过，清除错误并保存
+    setState(() {
+      _durationErrorText = null;
+    });
+    _configService.modifySetting<int>('video_gen_duration', duration);
   }
 
   @override
@@ -36,33 +78,45 @@ class _VideoSettingsPageState extends State<VideoSettingsPage> {
         SettingsGroup(
           title: '输出设置',
           children: [
-            // 视频时长设置
+            // 视频时长设置 - 改为输入框
             SettingsCard(
               title: '视频时长',
-              subtitle: '选择生成视频的长度',
-              control: DropdownButton<int>( // 泛型改为 int
-                value: _selectedDuration,
-                underline: const SizedBox.shrink(),
-                borderRadius: BorderRadius.circular(12),
-                // items 列表现在处理的是 int 类型
-                items: _durationOptions.map<DropdownMenuItem<int>>((int value) {
-                  return DropdownMenuItem<int>(
-                    value: value, 
-                    // 在Text中将 int 格式化为带 's' 的字符串用于显示
-                    child: Text('${value}s') 
-                  );
-                }).toList(),
-                // onChanged 回调接收的也是 int? 类型
-                onChanged: (int? newValue) {
-                  if (newValue != null) {
-                    setState(() => _selectedDuration = newValue);
-                    // 保存设置时，也使用 <int> 泛型
-                    _configService.modifySetting<int>('video_gen_duration', newValue);
-                  }
-                },
+              subtitle: '输入生成视频的长度（3-999秒）',
+              control: SizedBox(
+                width: 80,
+                child: TextField(
+                  controller: _durationController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly, // 只允许数字
+                    LengthLimitingTextInputFormatter(3), // 最多3位
+                  ],
+                  decoration: InputDecoration(
+                    suffixText: 's',
+                    errorText: _durationErrorText,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  // 失焦时验证并保存
+                  onEditingComplete: () {
+                    _validateAndSaveDuration(_durationController.text);
+                    FocusScope.of(context).unfocus();
+                  },
+                  // 按回车时验证并保存
+                  onSubmitted: (value) {
+                    _validateAndSaveDuration(value);
+                  },
+                ),
               ),
             ),
-            // 视频分辨率设置 (这部分无需改动)
+            
+            // 视频分辨率设置（保持不变）
             SettingsCard(
               title: '分辨率',
               subtitle: '选择生成视频的分辨率',
@@ -71,7 +125,10 @@ class _VideoSettingsPageState extends State<VideoSettingsPage> {
                 underline: const SizedBox.shrink(),
                 borderRadius: BorderRadius.circular(12),
                 items: _resolutionOptions.map<DropdownMenuItem<String>>((String value) {
-                  return DropdownMenuItem<String>(value: value, child: Text(value));
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
                 }).toList(),
                 onChanged: (String? newValue) {
                   if (newValue != null) {
