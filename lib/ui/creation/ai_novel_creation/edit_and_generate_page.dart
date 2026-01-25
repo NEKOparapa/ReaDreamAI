@@ -1,7 +1,7 @@
 // lib/ui/creation/ai_novel_creation/edit_and_generate_page.dart
 
 import 'dart:async';
-import 'dart:convert'; // 添加引用，用于深拷贝
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -92,8 +92,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'introduction': loadedIntro,
         'background_setting': _configService.getSetting<String>(
             'ai_novel_creation_background_setting', ''),
-        'writing_style':
-            _configService.getSetting<String>('ai_novel_creation_writing_style', ''),
+        'writing_style': _configService.getSetting<String>(
+            'ai_novel_creation_writing_style', ''),
         'main_characters': List<Map<String, dynamic>>.from(
             _configService.getSetting<List>(
                 'ai_novel_creation_main_characters', [])),
@@ -108,30 +108,33 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
 
   // 获取当前大纲的完整快照
   Map<String, dynamic> _getCurrentOutlineSnapshot() {
-    // 确保 Controller 中的最新文本已同步
     _outline['title'] = _titleController.text;
     _outline['introduction'] = _introductionController.text;
-    // 使用 JSON 序列化/反序列化进行深拷贝，防止引用问题
     return jsonDecode(jsonEncode(_outline));
   }
 
-  // --- 新增功能：保存大纲存档 ---
+  // --- 存档功能 ---
   void _showSaveArchiveDialog() {
     final nameController = TextEditingController();
-    nameController.text = _titleController.text; // 默认使用当前标题作为存档名
+    nameController.text = _titleController.text;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         title: const Text('保存大纲存档'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: '存档名称',
-            hintText: '请输入存档名称以便识别',
-            border: OutlineInputBorder(),
+        content: SizedBox(
+          width: MediaQuery.of(context).size.width, 
+          child: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: '存档名称',
+              hintText: '请输入存档名称以便识别',
+              border: OutlineInputBorder(),
+              filled: true, // 稍微美化一下输入框
+            ),
+            autofocus: true,
           ),
-          autofocus: true,
         ),
         actions: [
           TextButton(
@@ -156,14 +159,11 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 'data': currentSnapshot,
               };
 
-              // 获取现有列表
               final List<dynamic> currentList =
                   _configService.getSetting<List>('novel_outline_list', []);
-              // 转换为可变列表并添加新存档
               final newList = List<Map<String, dynamic>>.from(currentList);
-              newList.insert(0, newArchive); // 新的放前面
+              newList.insert(0, newArchive);
 
-              // 保存配置
               await _configService.modifySetting('novel_outline_list', newList);
 
               if (mounted) {
@@ -180,80 +180,96 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     );
   }
 
-  // --- 新增功能：加载/切换大纲存档 ---
   void _showSwitchArchiveDialog() {
-    final List<dynamic> rawList =
-        _configService.getSetting<List>('novel_outline_list', []);
-    final archives = List<Map<String, dynamic>>.from(rawList);
+      final List<dynamic> rawList =
+          _configService.getSetting<List>('novel_outline_list', []);
+      final archives = List<Map<String, dynamic>>.from(rawList);
 
-    if (archives.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('暂无已保存的大纲存档')),
-      );
-      return;
-    }
+      if (archives.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('暂无已保存的大纲存档')),
+        );
+        return;
+      }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('切换大纲存档'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: archives.length,
-            itemBuilder: (context, index) {
-              final archive = archives[index];
-              final date = DateTime.fromMillisecondsSinceEpoch(
-                  archive['timestamp'] ?? 0);
-              return ListTile(
-                title: Text(archive['name'] ?? '未命名存档',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('保存时间: ${date.toString().substring(0, 16)}'),
-                leading: const Icon(Icons.description_outlined),
-                onTap: () {
-                  // 点击某个存档，弹出确认覆盖提示
-                  _confirmLoadArchive(archive);
-                },
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.grey),
-                  onPressed: () async {
-                     // 简单的删除逻辑 (可选)
-                     final confirmDelete = await showDialog<bool>(
-                        context: context,
-                        builder: (c) => AlertDialog(
-                          title: const Text('删除存档'),
-                          content: Text('确定要删除 "${archive['name']}" 吗？'),
-                          actions: [
-                            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('取消')),
-                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('删除')),
-                          ],
-                        )
-                     );
-                     
-                     if (confirmDelete == true) {
-                       setState(() {
-                         archives.removeAt(index);
-                       });
-                       await _configService.modifySetting('novel_outline_list', archives);
-                       // 关闭当前的列表弹窗，或者强制刷新它(比较麻烦)，这里简单处理：关闭弹窗
-                       if (mounted) Navigator.pop(context);
-                     }
-                  },
-                ),
-              );
-            },
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          // 设置 insetPadding，让列表更宽
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          title: const Text('切换大纲存档'),
+          // 使用 SizedBox 配合 MediaQuery 获取屏幕宽度
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width,
+            child: ListView.builder(
+              shrinkWrap: true,
+              // 增加 itemCount 限制，防止列表过长导致溢出，或者保持默认让其滚动
+              itemCount: archives.length,
+              itemBuilder: (context, index) {
+                final archive = archives[index];
+                final date = DateTime.fromMillisecondsSinceEpoch(
+                    archive['timestamp'] ?? 0);
+                return Column(
+                  children: [
+                    ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      title: Text(archive['name'] ?? '未命名存档',
+                          style: const TextStyle(fontWeight: FontWeight.bold)),
+                      subtitle: Text('保存时间: ${date.toString().substring(0, 16)}'),
+                      leading: const Icon(Icons.description_outlined),
+                      onTap: () {
+                        _confirmLoadArchive(archive);
+                      },
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                        onPressed: () async {
+                          final confirmDelete = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                    title: const Text('删除存档'),
+                                    content: Text('确定要删除 "${archive['name']}" 吗？'),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(c, false),
+                                          child: const Text('取消')),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(c, true),
+                                          child: const Text('删除')),
+                                    ],
+                                  ));
+
+                          if (confirmDelete == true) {
+                            setState(() {
+                              archives.removeAt(index);
+                            });
+                            await _configService.modifySetting(
+                                'novel_outline_list', archives);
+                            // 如果删除后列表为空，关闭对话框
+                            if (archives.isEmpty && mounted) {
+                              Navigator.pop(context); 
+                            } else if (mounted) {
+                              Navigator.pop(context);
+                              _showSwitchArchiveDialog(); // 重新打开以刷新列表
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    const Divider(height: 1), // 添加分割线让列表更清晰
+                  ],
+                );
+              },
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
-          ),
-        ],
-      ),
-    );
-  }
+      );
+    }
 
   void _confirmLoadArchive(Map<String, dynamic> archive) {
     showDialog(
@@ -269,8 +285,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
           ),
           FilledButton(
             onPressed: () {
-              Navigator.pop(dialogContext); // 关闭确认框
-              Navigator.pop(context); // 关闭列表框
+              Navigator.pop(dialogContext);
+              Navigator.pop(context);
               _loadArchiveData(archive['data']);
             },
             child: const Text('确认加载'),
@@ -282,28 +298,27 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
 
   void _loadArchiveData(Map<String, dynamic> data) async {
     setState(() => _isLoading = true);
-    
-    // 1. 更新内存变量
-    // 深拷贝一份数据给 _outline，避免后续修改影响到存档原始数据（如果引用相同的话）
+
     _outline = jsonDecode(jsonEncode(data));
-    
-    // 2. 更新 Controllers
     _titleController.text = _outline['title'] ?? '';
     _introductionController.text = _outline['introduction'] ?? '';
-    
     _resyncChapterIds();
 
-    // 3. 将加载的数据同步保存到当前的 "工作台配置" 中
-    // 这样用户下次打开 APP，默认显示的就是刚才加载的这个存档内容
-    await _configService.modifySetting('ai_novel_creation_title', _outline['title']);
-    await _configService.modifySetting('ai_novel_creation_introduction', _outline['introduction']);
-    await _configService.modifySetting('ai_novel_creation_background_setting', _outline['background_setting']);
-    await _configService.modifySetting('ai_novel_creation_writing_style', _outline['writing_style']);
-    await _configService.modifySetting('ai_novel_creation_main_characters', _outline['main_characters']);
-    await _configService.modifySetting('ai_novel_creation_storyline', _outline['storyline']);
+    await _configService.modifySetting(
+        'ai_novel_creation_title', _outline['title']);
+    await _configService.modifySetting(
+        'ai_novel_creation_introduction', _outline['introduction']);
+    await _configService.modifySetting('ai_novel_creation_background_setting',
+        _outline['background_setting']);
+    await _configService.modifySetting(
+        'ai_novel_creation_writing_style', _outline['writing_style']);
+    await _configService.modifySetting(
+        'ai_novel_creation_main_characters', _outline['main_characters']);
+    await _configService.modifySetting(
+        'ai_novel_creation_storyline', _outline['storyline']);
 
     setState(() => _isLoading = false);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('存档已加载并刷新页面')),
@@ -311,9 +326,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     }
   }
 
-
   void navigateToGenerationPage() {
-    // 确保在跳转前，任何待处理的保存都已完成
     _debounce?.cancel();
     _configService.modifySetting(
         'ai_novel_creation_title', _titleController.text);
@@ -323,13 +336,11 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'ai_novel_creation_introduction', _introductionController.text);
     _outline['introduction'] = _introductionController.text;
 
-    // 显示生成模式选择弹窗
     _showGenerationModeDialog();
   }
 
   void _showGenerationModeDialog() {
-    bool? selectedMode; // true = 并行, false = 线性
-
+    bool? selectedMode;
     final parentContext = context;
 
     showDialog(
@@ -382,7 +393,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                   ? null
                   : () {
                       Navigator.of(dialogContext).pop();
-
                       Navigator.of(parentContext)
                           .push(
                         MaterialPageRoute(
@@ -664,7 +674,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       appBar: AppBar(
         title: const Text('故事大纲'),
         actions: [
-          // 原有的重新生成按钮
           if (_selectedChapterIndices.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
@@ -682,16 +691,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                     : _handleRegenerateSelectedChapters,
               ),
             ),
-          
-          // --- 新增：保存大纲按钮 ---
           if (!_isLoading)
             IconButton(
               icon: const Icon(Icons.save_as),
               tooltip: '保存当前大纲存档',
               onPressed: _showSaveArchiveDialog,
             ),
-            
-          // --- 新增：切换大纲按钮 ---
           if (!_isLoading)
             IconButton(
               icon: const Icon(Icons.history),
@@ -751,8 +756,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               ],
             ),
           ),
-
-          // 小说简介编辑区
           _buildSectionHeader(theme, '小说简介', Icons.info_outline),
           Card(
             margin: const EdgeInsets.only(top: 8.0),
@@ -776,7 +779,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               ),
             ),
           ),
-
           _buildSectionHeader(theme, '背景设定', Icons.public),
           Card(
             margin: const EdgeInsets.only(top: 8.0),
@@ -849,61 +851,117 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 onTap: () => _toggleChapterSelection(idx),
                 borderRadius: BorderRadius.circular(12.0),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 12, 0, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                   child: Column(
                     children: [
-                      ListTile(
-                        leading: CircleAvatar(child: Text('${idx + 1}')),
-                        title: TextFormField(
-                          initialValue: chapter['chapter_title'] ?? '',
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                          decoration:
-                              const InputDecoration.collapsed(hintText: '章节标题'),
-                          onChanged: (val) {
-                            setState(() {
-                              _outline['storyline'][idx]['chapter_title'] = val;
-                            });
-                            _debounceSave(() => _configService.modifySetting(
-                                'ai_novel_creation_storyline',
-                                _outline['storyline']));
-                          },
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Checkbox(
-                              value: isSelected,
-                              onChanged: (bool? value) {
-                                _toggleChapterSelection(idx);
-                              },
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          // 阈值设为400，适配一般手机竖屏
+                          final bool isCompact = constraints.maxWidth < 320;
+
+                          // 序号组件
+                          Widget leadingWidget = Padding(
+                            padding: const EdgeInsets.only(right: 12.0),
+                            child: CircleAvatar(child: Text('${idx + 1}')),
+                          );
+
+                          // 标题输入组件
+                          Widget titleWidget = TextFormField(
+                            key: ValueKey('chapter_title_$idx'), // 保持状态
+                            initialValue: chapter['chapter_title'] ?? '',
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                            decoration: const InputDecoration(
+                              hintText: '章节标题',
+                              isDense: true,
+                              border: InputBorder.none,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.arrow_upward),
-                              tooltip: '上移',
-                              onPressed: idx == 0
-                                  ? null
-                                  : () => _moveChapter(idx, idx - 1),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.arrow_downward),
-                              tooltip: '下移',
-                              onPressed: idx == storylineList.length - 1
-                                  ? null
-                                  : () => _moveChapter(idx, idx + 1),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              tooltip: '删除本章',
-                              onPressed: () => _deleteChapter(idx),
-                            ),
-                          ],
-                        ),
-                        contentPadding: const EdgeInsets.only(left: 4),
+                            onChanged: (val) {
+                              setState(() {
+                                _outline['storyline'][idx]['chapter_title'] =
+                                    val;
+                              });
+                              _debounceSave(() => _configService.modifySetting(
+                                  'ai_novel_creation_storyline',
+                                  _outline['storyline']));
+                            },
+                          );
+
+                          // 按钮组组件
+                          Widget actionButtons = Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Checkbox(
+                                value: isSelected,
+                                onChanged: (bool? value) {
+                                  _toggleChapterSelection(idx);
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_upward),
+                                tooltip: '上移',
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(8),
+                                onPressed: idx == 0
+                                    ? null
+                                    : () => _moveChapter(idx, idx - 1),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_downward),
+                                tooltip: '下移',
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(8),
+                                onPressed: idx == storylineList.length - 1
+                                    ? null
+                                    : () => _moveChapter(idx, idx + 1),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                tooltip: '删除本章',
+                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(8),
+                                onPressed: () => _deleteChapter(idx),
+                              ),
+                            ],
+                          );
+
+                          if (isCompact) {
+                            // 手机/窄屏：两行布局
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    leadingWidget,
+                                    Expanded(child: titleWidget),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Spacer(),
+                                    actionButtons,
+                                  ],
+                                ),
+                              ],
+                            );
+                          } else {
+                            // 宽屏：一行布局 (原样)
+                            return Row(
+                              children: [
+                                leadingWidget,
+                                Expanded(child: titleWidget),
+                                const SizedBox(width: 8),
+                                actionButtons,
+                              ],
+                            );
+                          }
+                        },
                       ),
-                      const Divider(height: 24, endIndent: 12),
+                      const Divider(height: 24),
                       Padding(
-                        padding: const EdgeInsets.only(right: 12.0),
+                        padding: const EdgeInsets.only(right: 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -917,8 +975,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               maxLines: 5,
                               onChanged: (val) {
                                 setState(() {
-                                  _outline['storyline'][idx]['chapter_summary'] =
-                                      val;
+                                  _outline['storyline'][idx]
+                                      ['chapter_summary'] = val;
                                 });
                                 _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',

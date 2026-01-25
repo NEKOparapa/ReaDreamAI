@@ -393,10 +393,10 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     final screenSize = MediaQuery.of(context).size;
     final double portraitHeight = (screenSize.height * 0.32).clamp(180.0, 450.0);
     final double portraitWidth = portraitHeight * 0.75;
-    final double portraitTopOffset = -(portraitHeight - 12);
+    final double portraitTopOffset = -(portraitHeight - 12) - 5;
     
     // 根据模式调整对话框高度（FreeMode时稍高一点以容纳输入框）
-    final double boxHeight = _isFreeMode ? 240 : 180;
+    final double boxHeight = _isFreeMode ? 280 : 220;
 
     return Positioned.fill(
       child: Stack(
@@ -428,35 +428,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             ),
           ),
 
-          // 2. 选项区域 (动态避让大立绘)
-          if (_visibleOptions.isNotEmpty && !_isGenerating)
-            Positioned(
-              bottom: boxHeight + portraitHeight * 0.6, 
-              left: 20,
-              right: 20,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: _visibleOptions.map((opt) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: InkWell(
-                    onTap: () => _handleOptionSelect(opt),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A).withOpacity(0.95),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.amber.withOpacity(0.5)),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2))],
-                      ),
-                      child: Text(opt, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                    ),
-                  ),
-                )).toList(),
-              ),
-            ),
-
-          // 3. 对话框主体 + 悬浮立绘
+          // 2. 对话框主体 + 悬浮立绘 
+          // (注意：这里的位置调整了，先渲染对话框和立绘，再渲染选项，这样选项就会覆盖在立绘之上)
           Positioned(
             bottom: 40,
             left: 16,
@@ -465,7 +438,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
               clipBehavior: Clip.none, 
               alignment: Alignment.bottomCenter,
               children: [
-                // 3.1 对话框容器
+                // 2.1 对话框容器
                 Container(
                   height: boxHeight,
                   decoration: BoxDecoration(
@@ -482,7 +455,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 3.1.1 顶部栏 (名字 + 进度)
+                      // 2.1.1 顶部栏 (名字 + 进度 + AI状态)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -508,6 +481,28 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                           ),
                           
                           const Spacer(),
+
+                          // AI 生成状态提示
+                          if (_isGenerating) ...[
+                            SizedBox(
+                              width: 10, 
+                              height: 10, 
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5, 
+                                color: Colors.cyan.withOpacity(0.5) // 调暗颜色
+                              )
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "AI 正在构思...", 
+                              style: TextStyle(
+                                color: Colors.white54, // 调成半透明灰色，不再抢眼
+                                fontSize: 11, 
+                                fontWeight: FontWeight.normal // 去掉粗体
+                              )
+                            ),
+                            const SizedBox(width: 12),
+                          ],
                           
                           // 进度文本
                           Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12))),
@@ -516,7 +511,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                         ],
                       ),
                       
-                      // 3.1.2 文本显示区
+                      // 2.1.2 文本显示区
                       Expanded(
                         child: GestureDetector(
                           onTap: _nextDialogue,
@@ -530,7 +525,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                         ),
                       ),
 
-                      // 3.1.3 底部交互区
+                      // 2.1.3 底部交互区
                       Container(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: _isFreeMode 
@@ -643,7 +638,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   ),
                 ),
 
-                // 3.2 悬浮的立绘头像
+                // 2.2 悬浮的立绘头像
                 if (hasImage && name != '系统' && name != '旁白')
                   Positioned(
                     top: portraitTopOffset, 
@@ -684,6 +679,34 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
               ],
             ),
           ),
+
+          // 3. 选项区域 
+          if (_visibleOptions.isNotEmpty && !_isGenerating)
+            Positioned(
+              bottom: boxHeight + portraitHeight * 0.6, 
+              left: 20,
+              right: 20,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: _visibleOptions.map((opt) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => _handleOptionSelect(opt),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A2A).withOpacity(0.95), // 保持高不透明度以防背景杂乱
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2))],
+                      ),
+                      child: Text(opt, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
 
           // 4. 左上角：离开按钮
           Positioned(

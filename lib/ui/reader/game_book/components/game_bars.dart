@@ -80,8 +80,8 @@ class GameBottomBar extends StatelessWidget {
         children: [
           // 1. 玩家按钮
           _buildGameButton(
-            label: player['name'] ?? 'Player',
-            subLabel: 'Your status',
+            label: '玩家',
+            subLabel: 'status',
             icon: Icons.face,
             color: Colors.cyanAccent,
             onTap: onPlayerTap,
@@ -105,7 +105,7 @@ class GameBottomBar extends StatelessWidget {
             onTap: onSettlementTap,
             borderRadius: BorderRadius.circular(30),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: [Colors.white10, Colors.white.withOpacity(0.05)]),
                 borderRadius: BorderRadius.circular(30),
