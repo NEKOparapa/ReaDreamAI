@@ -2,7 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
-import 'dart:math'; // 引入 math 库
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -18,7 +18,7 @@ import '../../../services/cache_manager/cache_manager.dart';
 import '../../../services/task_executor/novel_generator_service.dart';
 
 // 定义章节状态
-enum ChapterStatus { pending, generating, completed, error }
+enum ChapterStatus { pending, planning, generating, completed, error }
 
 // 定义章节生成信息的模型
 class ChapterGenerationInfo {
@@ -46,10 +46,12 @@ class GenerationLog {
 
 class NovelGenerationProgressPage extends StatefulWidget {
   final Map<String, dynamic> outline;
+  final bool isLinearMode;
 
   const NovelGenerationProgressPage({
     super.key,
     required this.outline,
+    this.isLinearMode = false,
   });
 
   @override
@@ -72,7 +74,7 @@ class _NovelGenerationProgressPageState
   late List<ChapterGenerationInfo> _chapterInfos;
   // 主滚动控制器
   final ScrollController _scrollController = ScrollController();
-  // [新增] 日志专用滚动控制器
+  // 日志专用滚动控制器
   final ScrollController _logScrollController = ScrollController();
 
 
@@ -89,7 +91,7 @@ class _NovelGenerationProgressPageState
   @override
   void dispose() {
     _scrollController.dispose();
-    _logScrollController.dispose(); // 释放日志控制器
+    _logScrollController.dispose();
     super.dispose();
   }
 
@@ -111,10 +113,19 @@ class _NovelGenerationProgressPageState
     }
   }
 
-  /// 开始初次生成所有章节
+  /// 开始生成流程
   Future<void> startGeneration() async {
+    if (widget.isLinearMode) {
+      await _startLinearGeneration();
+    } else {
+      await _startParallelGeneration();
+    }
+  }
+
+  /// 并行生成模式（原有逻辑：并行规划 + 并行写作）
+  Future<void> _startParallelGeneration() async {
     LogService.instance.info('开始并行生成小说正文...');
-    _addLog('生成任务已启动', Icons.play_circle_outline);
+    _addLog('生成任务已启动（完全并行模式）', Icons.flash_on);
     setState(() {
       _mainStatus = '正在并行生成所有章节...';
       _detailedStatus = '任务已分发';
@@ -122,7 +133,7 @@ class _NovelGenerationProgressPageState
 
     final wordsPerChapter = _configService.getSetting<int>(
         'ai_novel_creation_words_per_chapter', 1500);
-    _addLog('目标字数设定为每章约 $wordsPerChapter 字，但以实际生成内容为准', Icons.format_size);
+    _addLog('目标字数设定为每章约 $wordsPerChapter 字', Icons.format_size);
 
     final llmApi = _configService.getActiveLanguageApi();
     final concurrency = llmApi.concurrencyLimit ?? 3;
@@ -144,6 +155,7 @@ class _NovelGenerationProgressPageState
           setState(() {
             _chapterInfos[i].status = ChapterStatus.generating;
           });
+          // 并行模式下，规划和写作是一起进行的，无法共享上下文
           _addLog('开始生成第 ${i + 1} 章: "${storyline[i]['chapter_title']}"...',
               Icons.cloud_upload_outlined);
 
@@ -214,12 +226,7 @@ class _NovelGenerationProgressPageState
       await Future.wait(futures);
 
       if (_isTerminated) {
-        _addLog('任务已被用户手动终止', Icons.cancel_outlined);
-        setState(() {
-          _mainStatus = '任务已终止';
-          _detailedStatus = '生成过程已停止';
-          _isFinished = true;
-        });
+        _handleTermination();
         return;
       }
       
@@ -236,16 +243,221 @@ class _NovelGenerationProgressPageState
         }
       });
     } catch (e, s) {
-      LogService.instance.error('小说正文生成过程中发生错误', e, s);
-      if (!_hasError) _addLog('发生严重错误: $e', Icons.error_outline);
+      _handleGlobalError(e, s);
+    }
+  }
+
+  /// 线性生成模式：串行规划 -> 并行写作
+  Future<void> _startLinearGeneration() async {
+    LogService.instance.info('开始线性生成模式（串行规划 -> 并行写作）...');
+    _addLog('生成任务已启动（线性规划模式）', Icons.account_tree_outlined);
+    
+    final wordsPerChapter = _configService.getSetting<int>(
+        'ai_novel_creation_words_per_chapter', 1500);
+    _addLog('目标字数设定为每章约 $wordsPerChapter 字', Icons.format_size);
+
+    final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
+    final characters = List<Map<String, dynamic>>.from(widget.outline['main_characters']);
+    
+    // =========================================================
+    // 阶段一：串行规划 (Sequential Planning Phase)
+    // =========================================================
+    
+    // 用于收集所有章节的规划，作为上下文传递给下一章
+    final List<Map<String, dynamic>> cumulativePlans = [];
+
+    try {
+      for (int i = 0; i < storyline.length; i++) {
+        if (_isTerminated || !mounted) return;
+
+        setState(() {
+          _mainStatus = '正在构建大纲结构 (${i + 1}/${storyline.length})';
+          _detailedStatus = '正在规划第 ${i + 1} 章剧情走向...';
+          _chapterInfos[i].status = ChapterStatus.planning; // 使用新状态或复用generating
+          _chapterInfos[i].progress = 0.05; // 视觉上给一点进度
+        });
+
+        // 滚动到当前章节
+        if(_scrollController.hasClients) {
+          final itemHeight = 72.0; // 假设列表项高度
+          final offset = min(i * itemHeight, _scrollController.position.maxScrollExtent);
+          _scrollController.animateTo(offset, duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+        }
+
+        // 调用 Service 生成规划并缓存
+        final List<String> plan = await NovelGeneratorService.instance.generateAndCacheChapterPlan(
+          title: widget.outline['title'],
+          backgroundSetting: widget.outline['background_setting'],
+          writingStyle: widget.outline['writing_style'],
+          mainCharacters: characters,
+          storyline: storyline,
+          chapterIndex: i,
+          wordsPerChapter: wordsPerChapter,
+          isTerminated: () => _isTerminated,
+          previousChapterPlans: cumulativePlans, // 关键：将之前所有章节的规划传进去
+        );
+
+        // 将生成的规划加入上下文列表
+        cumulativePlans.add({
+          'chapterIndex': i,
+          'chapterTitle': storyline[i]['chapter_title'],
+          'plans': plan,
+        });
+
+        _addLog('第 ${i + 1} 章剧情结构规划完成', Icons.assignment_turned_in_outlined);
+      }
+    } catch (e, s) {
+      LogService.instance.error('规划阶段发生错误', e, s);
+      _addLog('剧情规划中断: $e', Icons.error_outline);
       if (mounted) {
         setState(() {
-          _mainStatus = '生成失败';
-          _detailedStatus = '请检查日志或网络连接后重试';
+          _mainStatus = '规划失败';
+          _detailedStatus = '请检查网络或配置';
           _hasError = true;
-          _isFinished = true;
+          _isFinished = true; 
         });
       }
+      return;
+    }
+
+    if (_isTerminated) {
+       _handleTermination();
+       return;
+    }
+
+    // =========================================================
+    // 阶段二：并行写作 (Parallel Writing Phase)
+    // =========================================================
+    
+    LogService.instance.info('全局规划完成，开始并行生成正文...');
+    _addLog('全局规划完成，开始并行生成正文内容...', Icons.flash_on);
+    
+    if (mounted) {
+      setState(() {
+        _mainStatus = '正在并行生成正文...';
+        _detailedStatus = '全速写作中';
+      });
+    }
+
+    final llmApi = _configService.getActiveLanguageApi();
+    final concurrency = llmApi.concurrencyLimit ?? 3;
+    final pool = Pool(concurrency);
+    final futures = <Future>[];
+    int completedChapters = 0;
+
+    for (int i = 0; i < storyline.length; i++) {
+      futures.add(pool.withResource(() async {
+        if (_isTerminated || !mounted) return;
+        
+        setState(() {
+           _chapterInfos[i].status = ChapterStatus.generating;
+        });
+
+        try {
+          // 调用 generateChapterContent。
+          // 因为 Service 中已经有了 _segmentPlanCache，它会跳过规划步骤，直接开始写正文。
+          final content = await NovelGeneratorService.instance.generateChapterContent(
+            title: widget.outline['title'],
+            backgroundSetting: widget.outline['background_setting'],
+            writingStyle: widget.outline['writing_style'],
+            mainCharacters: characters,
+            storyline: storyline,
+            chapterIndex: i,
+            wordsPerChapter: wordsPerChapter,
+            // 传入上下文（虽然规划已缓存，但保持一致性）
+            previousChapterPlans: cumulativePlans, 
+            onProgress: (message, chapterProgress) { 
+              if (mounted && !_isTerminated) {
+                setState(() {
+                  _detailedStatus = '第 ${i + 1} 章: $message';
+                  _chapterInfos[i].progress = chapterProgress;
+                });
+              }
+            },
+            isTerminated: () => _isTerminated,
+          );
+
+          if (_isTerminated || !mounted) return;
+          if (content.isEmpty) throw Exception("内容生成为空");
+
+          _chapterInfos[i].content = content;
+          _chapterInfos[i].charCount = content.length;
+          _addLog('第 ${i + 1} 章正文完成', Icons.check_circle_outline);
+
+          if (mounted) {
+            setState(() {
+              completedChapters++;
+              _chapterInfos[i].status = ChapterStatus.completed;
+              _chapterInfos[i].progress = 1.0; 
+              _progress = completedChapters / storyline.length;
+              _mainStatus = '正在创作 ($completedChapters/${storyline.length})';
+            });
+          }
+        } catch (e, s) {
+          if (_isTerminated) return;
+          
+          Object error = e;
+          if (e is Map && e.containsKey('error') && e.containsKey('partialContent')) {
+            final partialContent = e['partialContent'] as String;
+            error = e['error'] ?? e;
+            if (mounted) {
+              _chapterInfos[i].content = partialContent;
+              _chapterInfos[i].charCount = partialContent.length;
+            }
+          }
+
+          LogService.instance.error('生成第 ${i + 1} 章内容失败', error, s);
+          _addLog('第 ${i + 1} 章生成失败: $error', Icons.error_outline);
+          if (mounted) {
+            setState(() {
+              _chapterInfos[i].status = ChapterStatus.error;
+              _hasError = true;
+            });
+          }
+        }
+      }));
+    }
+
+    await Future.wait(futures);
+
+    if (_isTerminated) {
+      _handleTermination();
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isFinished = true;
+        if (_hasError) {
+          _mainStatus = '部分章节生成失败';
+          _detailedStatus = '您可以尝试重新生成失败的章节';
+        } else {
+          _mainStatus = '所有章节已生成！';
+          _detailedStatus = '请检查内容，然后点击“完成并保存”';
+        }
+      });
+    }
+  }
+
+  void _handleTermination() {
+    _addLog('任务已被用户手动终止', Icons.cancel_outlined);
+    setState(() {
+      _mainStatus = '任务已终止';
+      _detailedStatus = '生成过程已停止';
+      _isFinished = true;
+    });
+  }
+
+  void _handleGlobalError(Object e, StackTrace s) {
+    LogService.instance.error('小说生成过程中发生错误', e, s);
+    if (!_hasError) _addLog('发生严重错误: $e', Icons.error_outline);
+    if (mounted) {
+      setState(() {
+        _mainStatus = '生成失败';
+        _detailedStatus = '请检查日志或网络连接后重试';
+        _hasError = true;
+        _isFinished = true;
+      });
     }
   }
 
@@ -253,7 +465,7 @@ class _NovelGenerationProgressPageState
   Future<void> _regenerateChapter(int index) async {
     if (_isTerminated || _isSaving) return;
 
-    // 在重新生成前，清除该章节的规划缓存，以确保生成全新的计划
+    // 清除该章节的规划缓存，以确保生成全新的计划
     NovelGeneratorService.instance.clearChapterPlanCache(widget.outline['title'], index);
 
     final storyline = List<Map<String, dynamic>>.from(widget.outline['storyline']);
@@ -263,7 +475,7 @@ class _NovelGenerationProgressPageState
       _mainStatus = '正在重新生成...';
       _detailedStatus = '处理第 ${index + 1} 章: "${storyline[index]['chapter_title']}"';
       _chapterInfos[index].status = ChapterStatus.generating;
-      _chapterInfos[index].content = null; // 清空旧内容
+      _chapterInfos[index].content = null;
       _chapterInfos[index].charCount = 0;
       _chapterInfos[index].progress = 0.0;
       _hasError = _chapterInfos.any((info) => info.status == ChapterStatus.error);
@@ -325,7 +537,8 @@ class _NovelGenerationProgressPageState
       }
     } finally {
       if (mounted) {
-        final isStillGenerating = _chapterInfos.any((info) => info.status == ChapterStatus.generating);
+        final isStillGenerating = _chapterInfos.any((info) => 
+            info.status == ChapterStatus.generating || info.status == ChapterStatus.planning);
         if (!isStillGenerating) {
           _isFinished = true;
           _hasError = _chapterInfos.any((info) => info.status == ChapterStatus.error);
@@ -494,7 +707,9 @@ class _NovelGenerationProgressPageState
           _detailedStatus = '您的新书已在书架上等您';
         });
         await Future.delayed(const Duration(seconds: 1));
-        Navigator.of(context).pop(true);
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
       }
     } catch (e, s) {
       LogService.instance.error('保存书籍时发生错误', e, s);
@@ -739,6 +954,15 @@ class _NovelGenerationProgressPageState
           leading = Icon(Icons.hourglass_empty, color: statusColor);
           statusText = '等待中';
           break;
+        case ChapterStatus.planning:
+          statusColor = Theme.of(context).colorScheme.tertiary;
+          leading = SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: statusColor),
+          );
+          statusText = '规划剧情中...';
+          break;
         case ChapterStatus.generating:
           statusColor = Theme.of(context).colorScheme.primary;
           leading = SizedBox(
@@ -787,16 +1011,14 @@ class _NovelGenerationProgressPageState
       }
       
       Widget? buildTrailingActions() {
-        if (_isSaving || _isTerminated || info.status == ChapterStatus.generating) {
+        if (_isSaving || _isTerminated || info.status == ChapterStatus.generating || info.status == ChapterStatus.planning) {
           return null;
         }
 
-        // 从 Service 查询该章节的规划是否存在
         final bool planExists = NovelGeneratorService.instance.hasChapterPlan(widget.outline['title'], index);
 
         final actions = <Widget>[];
 
-        // 如果规划已存在，并且章节状态为等待中或错误，则显示“继续”按钮
         if (planExists && (info.status == ChapterStatus.pending || info.status == ChapterStatus.error)) {
           actions.add(
             IconButton(
@@ -807,7 +1029,6 @@ class _NovelGenerationProgressPageState
           );
         }
         
-        // 如果章节状态为错误或已完成，则显示“重新生成”按钮
         if (info.status == ChapterStatus.error || info.status == ChapterStatus.completed) {
           actions.add(
             IconButton(
@@ -822,7 +1043,6 @@ class _NovelGenerationProgressPageState
           return null;
         }
         
-        // 使用 Row 来显示一个或多个按钮
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: actions,
@@ -948,7 +1168,7 @@ class _NovelGenerationProgressPageState
   // 增加独立滚动条的日志视图
   Widget _buildLogView(ThemeData theme) {
     return Container(
-      height: 200, // 为日志框设置一个固定的高度
+      height: 200, 
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
@@ -959,10 +1179,10 @@ class _NovelGenerationProgressPageState
         ),
       ),
       child: Scrollbar(
-        controller: _logScrollController, // 关联日志滚动控制器
-        thumbVisibility: true, // 始终显示滚动条，方便用户看到
+        controller: _logScrollController, 
+        thumbVisibility: true, 
         child: ListView.builder(
-          controller: _logScrollController, // 关联日志滚动控制器
+          controller: _logScrollController, 
           itemCount: _logs.length,
           itemBuilder: (context, index) {
             final log = _logs[index];

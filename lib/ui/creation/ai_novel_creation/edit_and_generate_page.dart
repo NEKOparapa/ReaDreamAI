@@ -111,16 +111,96 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
 
     _configService.modifySetting('ai_novel_creation_introduction', _introductionController.text);
     _outline['introduction'] = _introductionController.text;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => NovelGenerationProgressPage(outline: _outline),
-      ),
-    ).then((success) {
-      if (success == true && mounted) {
-        Navigator.of(context).pop();
-      }
-    });
+    
+    // 显示生成模式选择弹窗
+    _showGenerationModeDialog();
   }
+
+  void _showGenerationModeDialog() {
+      bool? selectedMode; // true = 并行, false = 线性
+      
+      // 【关键修改1】获取父级页面的 Context，确保它在弹窗关闭后依然有效
+      final parentContext = context; 
+
+      showDialog(
+        context: context,
+        // 【关键修改2】重命名 builder 中的 context 为 dialogContext，避免混淆
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (innerContext, setDialogState) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.auto_awesome),
+                SizedBox(width: 8),
+                Text('选择生成模式'),
+              ],
+            ),
+            content: Column(
+              // ... (中间布局代码保持不变) ...
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '请选择小说生成方式：',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                RadioListTile<bool>(
+                  title: const Text('并行生成小说'),
+                  subtitle: const Text('同时生成所有章节，速度更快'),
+                  value: true,
+                  groupValue: selectedMode,
+                  onChanged: (value) {
+                    setDialogState(() => selectedMode = value);
+                  },
+                ),
+                RadioListTile<bool>(
+                  title: const Text('线性生成小说'),
+                  subtitle: const Text('按顺序生成章节，避免内容冲突'),
+                  value: false,
+                  groupValue: selectedMode,
+                  onChanged: (value) {
+                    setDialogState(() => selectedMode = value);
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                // 【关键修改3】使用 dialogContext 关闭弹窗
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: selectedMode == null
+                    ? null
+                    : () {
+                        // 1. 先关闭弹窗 (使用弹窗的 context)
+                        Navigator.of(dialogContext).pop();
+                        
+                        // 2. 使用 parentContext 进行页面跳转
+                        // 这样即使弹窗销毁了，parentContext 依然指向底下的 EditAndGeneratePage
+                        Navigator.of(parentContext).push(
+                          MaterialPageRoute(
+                            builder: (context) => NovelGenerationProgressPage(
+                              outline: _outline,
+                              isLinearMode: selectedMode == false,
+                            ),
+                          ),
+                        ).then((success) {
+                          // 3. 处理返回结果
+                          if (success == true && mounted) {
+                            // 使用 parentContext 退出当前的编辑页面
+                            Navigator.of(parentContext).pop();
+                          }
+                        });
+                      },
+                child: const Text('开始生成'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
   void _saveCharacterToPresets(Map<String, dynamic> characterData) async {
     LogService.instance.info('正在将角色 ${characterData['name']} 保存为预设...');
@@ -437,7 +517,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                       contentPadding: EdgeInsets.symmetric(horizontal: 2.0),
                     ),
                     onChanged: (newValue) {
-                      // <--- 核心改动：用 setState 更新 UI
                       setState(() {
                         _outline['title'] = newValue;
                       });
@@ -458,7 +537,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextFormField(
-                controller: _introductionController, // 使用控制器或 initialValue 均可，这里配合 controller 更灵活
+                controller: _introductionController, 
                 decoration: const InputDecoration(
                   hintText: '请输入小说简介...',
                   border: OutlineInputBorder(),
@@ -489,7 +568,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 ),
                 maxLines: 5,
                 onChanged: (newValue) {
-                  // <--- 核心改动：用 setState 更新 UI
                   setState(() {
                     _outline['background_setting'] = newValue;
                   });
@@ -512,7 +590,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                 ),
                 maxLines: 3,
                 onChanged: (newValue) {
-                  // <--- 核心改动：用 setState 更新 UI
                   setState(() {
                     _outline['writing_style'] = newValue;
                   });
@@ -720,7 +797,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             ),
             maxLines: maxLines,
             onChanged: (val) {
-              // <--- 核心改动：用 setState 更新 UI
               setState(() {
                 _outline['main_characters'][idx][key] = val;
               });
@@ -736,7 +812,6 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         key: ObjectKey(char),
         margin: const EdgeInsets.symmetric(vertical: 8),
         child: ExpansionTile(
-          // 在标题变化时也能即时更新
           title: Text(_outline['main_characters'][idx]['name'] ?? '未命名角色',
               style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(_outline['main_characters'][idx]['characterName'] ?? ''),
