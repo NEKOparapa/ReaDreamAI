@@ -25,11 +25,30 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
 
   /// 保存拆分后的大纲数据到配置文件
   Future<void> _saveOutlineToConfig(Map<String, dynamic> outlineData) async {
-    await _configService.modifySetting('ai_novel_creation_title', outlineData['title'] ?? '');
-    await _configService.modifySetting('ai_novel_creation_background_setting', outlineData['background_setting'] ?? '');
-    await _configService.modifySetting('ai_novel_creation_writing_style', outlineData['writing_style'] ?? '');
-    await _configService.modifySetting('ai_novel_creation_main_characters', outlineData['main_characters'] ?? []);
-    await _configService.modifySetting('ai_novel_creation_storyline', outlineData['storyline'] ?? []);
+    await _configService.modifySetting(
+      'ai_novel_creation_title',
+      outlineData['title'] ?? '',
+    );
+    await _configService.modifySetting(
+      'ai_novel_creation_introduction',
+      outlineData['introduction'] ?? '',
+    );
+    await _configService.modifySetting(
+      'ai_novel_creation_background_setting',
+      outlineData['background_setting'] ?? '',
+    );
+    await _configService.modifySetting(
+      'ai_novel_creation_writing_style',
+      outlineData['writing_style'] ?? '',
+    );
+    await _configService.modifySetting(
+      'ai_novel_creation_main_characters',
+      outlineData['main_characters'] ?? [],
+    );
+    await _configService.modifySetting(
+      'ai_novel_creation_storyline',
+      outlineData['storyline'] ?? [],
+    );
   }
 
   /// 处理生成大纲和跳转的逻辑
@@ -56,10 +75,14 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
 
       final finalOutline = {
         'title': result['title'] ?? '未命名小说',
-        'introduction': result['introduction'] ?? '', 
-        'background_setting': selectedBackground ?? result['background_setting'] ?? '',
+        'introduction': result['introduction'] ?? '',
+        'background_setting':
+            selectedBackground ?? result['background_setting'] ?? '',
         'writing_style': selectedStyle ?? (result['writing_style'] ?? ''),
-        'main_characters': (selectedCharacters != null && selectedCharacters.isNotEmpty) ? selectedCharacters : result['main_characters'] ?? [],
+        'main_characters':
+            (selectedCharacters != null && selectedCharacters.isNotEmpty)
+            ? selectedCharacters
+            : result['main_characters'] ?? [],
         'storyline': result['storyline'] ?? [],
       };
 
@@ -69,12 +92,10 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
 
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => const EditAndGeneratePage(),
-          ),
+          MaterialPageRoute(builder: (context) => const EditAndGeneratePage()),
         );
       }
-    } catch (e, s) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('AI生成大纲失败,请检查接口是否正常工作中...')),
@@ -100,8 +121,8 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
             onPressed: _isGeneratingOutline
                 ? null
                 : () {
-              _showApiSettingsDialog(context);
-            },
+                    _showApiSettingsDialog(context);
+                  },
           ),
           TextButton.icon(
             icon: const Icon(Icons.edit_note_outlined),
@@ -109,12 +130,12 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
             onPressed: _isGeneratingOutline
                 ? null
                 : () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const EditAndGeneratePage(),
-                ),
-              );
-            },
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const EditAndGeneratePage(),
+                      ),
+                    );
+                  },
           ),
           const SizedBox(width: 8),
         ],
@@ -153,14 +174,18 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         child: FilledButton.icon(
           icon: _isGeneratingOutline
               ? const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white),
-          )
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Icon(Icons.auto_fix_high),
-          label: Text(_isGeneratingOutline ? '生成中...' : '生成大纲',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          label: Text(
+            _isGeneratingOutline ? '生成中...' : '生成大纲',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           onPressed: _isGeneratingOutline
               ? null
               : () => _formStateKey.currentState?.triggerGenerate(),
@@ -205,20 +230,34 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
 
   void _loadApiData() {
     final apisJson = _configService.getSetting<List>('languageApis', []);
-    _languageApis = apisJson.map((json) => ApiModel.fromJson(json as Map<String, dynamic>)).toList();
+    _languageApis = apisJson
+        .map((json) => ApiModel.fromJson(json as Map<String, dynamic>))
+        .toList();
 
-    _outlineApiId = _configService.getSetting<String?>('ai_novel_creation_outline_api_id', null);
-    _planApiId = _configService.getSetting<String?>('ai_novel_creation_plan_api_id', null);
-    _generateApiId = _configService.getSetting<String?>('ai_novel_creation_generate_api_id', null);
+    _outlineApiId = _configService.getSetting<String?>(
+      'ai_novel_creation_outline_api_id',
+      null,
+    );
+    _planApiId = _configService.getSetting<String?>(
+      'ai_novel_creation_plan_api_id',
+      null,
+    );
+    _generateApiId = _configService.getSetting<String?>(
+      'ai_novel_creation_generate_api_id',
+      null,
+    );
 
     // 验证已保存的ID是否存在，如果不存在则重置为null（默认）
-    if (_outlineApiId != null && !_languageApis.any((api) => api.id == _outlineApiId)) {
+    if (_outlineApiId != null &&
+        !_languageApis.any((api) => api.id == _outlineApiId)) {
       _outlineApiId = null;
     }
-    if (_planApiId != null && !_languageApis.any((api) => api.id == _planApiId)) {
+    if (_planApiId != null &&
+        !_languageApis.any((api) => api.id == _planApiId)) {
       _planApiId = null;
     }
-    if (_generateApiId != null && !_languageApis.any((api) => api.id == _generateApiId)) {
+    if (_generateApiId != null &&
+        !_languageApis.any((api) => api.id == _generateApiId)) {
       _generateApiId = null;
     }
 
@@ -258,7 +297,10 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
                 selectedApiId: _outlineApiId,
                 onChanged: (id) {
                   setState(() => _outlineApiId = id);
-                  _configService.modifySetting('ai_novel_creation_outline_api_id', id);
+                  _configService.modifySetting(
+                    'ai_novel_creation_outline_api_id',
+                    id,
+                  );
                 },
               ),
               const SizedBox(height: 16),
@@ -268,7 +310,10 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
                 selectedApiId: _planApiId,
                 onChanged: (id) {
                   setState(() => _planApiId = id);
-                  _configService.modifySetting('ai_novel_creation_plan_api_id', id);
+                  _configService.modifySetting(
+                    'ai_novel_creation_plan_api_id',
+                    id,
+                  );
                 },
               ),
               const SizedBox(height: 16),
@@ -278,7 +323,10 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
                 selectedApiId: _generateApiId,
                 onChanged: (id) {
                   setState(() => _generateApiId = id);
-                  _configService.modifySetting('ai_novel_creation_generate_api_id', id);
+                  _configService.modifySetting(
+                    'ai_novel_creation_generate_api_id',
+                    id,
+                  );
                 },
               ),
             ],
@@ -301,11 +349,16 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
     required ValueChanged<String?> onChanged,
   }) {
     final theme = Theme.of(context);
-    final activeApiId = _configService.getSetting<String?>('activeLanguageApiId', null);
+    final activeApiId = _configService.getSetting<String?>(
+      'activeLanguageApiId',
+      null,
+    );
     String defaultApiName = '未设置默认接口';
     if (activeApiId != null) {
       try {
-        final activeApi = _languageApis.firstWhere((api) => api.id == activeApiId);
+        final activeApi = _languageApis.firstWhere(
+          (api) => api.id == activeApiId,
+        );
         defaultApiName = '默认 (${activeApi.name})';
       } catch (e) {
         defaultApiName = '默认 (接口已删除)';
@@ -323,10 +376,7 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
       ),
       onChanged: onChanged,
       items: [
-        DropdownMenuItem<String?>(
-          value: null,
-          child: Text(defaultApiName),
-        ),
+        DropdownMenuItem<String?>(value: null, child: Text(defaultApiName)),
         ..._languageApis.map((api) {
           return DropdownMenuItem<String?>(
             value: api.id,
@@ -338,17 +388,17 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
   }
 }
 
-
 class GenerateOutlineForm extends StatefulWidget {
   final bool isLoading;
   final Future<void> Function({
-  required String storyPrompt,
-  required int chapterCount,
-  required int wordsPerChapter,
-  String? selectedBackground,
-  String? selectedStyle,
-  List<Map<String, dynamic>>? selectedCharacters,
-  }) onGenerate;
+    required String storyPrompt,
+    required int chapterCount,
+    required int wordsPerChapter,
+    String? selectedBackground,
+    String? selectedStyle,
+    List<Map<String, dynamic>>? selectedCharacters,
+  })
+  onGenerate;
 
   const GenerateOutlineForm({
     super.key,
@@ -386,35 +436,66 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
 
   void _loadCardData() {
     setState(() {
-      _backgroundCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_background_cards', []));
-      _styleCards = List<Map<String, dynamic>>.from(_configService.getSetting('writing_style_cards', []));
+      _backgroundCards = List<Map<String, dynamic>>.from(
+        _configService.getSetting('writing_background_cards', []),
+      );
+      _styleCards = List<Map<String, dynamic>>.from(
+        _configService.getSetting('writing_style_cards', []),
+      );
 
-      final charList = List<Map<String, dynamic>>.from(_configService.getSetting('drawing_character_cards', []));
+      final charList = List<Map<String, dynamic>>.from(
+        _configService.getSetting('drawing_character_cards', []),
+      );
       _characterCards = charList.map((e) => CharacterCard.fromJson(e)).toList();
 
-      _selectedBackgroundId = _configService.getSetting<String?>('active_writing_background_card_id', null);
-      _selectedStyleId = _configService.getSetting<String?>('active_writing_style_card_id', null);
-      _selectedCharacterIds = List<String>.from(_configService.getSetting<List>('active_drawing_character_card_ids', []));
+      _selectedBackgroundId = _configService.getSetting<String?>(
+        'active_writing_background_card_id',
+        null,
+      );
+      _selectedStyleId = _configService.getSetting<String?>(
+        'active_writing_style_card_id',
+        null,
+      );
+      _selectedCharacterIds = List<String>.from(
+        _configService.getSetting<List>(
+          'active_drawing_character_card_ids',
+          [],
+        ),
+      );
 
-      if (_selectedBackgroundId != null && !_backgroundCards.any((c) => c['id'] == _selectedBackgroundId)) {
+      if (_selectedBackgroundId != null &&
+          !_backgroundCards.any((c) => c['id'] == _selectedBackgroundId)) {
         _selectedBackgroundId = null;
       }
-      if (_selectedStyleId != null && !_styleCards.any((c) => c['id'] == _selectedStyleId)) {
+      if (_selectedStyleId != null &&
+          !_styleCards.any((c) => c['id'] == _selectedStyleId)) {
         _selectedStyleId = null;
       }
-      _selectedCharacterIds.removeWhere((id) => !_characterCards.any((c) => c.id == id));
+      _selectedCharacterIds.removeWhere(
+        (id) => !_characterCards.any((c) => c.id == id),
+      );
     });
   }
 
   void _loadFormData() {
-    _storyPromptController.text = _configService.getSetting<String>('ai_novel_creation_prompt', '');
-    _chapterCountController.text = _configService.getSetting<int>('ai_novel_creation_chapter_count', 2).toString();
-    _wordsPerChapterController.text = _configService.getSetting<int>('ai_novel_creation_words_per_chapter', 1500).toString();
+    _storyPromptController.text = _configService.getSetting<String>(
+      'ai_novel_creation_prompt',
+      '',
+    );
+    _chapterCountController.text = _configService
+        .getSetting<int>('ai_novel_creation_chapter_count', 2)
+        .toString();
+    _wordsPerChapterController.text = _configService
+        .getSetting<int>('ai_novel_creation_words_per_chapter', 1500)
+        .toString();
   }
 
   void _addListeners() {
     _storyPromptController.addListener(() {
-      _configService.modifySetting('ai_novel_creation_prompt', _storyPromptController.text);
+      _configService.modifySetting(
+        'ai_novel_creation_prompt',
+        _storyPromptController.text,
+      );
     });
     _chapterCountController.addListener(() {
       final count = int.tryParse(_chapterCountController.text) ?? 2;
@@ -422,7 +503,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
     });
     _wordsPerChapterController.addListener(() {
       final words = int.tryParse(_wordsPerChapterController.text) ?? 1500;
-      _configService.modifySetting('ai_novel_creation_words_per_chapter', words);
+      _configService.modifySetting(
+        'ai_novel_creation_words_per_chapter',
+        words,
+      );
     });
   }
 
@@ -431,12 +515,16 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
       LogService.instance.info('触发生成大纲操作，正在收集表单数据...');
       String? selectedBackground;
       if (_selectedBackgroundId != null) {
-        selectedBackground = _backgroundCards.firstWhere((c) => c['id'] == _selectedBackgroundId)['content'];
+        selectedBackground = _backgroundCards.firstWhere(
+          (c) => c['id'] == _selectedBackgroundId,
+        )['content'];
       }
 
       String? selectedStyle;
       if (_selectedStyleId != null) {
-        selectedStyle = _styleCards.firstWhere((c) => c['id'] == _selectedStyleId)['content'];
+        selectedStyle = _styleCards.firstWhere(
+          (c) => c['id'] == _selectedStyleId,
+        )['content'];
       }
 
       List<Map<String, dynamic>>? selectedCharacters;
@@ -494,18 +582,20 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                             const SizedBox(width: 12),
                             Text(
                               '故事灵感',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
                           '在这里输入故事的核心创意、关键情节，或只是一个简单的想法。AI将基于此为您构建整个故事大纲。',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ],
                     ),
@@ -515,7 +605,8 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                       autofocus: true,
                       maxLines: 15,
                       decoration: const InputDecoration(
-                        hintText: '例如：在一个赛博朋克都市，一位失忆的侦探必须找回自己的过去，同时揭露一个足以颠覆整个城市的巨大阴谋。',
+                        hintText:
+                            '例如：在一个赛博朋克都市，一位失忆的侦探必须找回自己的过去，同时揭露一个足以颠覆整个城市的巨大阴谋。',
                         border: OutlineInputBorder(),
                         filled: true,
                       ),
@@ -538,7 +629,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
               selectedId: _selectedBackgroundId,
               onChanged: (id) {
                 setState(() => _selectedBackgroundId = id);
-                _configService.modifySetting('active_writing_background_card_id', id);
+                _configService.modifySetting(
+                  'active_writing_background_card_id',
+                  id,
+                );
               },
             ),
             const SizedBox(height: 16),
@@ -549,7 +643,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
               selectedId: _selectedStyleId,
               onChanged: (id) {
                 setState(() => _selectedStyleId = id);
-                _configService.modifySetting('active_writing_style_card_id', id);
+                _configService.modifySetting(
+                  'active_writing_style_card_id',
+                  id,
+                );
               },
             ),
             const SizedBox(height: 16),
@@ -562,7 +659,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                   children: [
                     const ListTile(
                       leading: Icon(Icons.format_list_numbered),
-                      title: Text('篇幅设定', style: TextStyle(fontWeight: FontWeight.bold)),
+                      title: Text(
+                        '篇幅设定',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       subtitle: Text('设置章节和字数'),
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -578,9 +678,13 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                               prefixIcon: Icon(Icons.library_books_outlined),
                             ),
                             keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             validator: (value) {
-                              if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
+                              if (value == null ||
+                                  int.tryParse(value) == null ||
+                                  int.parse(value) <= 0) {
                                 return '请输入有效数字';
                               }
                               return null;
@@ -597,9 +701,13 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                               prefixIcon: Icon(Icons.text_fields_outlined),
                             ),
                             keyboardType: TextInputType.number,
-                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             validator: (value) {
-                              if (value == null || int.tryParse(value) == null || int.parse(value) <= 0) {
+                              if (value == null ||
+                                  int.tryParse(value) == null ||
+                                  int.parse(value) <= 0) {
                                 return '请输入有效数字';
                               }
                               return null;
@@ -634,7 +742,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
           children: [
             ListTile(
               leading: Icon(icon),
-              title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: const Text('从预设中选择或由AI自动生成'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -688,7 +799,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
           children: [
             const ListTile(
               leading: Icon(Icons.people_alt_outlined),
-              title: Text('主要角色', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: Text(
+                '主要角色',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               subtitle: Text('选择参与故事的核心人物'),
               contentPadding: EdgeInsets.zero,
             ),
@@ -710,7 +824,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                       if (isSelected) {
                         setState(() {
                           _selectedCharacterIds.clear();
-                          _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
+                          _configService.modifySetting(
+                            'active_drawing_character_card_ids',
+                            _selectedCharacterIds,
+                          );
                         });
                       }
                     },
@@ -727,7 +844,10 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                           } else {
                             _selectedCharacterIds.remove(card.id);
                           }
-                          _configService.modifySetting('active_drawing_character_card_ids', _selectedCharacterIds);
+                          _configService.modifySetting(
+                            'active_drawing_character_card_ids',
+                            _selectedCharacterIds,
+                          );
                         });
                       },
                     );
