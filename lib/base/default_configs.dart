@@ -196,7 +196,7 @@ const Map<String, dynamic> appDefaultConfigs = {
     }
   ],
 
-  // --- 新增：第一天事件流（多场景） ---
+  // --- 第一天事件\---
   'game_stage_first_day_events': [
     {
       'title': '遗物之谜', // [更新] 添加 title 字段，对应 Workbench 显示
@@ -268,6 +268,7 @@ const Map<String, dynamic> appDefaultConfigs = {
   'ai_novel_creation_chapter_count': 3, // 章节数
   'ai_novel_creation_words_per_chapter': 4000, // 每章字数
   'ai_novel_creation_title': '艾瑞多之心', // 小说标题
+  'ai_novel_creation_introduction': '在魔法与科技交织的艾瑞多世界，年轻的精灵魔法师莉娜意外发现了一个古代遗物，从而卷入了一场关乎世界命运的巨大阴谋。',
   // 背景设定预设内容
   'ai_novel_creation_background_setting': '在一个名为“艾瑞多”的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。', 
   // 写作风格预设内容

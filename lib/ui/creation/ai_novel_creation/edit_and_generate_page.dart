@@ -25,6 +25,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   bool _isRegeneratingChapters = false;
 
   late TextEditingController _titleController;
+  late TextEditingController _introductionController; 
   final Set<int> _selectedChapterIndices = {};
 
   Timer? _debounce;
@@ -33,12 +34,14 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   void initState() {
     super.initState();
     _titleController = TextEditingController();
+    _introductionController = TextEditingController();
     loadOutlineFromConfig();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
+    _introductionController.dispose();
     _debounce?.cancel();
     super.dispose();
   }
@@ -62,15 +65,15 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
 
   void loadOutlineFromConfig() {
     if (mounted) setState(() => _isLoading = true);
-    var loadedStoryline = List<Map<String, dynamic>>.from(
-        _configService.getSetting<List>('ai_novel_creation_storyline', []));
-    var loadedTitle =
-        _configService.getSetting<String>('ai_novel_creation_title', '');
+    var loadedStoryline = List<Map<String, dynamic>>.from(_configService.getSetting<List>('ai_novel_creation_storyline', []));
+    var loadedTitle =_configService.getSetting<String>('ai_novel_creation_title', '');
+    var loadedIntro = _configService.getSetting<String>('ai_novel_creation_introduction', '');
 
     if (loadedStoryline.isEmpty && loadedTitle.isEmpty) {
       LogService.instance.warn('未找到现有大纲，加载默认大纲。');
       _outline = {
         'title': appDefaultConfigs['ai_novel_creation_title'],
+        'introduction': appDefaultConfigs['ai_novel_creation_introduction'],
         'background_setting':
             appDefaultConfigs['ai_novel_creation_background_setting'],
         'writing_style': appDefaultConfigs['ai_novel_creation_writing_style'],
@@ -82,6 +85,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     } else {
       _outline = {
         'title': loadedTitle,
+        'introduction': loadedIntro,
         'background_setting': _configService.getSetting<String>(
             'ai_novel_creation_background_setting', ''),
         'writing_style': _configService.getSetting<String>(
@@ -94,6 +98,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     }
     _resyncChapterIds();
     _titleController.text = _outline['title'];
+    _introductionController.text = _outline['introduction'] ?? '';
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -104,6 +109,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'ai_novel_creation_title', _titleController.text);
     _outline['title'] = _titleController.text;
 
+    _configService.modifySetting('ai_novel_creation_introduction', _introductionController.text);
+    _outline['introduction'] = _introductionController.text;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => NovelGenerationProgressPage(outline: _outline),
@@ -443,6 +450,32 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               ],
             ),
           ),
+
+          // 小说简介编辑区
+          _buildSectionHeader(theme, '小说简介', Icons.info_outline),
+          Card(
+            margin: const EdgeInsets.only(top: 8.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextFormField(
+                controller: _introductionController, // 使用控制器或 initialValue 均可，这里配合 controller 更灵活
+                decoration: const InputDecoration(
+                  hintText: '请输入小说简介...',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                ),
+                maxLines: 3,
+                onChanged: (newValue) {
+                  setState(() {
+                    _outline['introduction'] = newValue;
+                  });
+                  _debounceSave(() => _configService.modifySetting(
+                      'ai_novel_creation_introduction', newValue));
+                },
+              ),
+            ),
+          ),
+
           _buildSectionHeader(theme, '背景设定', Icons.public),
           Card(
             margin: const EdgeInsets.only(top: 8.0),

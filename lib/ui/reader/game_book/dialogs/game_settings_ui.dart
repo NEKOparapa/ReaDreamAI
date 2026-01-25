@@ -10,78 +10,82 @@ class GameSettingsUI {
   static void showSettingsPanel(BuildContext context, GameManager gameManager) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF1A1A1A),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Text("系统设置", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-
-            ListTile(
-              leading: const Icon(Icons.history_edu, color: Colors.amberAccent),
-              title: const Text("历史记录", style: TextStyle(color: Colors.white)),
-              subtitle: const Text("回顾过去的旅程与对话", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
-              onTap: () {
-                Navigator.pop(context);
-                _showHistoryEventsPanel(context, gameManager);
-              },
-            ),
-            const Divider(color: Colors.white10, height: 1),
-            ListTile(
-              leading: const Icon(Icons.today, color: Colors.greenAccent),
-              title: const Text("今日日程", style: TextStyle(color: Colors.white)),
-              subtitle: const Text("管理当前时间线的事件状态", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
-              onTap: () {
-                Navigator.pop(context);
-                _showTodayEventsPanel(context, gameManager);
-              },
-            ),
-            const Divider(color: Colors.white10, height: 1),
-
-            // --- 媒体设置入口 ---
-            ListTile(
-              leading: const Icon(Icons.music_note, color: Colors.pinkAccent),
-              title: const Text("媒体设置", style: TextStyle(color: Colors.white)),
-              subtitle: const Text("背景音乐与音效控制", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              trailing: const Icon(Icons.settings, color: Colors.white30, size: 16),
-              onTap: () {
-                Navigator.pop(context); // 关闭主设置面板
-                _showMediaSettingsDialog(context); // 打开媒体设置弹窗
-              },
-            ),
-            const Divider(color: Colors.white10, height: 1),
-
-            ListTile(
-              leading: const Icon(Icons.public, color: Colors.blueAccent),
-              title: const Text("修改世界观 ", style: TextStyle(color: Colors.white)),
-              subtitle: const Text("调整世界的底层逻辑与背景设定", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
-              onTap: () {
-                Navigator.pop(context);
-                _showConfigEditor(context, gameManager, "世界观设定", "world_background");
-              },
-            ),
-            const Divider(color: Colors.white10, height: 1),
-            ListTile(
-              leading: const Icon(Icons.auto_awesome, color: Colors.purpleAccent),
-              title: const Text("修改故事指引", style: TextStyle(color: Colors.white)),
-              subtitle: const Text("引导 AI 推进剧情的方向与风格", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
-              onTap: () {
-                Navigator.pop(context);
-                _showConfigEditor(context, gameManager, "故事发展指引", "story_direction");
-              },
-            ),
-            const SizedBox(height: 30),
-          ],
+        return SingleChildScrollView( 
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Text("系统设置", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+        
+              ListTile(
+                leading: const Icon(Icons.history_edu, color: Colors.amberAccent),
+                title: const Text("历史记录", style: TextStyle(color: Colors.white)),
+                subtitle: const Text("回顾过去的旅程与对话", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showHistoryEventsPanel(context, gameManager);
+                },
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              ListTile(
+                leading: const Icon(Icons.today, color: Colors.greenAccent),
+                title: const Text("今日日程", style: TextStyle(color: Colors.white)),
+                subtitle: const Text("管理当前时间线的事件状态", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showTodayEventsPanel(context, gameManager);
+                },
+              ),
+              const Divider(color: Colors.white10, height: 1),
+        
+              // --- 媒体设置入口 ---
+              ListTile(
+                leading: const Icon(Icons.music_note, color: Colors.pinkAccent),
+                title: const Text("媒体设置", style: TextStyle(color: Colors.white)),
+                subtitle: const Text("背景音乐与音效控制", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: const Icon(Icons.settings, color: Colors.white30, size: 16),
+                onTap: () {
+                  Navigator.pop(context); 
+                  _showMediaSettingsDialog(context); 
+                },
+              ),
+              const Divider(color: Colors.white10, height: 1),
+        
+              ListTile(
+                leading: const Icon(Icons.public, color: Colors.blueAccent),
+                title: const Text("修改世界观 ", style: TextStyle(color: Colors.white)),
+                subtitle: const Text("调整世界的底层逻辑与背景设定", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showConfigEditor(context, gameManager, "世界观设定", "world_background");
+                },
+              ),
+              const Divider(color: Colors.white10, height: 1),
+              ListTile(
+                leading: const Icon(Icons.auto_awesome, color: Colors.purpleAccent),
+                title: const Text("修改故事指引", style: TextStyle(color: Colors.white)),
+                subtitle: const Text("引导 AI 推进剧情的方向与风格", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showConfigEditor(context, gameManager, "故事发展指引", "story_direction");
+                },
+              ),
+              const SizedBox(height: 30),
+              SizedBox(height: MediaQuery.of(context).padding.bottom), 
+            ],
+          ),
         );
       },
     );

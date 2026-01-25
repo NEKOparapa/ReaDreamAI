@@ -56,9 +56,8 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
 
       final finalOutline = {
         'title': result['title'] ?? '未命名小说',
+        'introduction': result['introduction'] ?? '', 
         'background_setting': selectedBackground ?? result['background_setting'] ?? '',
-        // 如果用户选择了文风 (`selectedStyle` 非空)，则直接使用它。
-        // 否则 (用户选了AI生成, `selectedStyle` 为空)，使用AI返回的文风。
         'writing_style': selectedStyle ?? (result['writing_style'] ?? ''),
         'main_characters': (selectedCharacters != null && selectedCharacters.isNotEmpty) ? selectedCharacters : result['main_characters'] ?? [],
         'storyline': result['storyline'] ?? [],

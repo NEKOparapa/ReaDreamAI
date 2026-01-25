@@ -566,6 +566,7 @@ class _NovelGenerationProgressPageState
       originalPath: 'none',
       cachedPath: cachedPath,
       chapters: chapters,
+      introduction: widget.outline['introduction'],
       backgroundSetting: widget.outline['background_setting'],
       writingStyle: widget.outline['writing_style'],
       characters: characters,
@@ -944,7 +945,7 @@ class _NovelGenerationProgressPageState
     );
   }
 
-  // [修改] 增加独立滚动条的日志视图
+  // 增加独立滚动条的日志视图
   Widget _buildLogView(ThemeData theme) {
     return Container(
       height: 200, // 为日志框设置一个固定的高度

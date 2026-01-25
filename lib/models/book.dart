@@ -144,6 +144,7 @@ class Book {
   final String? coverImagePath; // 封面图片路径字段
 
   // --- AI小说特有字段 ---
+  final String? introduction; // [新增] 小说介绍/简介
   final String? backgroundSetting; // 背景设定
   final String? writingStyle; // 写作风格
 
@@ -160,6 +161,7 @@ class Book {
     required this.cachedPath,
     this.coverImagePath,
 
+    this.introduction,
     this.backgroundSetting,
     this.writingStyle,
     this.characters,
