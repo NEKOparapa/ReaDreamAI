@@ -1,6 +1,7 @@
 // lib/ui/creation/ai_novel_creation/edit_and_generate_page.dart
 
 import 'dart:async';
+import 'dart:convert'; // 添加引用，用于深拷贝
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,7 +26,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
   bool _isRegeneratingChapters = false;
 
   late TextEditingController _titleController;
-  late TextEditingController _introductionController; 
+  late TextEditingController _introductionController;
   final Set<int> _selectedChapterIndices = {};
 
   Timer? _debounce;
@@ -65,9 +66,12 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
 
   void loadOutlineFromConfig() {
     if (mounted) setState(() => _isLoading = true);
-    var loadedStoryline = List<Map<String, dynamic>>.from(_configService.getSetting<List>('ai_novel_creation_storyline', []));
-    var loadedTitle =_configService.getSetting<String>('ai_novel_creation_title', '');
-    var loadedIntro = _configService.getSetting<String>('ai_novel_creation_introduction', '');
+    var loadedStoryline = List<Map<String, dynamic>>.from(
+        _configService.getSetting<List>('ai_novel_creation_storyline', []));
+    var loadedTitle =
+        _configService.getSetting<String>('ai_novel_creation_title', '');
+    var loadedIntro =
+        _configService.getSetting<String>('ai_novel_creation_introduction', '');
 
     if (loadedStoryline.isEmpty && loadedTitle.isEmpty) {
       LogService.instance.warn('未找到现有大纲，加载默认大纲。');
@@ -88,8 +92,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'introduction': loadedIntro,
         'background_setting': _configService.getSetting<String>(
             'ai_novel_creation_background_setting', ''),
-        'writing_style': _configService.getSetting<String>(
-            'ai_novel_creation_writing_style', ''),
+        'writing_style':
+            _configService.getSetting<String>('ai_novel_creation_writing_style', ''),
         'main_characters': List<Map<String, dynamic>>.from(
             _configService.getSetting<List>(
                 'ai_novel_creation_main_characters', [])),
@@ -102,6 +106,212 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
     if (mounted) setState(() => _isLoading = false);
   }
 
+  // 获取当前大纲的完整快照
+  Map<String, dynamic> _getCurrentOutlineSnapshot() {
+    // 确保 Controller 中的最新文本已同步
+    _outline['title'] = _titleController.text;
+    _outline['introduction'] = _introductionController.text;
+    // 使用 JSON 序列化/反序列化进行深拷贝，防止引用问题
+    return jsonDecode(jsonEncode(_outline));
+  }
+
+  // --- 新增功能：保存大纲存档 ---
+  void _showSaveArchiveDialog() {
+    final nameController = TextEditingController();
+    nameController.text = _titleController.text; // 默认使用当前标题作为存档名
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('保存大纲存档'),
+        content: TextField(
+          controller: nameController,
+          decoration: const InputDecoration(
+            labelText: '存档名称',
+            hintText: '请输入存档名称以便识别',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final name = nameController.text.trim();
+              if (name.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('存档名称不能为空')),
+                );
+                return;
+              }
+
+              final currentSnapshot = _getCurrentOutlineSnapshot();
+              final newArchive = {
+                'id': const Uuid().v4(),
+                'name': name,
+                'timestamp': DateTime.now().millisecondsSinceEpoch,
+                'data': currentSnapshot,
+              };
+
+              // 获取现有列表
+              final List<dynamic> currentList =
+                  _configService.getSetting<List>('novel_outline_list', []);
+              // 转换为可变列表并添加新存档
+              final newList = List<Map<String, dynamic>>.from(currentList);
+              newList.insert(0, newArchive); // 新的放前面
+
+              // 保存配置
+              await _configService.modifySetting('novel_outline_list', newList);
+
+              if (mounted) {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('大纲 "$name" 已保存')),
+                );
+              }
+            },
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 新增功能：加载/切换大纲存档 ---
+  void _showSwitchArchiveDialog() {
+    final List<dynamic> rawList =
+        _configService.getSetting<List>('novel_outline_list', []);
+    final archives = List<Map<String, dynamic>>.from(rawList);
+
+    if (archives.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('暂无已保存的大纲存档')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('切换大纲存档'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: archives.length,
+            itemBuilder: (context, index) {
+              final archive = archives[index];
+              final date = DateTime.fromMillisecondsSinceEpoch(
+                  archive['timestamp'] ?? 0);
+              return ListTile(
+                title: Text(archive['name'] ?? '未命名存档',
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text('保存时间: ${date.toString().substring(0, 16)}'),
+                leading: const Icon(Icons.description_outlined),
+                onTap: () {
+                  // 点击某个存档，弹出确认覆盖提示
+                  _confirmLoadArchive(archive);
+                },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                  onPressed: () async {
+                     // 简单的删除逻辑 (可选)
+                     final confirmDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (c) => AlertDialog(
+                          title: const Text('删除存档'),
+                          content: Text('确定要删除 "${archive['name']}" 吗？'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('取消')),
+                            TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('删除')),
+                          ],
+                        )
+                     );
+                     
+                     if (confirmDelete == true) {
+                       setState(() {
+                         archives.removeAt(index);
+                       });
+                       await _configService.modifySetting('novel_outline_list', archives);
+                       // 关闭当前的列表弹窗，或者强制刷新它(比较麻烦)，这里简单处理：关闭弹窗
+                       if (mounted) Navigator.pop(context);
+                     }
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('关闭'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmLoadArchive(Map<String, dynamic> archive) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('确认覆盖'),
+        content: Text(
+            '加载存档 "${archive['name']}" 将覆盖当前正在编辑的内容且无法撤销。\n确定要继续吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext); // 关闭确认框
+              Navigator.pop(context); // 关闭列表框
+              _loadArchiveData(archive['data']);
+            },
+            child: const Text('确认加载'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _loadArchiveData(Map<String, dynamic> data) async {
+    setState(() => _isLoading = true);
+    
+    // 1. 更新内存变量
+    // 深拷贝一份数据给 _outline，避免后续修改影响到存档原始数据（如果引用相同的话）
+    _outline = jsonDecode(jsonEncode(data));
+    
+    // 2. 更新 Controllers
+    _titleController.text = _outline['title'] ?? '';
+    _introductionController.text = _outline['introduction'] ?? '';
+    
+    _resyncChapterIds();
+
+    // 3. 将加载的数据同步保存到当前的 "工作台配置" 中
+    // 这样用户下次打开 APP，默认显示的就是刚才加载的这个存档内容
+    await _configService.modifySetting('ai_novel_creation_title', _outline['title']);
+    await _configService.modifySetting('ai_novel_creation_introduction', _outline['introduction']);
+    await _configService.modifySetting('ai_novel_creation_background_setting', _outline['background_setting']);
+    await _configService.modifySetting('ai_novel_creation_writing_style', _outline['writing_style']);
+    await _configService.modifySetting('ai_novel_creation_main_characters', _outline['main_characters']);
+    await _configService.modifySetting('ai_novel_creation_storyline', _outline['storyline']);
+
+    setState(() => _isLoading = false);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('存档已加载并刷新页面')),
+      );
+    }
+  }
+
+
   void navigateToGenerationPage() {
     // 确保在跳转前，任何待处理的保存都已完成
     _debounce?.cancel();
@@ -109,98 +319,92 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         'ai_novel_creation_title', _titleController.text);
     _outline['title'] = _titleController.text;
 
-    _configService.modifySetting('ai_novel_creation_introduction', _introductionController.text);
+    _configService.modifySetting(
+        'ai_novel_creation_introduction', _introductionController.text);
     _outline['introduction'] = _introductionController.text;
-    
+
     // 显示生成模式选择弹窗
     _showGenerationModeDialog();
   }
 
   void _showGenerationModeDialog() {
-      bool? selectedMode; // true = 并行, false = 线性
-      
-      // 【关键修改1】获取父级页面的 Context，确保它在弹窗关闭后依然有效
-      final parentContext = context; 
+    bool? selectedMode; // true = 并行, false = 线性
 
-      showDialog(
-        context: context,
-        // 【关键修改2】重命名 builder 中的 context 为 dialogContext，避免混淆
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (innerContext, setDialogState) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.auto_awesome),
-                SizedBox(width: 8),
-                Text('选择生成模式'),
-              ],
-            ),
-            content: Column(
-              // ... (中间布局代码保持不变) ...
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '请选择小说生成方式：',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 16),
-                RadioListTile<bool>(
-                  title: const Text('并行生成小说'),
-                  subtitle: const Text('同时生成所有章节，速度更快'),
-                  value: true,
-                  groupValue: selectedMode,
-                  onChanged: (value) {
-                    setDialogState(() => selectedMode = value);
-                  },
-                ),
-                RadioListTile<bool>(
-                  title: const Text('线性生成小说'),
-                  subtitle: const Text('按顺序生成章节，避免内容冲突'),
-                  value: false,
-                  groupValue: selectedMode,
-                  onChanged: (value) {
-                    setDialogState(() => selectedMode = value);
-                  },
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                // 【关键修改3】使用 dialogContext 关闭弹窗
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('取消'),
+    final parentContext = context;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (innerContext, setDialogState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.auto_awesome),
+              SizedBox(width: 8),
+              Text('选择生成模式'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '请选择小说生成方式：',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-              FilledButton(
-                onPressed: selectedMode == null
-                    ? null
-                    : () {
-                        // 1. 先关闭弹窗 (使用弹窗的 context)
-                        Navigator.of(dialogContext).pop();
-                        
-                        // 2. 使用 parentContext 进行页面跳转
-                        // 这样即使弹窗销毁了，parentContext 依然指向底下的 EditAndGeneratePage
-                        Navigator.of(parentContext).push(
-                          MaterialPageRoute(
-                            builder: (context) => NovelGenerationProgressPage(
-                              outline: _outline,
-                              isLinearMode: selectedMode == false,
-                            ),
-                          ),
-                        ).then((success) {
-                          // 3. 处理返回结果
-                          if (success == true && mounted) {
-                            // 使用 parentContext 退出当前的编辑页面
-                            Navigator.of(parentContext).pop();
-                          }
-                        });
-                      },
-                child: const Text('开始生成'),
+              const SizedBox(height: 16),
+              RadioListTile<bool>(
+                title: const Text('并行生成小说'),
+                subtitle: const Text('同时生成所有章节，速度更快'),
+                value: true,
+                groupValue: selectedMode,
+                onChanged: (value) {
+                  setDialogState(() => selectedMode = value);
+                },
+              ),
+              RadioListTile<bool>(
+                title: const Text('线性生成小说'),
+                subtitle: const Text('按顺序生成章节，避免内容冲突'),
+                value: false,
+                groupValue: selectedMode,
+                onChanged: (value) {
+                  setDialogState(() => selectedMode = value);
+                },
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: selectedMode == null
+                  ? null
+                  : () {
+                      Navigator.of(dialogContext).pop();
+
+                      Navigator.of(parentContext)
+                          .push(
+                        MaterialPageRoute(
+                          builder: (context) => NovelGenerationProgressPage(
+                            outline: _outline,
+                            isLinearMode: selectedMode == false,
+                          ),
+                        ),
+                      )
+                          .then((success) {
+                        if (success == true && mounted) {
+                          Navigator.of(parentContext).pop();
+                        }
+                      });
+                    },
+              child: const Text('开始生成'),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
   void _saveCharacterToPresets(Map<String, dynamic> characterData) async {
     LogService.instance.info('正在将角色 ${characterData['name']} 保存为预设...');
@@ -420,7 +624,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               .indexWhere((ch) => ch['chapter_id'] == chapterId);
 
           if (indexToUpdate != -1) {
-            final oldChapter = _outline['storyline'][indexToUpdate] as Map<String, dynamic>;
+            final oldChapter =
+                _outline['storyline'][indexToUpdate] as Map<String, dynamic>;
             _outline['storyline'][indexToUpdate] = {
               ...oldChapter,
               ...updatedChapter,
@@ -459,6 +664,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       appBar: AppBar(
         title: const Text('故事大纲'),
         actions: [
+          // 原有的重新生成按钮
           if (_selectedChapterIndices.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
@@ -475,6 +681,22 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                     ? null
                     : _handleRegenerateSelectedChapters,
               ),
+            ),
+          
+          // --- 新增：保存大纲按钮 ---
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.save_as),
+              tooltip: '保存当前大纲存档',
+              onPressed: _showSaveArchiveDialog,
+            ),
+            
+          // --- 新增：切换大纲按钮 ---
+          if (!_isLoading)
+            IconButton(
+              icon: const Icon(Icons.history),
+              tooltip: '加载/切换大纲存档',
+              onPressed: _showSwitchArchiveDialog,
             ),
         ],
       ),
@@ -537,7 +759,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextFormField(
-                controller: _introductionController, 
+                controller: _introductionController,
                 decoration: const InputDecoration(
                   hintText: '请输入小说简介...',
                   border: OutlineInputBorder(),
@@ -613,7 +835,9 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
             return Card(
               key: ObjectKey(chapter),
               margin: const EdgeInsets.symmetric(vertical: 8),
-              color: isSelected ? theme.colorScheme.primaryContainer.withOpacity(0.3) : null,
+              color: isSelected
+                  ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                  : null,
               shape: isSelected
                   ? RoundedRectangleBorder(
                       side: BorderSide(
@@ -657,8 +881,9 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                             IconButton(
                               icon: const Icon(Icons.arrow_upward),
                               tooltip: '上移',
-                              onPressed:
-                                  idx == 0 ? null : () => _moveChapter(idx, idx - 1),
+                              onPressed: idx == 0
+                                  ? null
+                                  : () => _moveChapter(idx, idx - 1),
                             ),
                             IconButton(
                               icon: const Icon(Icons.arrow_downward),
@@ -692,7 +917,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                               maxLines: 5,
                               onChanged: (val) {
                                 setState(() {
-                                  _outline['storyline'][idx]['chapter_summary'] = val;
+                                  _outline['storyline'][idx]['chapter_summary'] =
+                                      val;
                                 });
                                 _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',
@@ -708,7 +934,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                                 hintText: '例如: 半天内、黄昏到午夜...',
                                 border: const OutlineInputBorder(),
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                fillColor: theme.colorScheme.surfaceVariant
+                                    .withOpacity(0.3),
                                 isDense: true,
                               ),
                               maxLines: 1,
@@ -730,13 +957,15 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                                 hintText: '例如: 新角色[某某]登场...',
                                 border: const OutlineInputBorder(),
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                                fillColor: theme.colorScheme.surfaceVariant
+                                    .withOpacity(0.3),
                                 isDense: true,
                               ),
                               maxLines: 2,
                               onChanged: (val) {
                                 setState(() {
-                                  _outline['storyline'][idx]['setting_update'] = val;
+                                  _outline['storyline'][idx]['setting_update'] =
+                                      val;
                                 });
                                 _debounceSave(() => _configService.modifySetting(
                                     'ai_novel_creation_storyline',
@@ -783,8 +1012,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
       int idx = entry.key;
       var char = entry.value as Map<String, dynamic>;
 
-      Widget buildCharacterField(String key, String label,
-          {int maxLines = 1}) {
+      Widget buildCharacterField(String key, String label, {int maxLines = 1}) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6.0),
           child: TextFormField(
@@ -814,7 +1042,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
         child: ExpansionTile(
           title: Text(_outline['main_characters'][idx]['name'] ?? '未命名角色',
               style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text(_outline['main_characters'][idx]['characterName'] ?? ''),
+          subtitle:
+              Text(_outline['main_characters'][idx]['characterName'] ?? ''),
           leading: const Icon(Icons.person_outline),
           children: [
             Padding(
