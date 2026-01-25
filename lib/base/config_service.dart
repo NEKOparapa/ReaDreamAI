@@ -195,7 +195,97 @@ class ConfigService {
     };
   }
 
-  // 清空工作台媒体文件，清空Workbench下的 image, video, character 文件夹内容
+  // --- 获取临时生成目录 ---
+  Future<Map<String, Directory>> getOrCreateGameWorkbenchTempDirs() async {
+    final configDir = Directory(getConfigDirectoryPath());
+    // 使用 _Temp 后缀作为暂存区
+    final tempDir = Directory(p.join(configDir.path, 'GameWorkbench_Temp'));
+
+    final characterDir = Directory(p.join(tempDir.path, 'character'));
+    final sceneBaseDir = Directory(p.join(tempDir.path, 'scene'));
+    final sceneImageDir = Directory(p.join(sceneBaseDir.path, 'image'));
+    final sceneMusicDir = Directory(p.join(sceneBaseDir.path, 'music'));
+
+    // 确保目录存在
+    for (final dir in [characterDir, sceneImageDir, sceneMusicDir]) {
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+    }
+
+    return {
+      'character': characterDir,
+      'scene_image': sceneImageDir,
+      'scene_music': sceneMusicDir,
+    };
+  }
+
+  // --- 清理临时目录 ---
+  Future<void> clearGameWorkbenchTemp() async {
+    final configDir = Directory(getConfigDirectoryPath());
+    final tempDir = Directory(p.join(configDir.path, 'GameWorkbench_Temp'));
+    if (await tempDir.exists()) {
+      try {
+        await tempDir.delete(recursive: true);
+      } catch (e) {
+        LogService.instance.warn("清理临时目录失败: $e");
+      }
+    }
+  }
+
+  // --- 提交更改 (Atomic-like Commit) ---
+  // 1. 清空正式目录。
+  // 2. 将临时目录的文件移动到正式目录。
+  // 3. 删除临时目录。
+  Future<void> commitTempToReal() async {
+    final logger = LogService.instance;
+    logger.info("正在提交新资源：将临时文件移动至正式目录...");
+
+    final realDirs = await getOrCreateGameWorkbenchDirs();
+    final tempDirs = await getOrCreateGameWorkbenchTempDirs();
+
+    // 辅助函数：移动文件夹内容
+    Future<void> _moveContents(Directory source, Directory target) async {
+      if (!await source.exists()) return;
+      
+      // 1. 清空目标目录 (删除旧的媒体资源)
+      if (await target.exists()) {
+        await for (final entity in target.list()) {
+          try {
+            await entity.delete(recursive: true);
+          } catch (e) {
+             // 忽略删除错误，可能被占用
+          }
+        }
+      } else {
+        await target.create(recursive: true);
+      }
+
+      // 2. 移动文件
+      await for (final entity in source.list()) {
+        if (entity is File) {
+          final newPath = p.join(target.path, p.basename(entity.path));
+          await entity.copy(newPath); // copy+delete 比 rename 更稳健
+          await entity.delete();
+        }
+      }
+    }
+
+    try {
+      await _moveContents(tempDirs['character']!, realDirs['character']!);
+      await _moveContents(tempDirs['scene_image']!, realDirs['scene_image']!);
+      await _moveContents(tempDirs['scene_music']!, realDirs['scene_music']!);
+
+      // 最后清理临时文件夹根目录
+      await clearGameWorkbenchTemp();
+      logger.success("资源提交完成，旧资源已清理。");
+    } catch (e, s) {
+      logger.error("资源提交失败", e, s);
+      rethrow; 
+    }
+  }
+
+  // 清空工作台媒体文件 (旧逻辑，保留)
   Future<void> clearWorkbenchMedia() async {
     final logger = LogService.instance;
     logger.info("正在清空工作台媒体文件...");

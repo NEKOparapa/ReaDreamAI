@@ -13,6 +13,7 @@ enum CharacterSourceOption { ai, manual }
 
 class GameStageGenerationConfig {
   String worldRequirements;
+  String playerCharacterRequirements;
   String destinyAiRequirements;
   String firstDayRequirements;
   List<String> selectedCharacterIds;
@@ -22,13 +23,14 @@ class GameStageGenerationConfig {
   int aiCharacterCount;
   bool useAiCharacterCount;
 
-  // 新增：媒体生成配置
+  // 媒体生成配置
   bool generateCharImages;
   bool generateSceneImages;
   bool generateSceneMusic;
 
   GameStageGenerationConfig({
     required this.worldRequirements,
+    required this.playerCharacterRequirements, 
     required this.destinyAiRequirements,
     required this.firstDayRequirements,
     required this.selectedCharacterIds,
@@ -46,6 +48,7 @@ class GameStageGenerationConfig {
     final useAiChars = service.getSetting<bool>('gamestage_gen_use_ai_chars', true);
     return GameStageGenerationConfig(
       worldRequirements: service.getSetting<String>('gamestage_gen_world_req', ''),
+      playerCharacterRequirements: service.getSetting<String>('gamestage_gen_player_req', ''),
       destinyAiRequirements: service.getSetting<String>('gamestage_gen_destiny_req', ''),
       firstDayRequirements: service.getSetting<String>('gamestage_gen_first_day_req', ''),
       selectedCharacterIds: List<String>.from(service.getSetting<List>('gamestage_gen_char_ids', [])),
@@ -62,6 +65,7 @@ class GameStageGenerationConfig {
 
   Future<void> saveToService(ConfigService service) async {
     await service.modifySetting('gamestage_gen_world_req', worldRequirements);
+    await service.modifySetting('gamestage_gen_player_req', playerCharacterRequirements);
     await service.modifySetting('gamestage_gen_destiny_req', destinyAiRequirements);
     await service.modifySetting('gamestage_gen_first_day_req', firstDayRequirements);
     await service.modifySetting('gamestage_gen_char_ids', selectedCharacterIds);
@@ -92,6 +96,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
 
   // 控制器
   final TextEditingController _worldRequirementsController = TextEditingController();
+  final TextEditingController _playerCharacterRequirementsController = TextEditingController();
   final TextEditingController _destinyAiRequirementsController = TextEditingController();
   final TextEditingController _firstDayRequirementsController = TextEditingController();
   late final TextEditingController _sceneCountController;
@@ -103,7 +108,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   void initState() {
     super.initState();
     _loadPersistedConfig();
-
     _sceneCountController = TextEditingController(text: _config.sceneCount.toString());
     _sceneCountController.addListener(() {
       final value = int.tryParse(_sceneCountController.text);
@@ -121,13 +125,13 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
         _saveConfig();
       }
     });
-
     _loadCharacterCards();
   }
 
   @override
   void dispose() {
     _worldRequirementsController.dispose();
+    _playerCharacterRequirementsController.dispose();
     _destinyAiRequirementsController.dispose();
     _firstDayRequirementsController.dispose();
     _sceneCountController.dispose();
@@ -136,7 +140,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     super.dispose();
   }
 
-  // 防抖保存配置
   void _saveConfig() {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -152,14 +155,20 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     setState(() {});
   }
 
+
   void _loadPersistedConfig() {
     _config = GameStageGenerationConfig.fromService(_configService);
     _worldRequirementsController.text = _config.worldRequirements;
+    _playerCharacterRequirementsController.text = _config.playerCharacterRequirements;
     _destinyAiRequirementsController.text = _config.destinyAiRequirements;
     _firstDayRequirementsController.text = _config.firstDayRequirements;
 
     _worldRequirementsController.addListener(() {
       _config.worldRequirements = _worldRequirementsController.text;
+      _saveConfig();
+    });
+    _playerCharacterRequirementsController.addListener(() {
+      _config.playerCharacterRequirements = _playerCharacterRequirementsController.text;
       _saveConfig();
     });
     _destinyAiRequirementsController.addListener(() {
@@ -197,6 +206,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
 
       final generatedData = await GameStageGeneratorService.instance.generateGameStage(
         worldRequirements: _config.worldRequirements,
+        playerCharacterRequirements: _config.playerCharacterRequirements,
         destinyAiRequirements: _config.destinyAiRequirements,
         firstDayRequirements: _config.firstDayRequirements,
         characterSource: _config.characterSource,
@@ -236,14 +246,13 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
   Future<void> _saveGeneratedDataToConfig(Map<String, dynamic> data) async {
     await _configService.modifySetting('game_stage_book_title', data['book_title'] ?? '未命名世界');
     await _configService.modifySetting('game_stage_world_background', data['world_background'] ?? '');
-    await _configService.modifySetting('game_stage_destiny_ai', data['destiny_ai'] ?? '');
+    await _configService.modifySetting('game_stage_story_direction', data['story_direction'] ?? '');
     await _configService.modifySetting('game_stage_player_character', data['player_character'] ?? {});
     await _configService.modifySetting('game_stage_ai_characters', data['ai_characters'] ?? []);
     await _configService.modifySetting('game_stage_game_scenes', data['game_scenes'] ?? []);
     await _configService.modifySetting('game_stage_first_day_events', data['first_day_events'] ?? []);
   }
-
-  // --- 样式组件：统一设置行 ---
+  
   Widget _buildSettingRow({
     required String title,
     required String subtitle,
@@ -282,7 +291,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     );
   }
 
-  // --- 样式组件：数量控制器 ---
   Widget _buildCountControl({
     required bool isAi,
     required TextEditingController controller,
@@ -327,6 +335,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
     );
   }
 
+  // ... build 保持不变 ...
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -352,7 +361,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                _buildRequirementsSection(),
+                _buildRequirementsSection(), // 主要修改点
                 const SizedBox(height: 16),
                 _buildCharacterSettingsSection(),
                 const SizedBox(height: 16),
@@ -374,6 +383,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 1. 世界要求
             const ListTile(
               leading: Icon(Icons.public_outlined),
               title: Text('游戏世界描述', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -393,6 +403,29 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               maxLines: 10,
             ),
             const SizedBox(height: 24),
+
+            // 2. 玩家角色要求
+            const ListTile(
+              leading: Icon(Icons.person_outline),
+              title: Text('玩家角色设定', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('设定主角的身份、背景或特征'),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _playerCharacterRequirementsController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: '例如：\n- 主角是一个失去记忆的仿生人',
+                alignLabelWithHint: true,
+                filled: true,
+              ),
+              minLines: 3,
+              maxLines: 5,
+            ),
+            const SizedBox(height: 24),
+
+            // 3. 故事方向
             const ListTile(
               leading: Icon(Icons.alt_route_outlined),
               title: Text('故事发展方向', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -412,6 +445,8 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               maxLines: 5,
             ),
             const SizedBox(height: 24),
+
+            // 4. 首日事件
             const ListTile(
               leading: Icon(Icons.start, color: Colors.orange),
               title: Text('首日事件内容', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -446,7 +481,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               children: [
                 const Icon(Icons.map_outlined),
                 const SizedBox(width: 16),
-                Text('场景生成设置', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('游戏场景', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -508,7 +543,7 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
               children: [
                 const Icon(Icons.people_outline),
                 const SizedBox(width: 16),
-                Text('角色生成设置', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text('AI角色', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -603,7 +638,6 @@ class _GenerateGameStagePageState extends State<GenerateGameStagePage> {
                   _config.selectedCharacterIds.contains(card.id);
               return FilterChip(
                 label: Text(card.name),
-                // 移除了 avatar 属性，不再显示图片
                 selected: isSelected,
                 onSelected: (selected) {
                   setState(() {

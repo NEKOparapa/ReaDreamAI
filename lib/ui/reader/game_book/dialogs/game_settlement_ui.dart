@@ -30,9 +30,9 @@ class _SettlementProgressDialogState extends State<_SettlementProgressDialog> {
   // 定义步骤状态
   final List<Map<String, dynamic>> _steps = [
     {'title': '归档历史事件', 'status': 'pending'}, // 0
-    {'title': '更新角色记忆 (AI)', 'status': 'pending'}, // 1
+    {'title': '更新AI角色记忆', 'status': 'pending'}, // 1
     {'title': '演化世界状态', 'status': 'pending'}, // 2
-    {'title': '推演明日事件 (AI)', 'status': 'pending'}, // 3
+    {'title': '推演明日事件', 'status': 'pending'}, // 3
     {'title': '保存进度', 'status': 'pending'}, // 4
   ];
 

@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../services/game/game_manager.dart';
+import '../../../../base/config_service.dart';
 
 class GalgamePlayerOverlay extends StatefulWidget {
   final Map<String, dynamic> event;
@@ -30,18 +31,18 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   // --- 数据源 ---
   late Map<String, dynamic> _currentEventData;
   late List<Map<String, dynamic>> _dialogues;
-  
+
   // --- 状态控制 ---
-  int _dialogueIndex = 0;           
-  bool _isFreeMode = false;         
-  bool _isGenerating = false;       
-  
+  int _dialogueIndex = 0;
+  bool _isFreeMode = false; // 控制是否显示输入框
+  bool _isGenerating = false;
+
   // --- 选项管理 ---
-  List<String> _visibleOptions = []; 
-  List<String> _pendingOptions = []; 
+  List<String> _visibleOptions = [];
+  List<String> _pendingOptions = [];
 
   // --- 动画/UI控制器 ---
-  String _displayingText = "";      
+  String _displayingText = "";
   Timer? _typingTimer;
   final ScrollController _textScrollController = ScrollController();
   final TextEditingController _inputController = TextEditingController();
@@ -59,7 +60,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
         .map((e) => Map<String, dynamic>.from(e))
         .toList();
     _currentEventData['dialogues'] = _dialogues;
-    
+
     // 2. 恢复进度
     final savedIndex = widget.event['breakpoint_index'];
     if (savedIndex != null && savedIndex is int && savedIndex > 0 && savedIndex < _dialogues.length) {
@@ -84,11 +85,9 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
 
   /// 加载场景对应的背景和音乐
   void _loadSceneResources() {
-    // 尝试获取场景 ID 或名称
     final sceneId = widget.event['scene_id'] ?? widget.event['scene_name'];
     if (sceneId == null) return;
 
-    // 在 GameManager 中查找场景数据
     final scene = widget.gameManager.scenes.firstWhere(
       (s) => s['id'] == sceneId || s['name'] == sceneId,
       orElse: () => {},
@@ -107,7 +106,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     }
 
     // 2. 播放背景音乐
-    if (scene['musicPath'] != null) {
+    final bool autoPlay = ConfigService().getSetting('game_bgm_autoplay', true);
+    if (autoPlay && scene['musicPath'] != null) {
       final file = File(scene['musicPath']);
       if (file.existsSync()) {
         _playBgm(file);
@@ -115,13 +115,13 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     }
   }
 
-  /// 自动播放 BGM 逻辑
   Future<void> _playBgm(File file) async {
     try {
+      final bool loop = ConfigService().getSetting('game_bgm_loop', true);
       _bgmController = VideoPlayerController.file(file);
       await _bgmController!.initialize();
-      await _bgmController!.setLooping(true); // 循环播放
-      await _bgmController!.setVolume(0.2);   // 音量设置低一点
+      await _bgmController!.setLooping(loop);
+      await _bgmController!.setVolume(0.2);
       await _bgmController!.play();
     } catch (e) {
       debugPrint("BGM播放失败: $e");
@@ -139,19 +139,12 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
 
   /// 查找角色立绘路径
   String? _getCharacterImagePath(String name) {
-    // 1. 排除特定名称 (如不想显示玩家头像，取消下方注释)
-    // if (name == '玩家' || name == '你') return null;
-    
-    // 2. 清洗名字（去掉可能存在的括号状态，例如 "艾莉 (生气)" -> "艾莉"）
     String cleanName = name.split('（').first.split('(').first.trim();
-
     try {
-      // 3. 尝试查找 (支持包含匹配)
       final character = widget.gameManager.aiCharacters.firstWhere(
         (c) {
           final charName = c['name']?.toString() ?? '';
           final cardName = c['cardName']?.toString() ?? '';
-          // 只要名字包含，或者被包含，都算匹配
           return charName == cleanName || 
                  cardName == cleanName ||
                  (charName.isNotEmpty && cleanName.contains(charName));
@@ -168,9 +161,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     return null;
   }
 
-
   void _showHistory() {
-     showModalBottomSheet(
+    showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E1E1E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
@@ -228,7 +220,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
       },
     );
   }
-  
+
   void _autoSave() {
     widget.gameManager.saveCurrentEventProgress(_currentEventData, _dialogueIndex);
   }
@@ -265,9 +257,16 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   }
 
   void _nextDialogue() {
+    // 如果处于输入模式，点击屏幕不应触发下一句，应让用户专注于输入
+    if (_isFreeMode) {
+      FocusScope.of(context).unfocus(); // 收起键盘
+      return; 
+    }
+
     if (_dialogueIndex >= _dialogues.length) return;
 
     final currentFullText = _dialogues[_dialogueIndex]['message'] ?? '';
+    // 如果字没打完，直接显示全
     if (_displayingText.length < currentFullText.length) {
       _typingTimer?.cancel();
       setState(() => _displayingText = currentFullText);
@@ -289,7 +288,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
           _visibleOptions = List.from(_pendingOptions);
           _pendingOptions = [];
         });
-      } else if (!_isFreeMode && _visibleOptions.isEmpty) {
+      } else if (_visibleOptions.isEmpty) {
         _finishEvent();
       }
     }
@@ -303,16 +302,17 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
   void _handleUserInput() {
     final text = _inputController.text.trim();
     if (text.isEmpty) return;
-    
+
     _inputController.clear();
     FocusScope.of(context).unfocus(); 
-    
+
     _appendDialogue({'name': widget.playerName, 'message': '（$text）'});
-    
+
     setState(() {
        _dialogueIndex = _dialogues.length - 1;
        _visibleOptions = []; 
        _pendingOptions = [];
+       _isFreeMode = false; // 发送后自动切回阅读模式
     });
     _startTypingEffect();
     _generatePlot(text);
@@ -320,8 +320,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
 
   void _handleOptionSelect(String option) {
     setState(() {
-      _visibleOptions = []; 
-      _pendingOptions = []; 
+      _visibleOptions = [];
+      _pendingOptions = [];
     });
     _appendDialogue({'name': widget.playerName, 'message': '（选择）$option'});
     setState(() {
@@ -384,23 +384,18 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
     final isPlayer = name == widget.playerName || name == '玩家';
     final progress = '${_dialogueIndex + 1}/${_dialogues.length}';
     final showNextIndicator = !_isGenerating; 
-    
+
     // 获取角色立绘路径
     final imagePath = _getCharacterImagePath(name);
     final hasImage = imagePath != null && File(imagePath).existsSync();
 
-    // --- 1. 响应式尺寸计算 (大幅增加比例) ---
+    // --- 1. 响应式尺寸计算 ---
     final screenSize = MediaQuery.of(context).size;
-    
-    // 设置为屏幕高度的 32% (约1/3屏幕)，并限制最大最小值
     final double portraitHeight = (screenSize.height * 0.32).clamp(180.0, 450.0);
-    // 保持 3:4 宽高比
     final double portraitWidth = portraitHeight * 0.75;
-    
-    // --- 2. 垂直定位计算 ---
     final double portraitTopOffset = -(portraitHeight - 12);
-
-    // 对话框高度
+    
+    // 根据模式调整对话框高度（FreeMode时稍高一点以容纳输入框）
     final double boxHeight = _isFreeMode ? 240 : 180;
 
     return Positioned.fill(
@@ -409,7 +404,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
           // 1. 全局点击层 + 动态背景层
           Positioned.fill(
             child: GestureDetector(
-              onTap: _isGenerating ? null : _nextDialogue,
+              onTap: _nextDialogue,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -420,10 +415,9 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                       fit: BoxFit.cover,
                     )
                   else
-                    // 无图时透明
                     const SizedBox.shrink(), 
 
-                  // 1.2 遮罩层 (无图时加深背景)
+                  // 1.2 遮罩层
                   Container(
                     color: _backgroundImagePath != null 
                         ? Colors.black.withOpacity(0.6) 
@@ -437,7 +431,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
           // 2. 选项区域 (动态避让大立绘)
           if (_visibleOptions.isNotEmpty && !_isGenerating)
             Positioned(
-              // 计算位置：在对话框上方，再加立绘高度的一半多一点，确保不遮挡
               bottom: boxHeight + portraitHeight * 0.6, 
               left: 20,
               right: 20,
@@ -469,7 +462,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             left: 16,
             right: 16,
             child: Stack(
-              clipBehavior: Clip.none, // 允许立绘溢出显示
+              clipBehavior: Clip.none, 
               alignment: Alignment.bottomCenter,
               children: [
                 // 3.1 对话框容器
@@ -478,7 +471,6 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E1E1E).withOpacity(0.98),
                     borderRadius: BorderRadius.circular(16),
-                    // 根据说话人阵营切换边框颜色
                     border: Border.all(
                       color: isPlayer ? Colors.blue.withOpacity(0.5) : Colors.amber.withOpacity(0.5), 
                       width: 2
@@ -490,13 +482,12 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 3.1.1 顶部栏 (名字 + 按钮)
+                      // 3.1.1 顶部栏 (名字 + 进度)
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           // 名字标签
                           Container(
-                            // NPC(左侧立绘)时增加左边距，玩家(右侧立绘)时无需左边距
                             margin: EdgeInsets.only(left: (!isPlayer && hasImage) ? 10 : 0),
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                             decoration: BoxDecoration(
@@ -518,15 +509,9 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                           
                           const Spacer(),
                           
-                          // 模式切换
-                          IconButton(
-                            icon: Icon(_isFreeMode ? Icons.chat_bubble : Icons.auto_stories, size: 20, color: _isFreeMode ? Colors.cyanAccent : Colors.white30),
-                            onPressed: () => setState(() => _isFreeMode = !_isFreeMode),
-                          ),
                           // 进度文本
                           Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12))),
                           
-                          // 玩家名字右侧微调 (如果玩家有头像在右边，稍微空一点)
                           if (isPlayer && hasImage) const SizedBox(width: 10),
                         ],
                       ),
@@ -545,54 +530,131 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                         ),
                       ),
 
-                      // 3.1.3 底部输入框/指示图标
-                      if (_isFreeMode)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.white12))),
-                          child: Row(
+                      // 3.1.3 底部交互区
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        child: _isFreeMode 
+                          ? 
+                          // --- 模式 A: 输入模式 ---
+                          Row(
                             children: [
+                              // 收起/取消按钮
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Colors.white38, size: 20),
+                                tooltip: "返回阅读模式",
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => setState(() {
+                                  _isFreeMode = false;
+                                  FocusScope.of(context).unfocus();
+                                }),
+                              ),
+                              const SizedBox(width: 8),
+                              // 输入框
                               Expanded(
-                                child: TextField(
-                                  controller: _inputController,
-                                  style: const TextStyle(color: Colors.white),
-                                  enabled: !_isGenerating,
-                                  decoration: InputDecoration(
-                                    hintText: _isGenerating ? 'AI 正在构思...' : '输入你的行动或对话...',
-                                    hintStyle: const TextStyle(color: Colors.white24),
-                                    isDense: true, border: InputBorder.none,
+                                child: Container(
+                                  height: 40,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white12)
                                   ),
-                                  onSubmitted: (_) => _handleUserInput(),
+                                  child: TextField(
+                                    controller: _inputController,
+                                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                                    enabled: !_isGenerating,
+                                    decoration: InputDecoration(
+                                      hintText: _isGenerating ? 'AI 正在构思...' : '输入你的行动...',
+                                      hintStyle: const TextStyle(color: Colors.white24),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.only(bottom: 10),
+                                    ),
+                                    onSubmitted: (_) => _handleUserInput(),
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                              // 发送/加载图标
                               if (_isGenerating)
-                                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent))
+                                const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.cyanAccent))
                               else
-                                IconButton(icon: const Icon(Icons.send, color: Colors.cyanAccent), onPressed: _handleUserInput),
+                                IconButton(
+                                  icon: const Icon(Icons.send, color: Colors.cyanAccent, size: 20),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: _handleUserInput
+                                ),
+                            ],
+                          )
+                          : 
+                          // --- 模式 B: 阅读模式 (显示醒目的切换按钮) ---
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              // 下一步提示 (如果文字显示完了才显示)
+                              if (showNextIndicator && _displayingText.length >= (currentLine['message']?.length ?? 0))
+                                 Padding(
+                                   padding: const EdgeInsets.only(right: 12),
+                                   child: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.3)),
+                                 ),
+
+                              // 明显的“对话”按钮
+                              InkWell(
+                                onTap: () => setState(() => _isFreeMode = true),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2A2A2A), // 深灰背景
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.cyanAccent.withOpacity(0.3), // 微弱的科技蓝边框
+                                      width: 1
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.cyanAccent.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        spreadRadius: 0
+                                      )
+                                    ]
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        "对话", 
+                                        style: TextStyle(
+                                          color: Colors.cyanAccent.withOpacity(0.9),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
-                        )
-                      else if (showNextIndicator)
-                        Align(alignment: Alignment.bottomRight, child: Padding(padding: const EdgeInsets.all(12.0), child: Icon(Icons.arrow_drop_down_circle_outlined, color: Colors.white.withOpacity(0.3), size: 20))),
+                      ),
                     ],
                   ),
                 ),
 
-                // 3.2 悬浮的立绘头像 (Stack 顶层)
+                // 3.2 悬浮的立绘头像
                 if (hasImage && name != '系统' && name != '旁白')
                   Positioned(
-                    // 向上偏移：几乎完全在对话框外部
                     top: portraitTopOffset, 
-                    // 水平定位：NPC居左，玩家居右
                     left: isPlayer ? null : 20, 
                     right: isPlayer ? 20 : null,
                     child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 300),
                       opacity: 1.0,
                       child: Container(
-                        height: portraitHeight, // 响应式大尺寸
+                        height: portraitHeight,
                         width: portraitWidth,
-                        // 样式：圆角+边框+阴影
                         decoration: BoxDecoration(
                           color: const Color(0xFF222222), 
                           borderRadius: BorderRadius.circular(12),
@@ -608,13 +670,12 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                             )
                           ],
                         ),
-                        // 裁剪图片内容
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(9), 
                           child: Image.file(
                             File(imagePath!),
                             fit: BoxFit.cover, 
-                            alignment: Alignment.topCenter, // 聚焦头部/上半身
+                            alignment: Alignment.topCenter,
                           ),
                         ),
                       ),

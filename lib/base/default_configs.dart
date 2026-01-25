@@ -101,8 +101,14 @@ const Map<String, dynamic> appDefaultConfigs = {
   ],
 
 
+
+  // --- 游戏媒体设置 ---
+  'game_bgm_autoplay': true, // 背景音乐自动播放
+  'game_bgm_loop': false,     // 背景音乐自动循环
+
   // ---创建游戏世界 ---
   'gamestage_gen_world_req': '',      // 游戏世界要求
+  'gamestage_gen_player_req': '', // 玩家角色要求
   'gamestage_gen_destiny_req': '',    // 命运AI要求
   'gamestage_gen_char_ids': [],         // 手动选择的AI角色ID
   'gamestage_gen_use_ai_chars': true,   // 是否使用AI生成角色
@@ -120,7 +126,7 @@ const Map<String, dynamic> appDefaultConfigs = {
 
   'game_stage_world_background': '在一个名为"艾瑞多"的奇幻世界，魔法与科技交织共存。古老的巨龙沉睡在浮空山脉之上，而地面的城市则充满了蒸汽驱动的机械和闪烁的霓虹灯。各个种族——精灵、矮人、人类和兽人——在脆弱的和平中维持着微妙的平衡。',
 
-  'game_stage_destiny_ai': '故事将围绕"源石"的争夺展开。一个古老的预言暗示，当源石之心被触动时，沉睡的巨龙将会苏醒，为世界带来毁灭或新生。玩家的选择将决定世界的最终命运。',
+  'game_stage_story_direction': '故事将围绕"源石"的争夺展开。一个古老的预言暗示，当源石之心被触动时，沉睡的巨龙将会苏醒，为世界带来毁灭或新生。玩家的选择将决定世界的最终命运。',
 
   'game_stage_player_character': {
     'name': '莉娜',
@@ -144,7 +150,6 @@ const Map<String, dynamic> appDefaultConfigs = {
       'other': '似乎知道关于"源石"的古老秘密。',
       'equipment': '一把巨大的锻造锤、防火皮围裙。',
       'backpack': '稀有矿石样本、一壶烈酒。',
-      // [可选] 预留媒体字段，防止空值警告
       'imagePath': null,
       'imagePrompt': ''
     },

@@ -2,9 +2,10 @@
 
 import 'package:flutter/material.dart';
 import '../../../../services/game/game_manager.dart';
+import '../../../../base/config_service.dart'; // [新增] 引入配置服务
 
 class GameSettingsUI {
-  
+
   /// 显示设置面板
   static void showSettingsPanel(BuildContext context, GameManager gameManager) {
     showModalBottomSheet(
@@ -21,7 +22,7 @@ class GameSettingsUI {
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Text("系统设置", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            
+
             ListTile(
               leading: const Icon(Icons.history_edu, color: Colors.amberAccent),
               title: const Text("历史记录", style: TextStyle(color: Colors.white)),
@@ -45,6 +46,19 @@ class GameSettingsUI {
             ),
             const Divider(color: Colors.white10, height: 1),
 
+            // --- 媒体设置入口 ---
+            ListTile(
+              leading: const Icon(Icons.music_note, color: Colors.pinkAccent),
+              title: const Text("媒体设置", style: TextStyle(color: Colors.white)),
+              subtitle: const Text("背景音乐与音效控制", style: TextStyle(color: Colors.white54, fontSize: 12)),
+              trailing: const Icon(Icons.settings, color: Colors.white30, size: 16),
+              onTap: () {
+                Navigator.pop(context); // 关闭主设置面板
+                _showMediaSettingsDialog(context); // 打开媒体设置弹窗
+              },
+            ),
+            const Divider(color: Colors.white10, height: 1),
+
             ListTile(
               leading: const Icon(Icons.public, color: Colors.blueAccent),
               title: const Text("修改世界观 ", style: TextStyle(color: Colors.white)),
@@ -63,7 +77,7 @@ class GameSettingsUI {
               trailing: const Icon(Icons.edit, color: Colors.white30, size: 16),
               onTap: () {
                 Navigator.pop(context);
-                _showConfigEditor(context, gameManager, "故事发展指引", "destiny_ai");
+                _showConfigEditor(context, gameManager, "故事发展指引", "story_direction");
               },
             ),
             const SizedBox(height: 30),
@@ -138,6 +152,60 @@ class GameSettingsUI {
 
   // --- 内部私有方法 ---
 
+  // --- 媒体设置弹窗逻辑 ---
+  static void _showMediaSettingsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        // 使用 StatefulBuilder 以便在 Dialog 内部刷新 Switch 状态
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final config = ConfigService();
+            // 获取配置，默认值为 true
+            final bool autoPlay = config.getSetting('game_bgm_autoplay', true);
+            final bool loop = config.getSetting('game_bgm_loop', true);
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF2A2A2A),
+              title: const Text("媒体设置", style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SwitchListTile(
+                    title: const Text("背景音乐自动播放", style: TextStyle(color: Colors.white)),
+                    subtitle: const Text("进入场景时自动播放BGM", style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    activeColor: Colors.pinkAccent,
+                    value: autoPlay,
+                    onChanged: (value) async {
+                      await config.modifySetting('game_bgm_autoplay', value);
+                      setState(() {}); // 刷新 Dialog 状态
+                    },
+                  ),
+                  const Divider(color: Colors.white10),
+                  SwitchListTile(
+                    title: const Text("背景音乐自动循环", style: TextStyle(color: Colors.white)),
+                    activeColor: Colors.pinkAccent,
+                    value: loop,
+                    onChanged: (value) async {
+                      await config.modifySetting('game_bgm_loop', value);
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('关闭'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   static void _showHistoryEventsPanel(BuildContext context, GameManager gameManager) {
     final history = gameManager.historyEvents;
 
@@ -206,7 +274,7 @@ class GameSettingsUI {
 
   static void _showEventDetailLog(BuildContext context, Map<String, dynamic> event, GameManager gameManager) {
     final dialogues = (event['dialogues'] as List?) ?? [];
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
