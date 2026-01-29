@@ -78,10 +78,10 @@ class LlmService {
     LogService.instance.info('正在使用 OpenAI 格式向 ${apiConfig.url} 发起请求...');
 
     try {
-      // 发送 POST 请求，并设置180秒超时
+      // 发送 POST 请求，并设置300秒超时
       final response = await _client
           .post(uri, headers: headers, body: body)
-          .timeout(const Duration(seconds: 180));
+          .timeout(const Duration(seconds: 300));
 
       // 检查响应状态码
       if (response.statusCode == 200) {
