@@ -654,7 +654,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
           ),
         ),
       ),
-      endDrawer: Drawer(
+      drawer: Drawer(
         child: Center(
           child: ListView.builder(
             shrinkWrap: true,
@@ -703,16 +703,20 @@ class _BookReaderPageState extends State<BookReaderPage> {
             height: kToolbarHeight,
             child: Stack(
               children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
+                if (Platform.isWindows)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ),
-                ),
                 Center(
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 56, right: 144),
+                    padding: EdgeInsets.only(
+                      left: Platform.isWindows ? 56 : 16,
+                      right: 88,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -722,12 +726,26 @@ class _BookReaderPageState extends State<BookReaderPage> {
                           onPressed: _currentChapterIndex > 0 ? () => _jumpToChapter(_currentChapterIndex - 1) : null,
                         ),
                         Flexible(
-                          child: Text(
-                            chapterTitle,
-                            style: const TextStyle(fontSize: 16),
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                          child: Builder(
+                            builder: (context) {
+                              return Tooltip(
+                                message: '目录',
+                                child: InkWell(
+                                  onTap: () => Scaffold.of(context).openDrawer(),
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                    child: Text(
+                                      chapterTitle,
+                                      style: const TextStyle(fontSize: 16),
+                                      textAlign: TextAlign.center,
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                         IconButton(
@@ -744,13 +762,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Builder(builder: (context) {
-                        return IconButton(
-                          icon: const Icon(Icons.menu_book_outlined),
-                          tooltip: '目录',
-                          onPressed: () => Scaffold.of(context).openEndDrawer(),
-                        );
-                      }),
                       IconButton(
                         icon: const Icon(Icons.auto_fix_high_outlined),
                         tooltip: 'AI重写本章',
