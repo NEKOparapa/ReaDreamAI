@@ -714,8 +714,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
             left: 20,
             child: TextButton.icon(
               onPressed: widget.onExit,
-              icon: const Icon(Icons.exit_to_app, color: Colors.redAccent, size: 20),
-              label: const Text('离开', style: TextStyle(color: Colors.redAccent)),
+              icon: const Icon(Icons.exit_to_app, color: Colors.white70, size: 20),
+              label: const Text('离开', style: TextStyle(color: Colors.white70)),
               style: TextButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
             ),
           ),
@@ -736,8 +736,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _finishEvent,
-                  icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent, size: 20),
-                  label: const Text('完成', style: TextStyle(color: Colors.greenAccent)),
+                  icon: const Icon(Icons.check_circle_outline, color: Colors.white70, size: 20),
+                  label: const Text('完成', style: TextStyle(color: Colors.white70)),
                   style: TextButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
                 ),
               ],

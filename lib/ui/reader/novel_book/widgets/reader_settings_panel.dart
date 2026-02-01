@@ -1,4 +1,4 @@
-// lib/ui/reader/widgets/reader_settings_panel.dart
+// lib/ui/reader/novel_book/widgets/reader_settings_panel.dart
 
 import 'package:flutter/material.dart';
 

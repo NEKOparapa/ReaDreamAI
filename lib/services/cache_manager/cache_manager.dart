@@ -448,4 +448,203 @@ class CacheManager {
       return null;
     }
   }
+
+  /// 删除指定章节
+  /// 删除后重新分配全书的行ID以保持连续性
+  Future<Book?> deleteChapter({
+    required String bookId,
+    required String chapterId,
+  }) async {
+    final book = await loadBookDetail(bookId);
+    if (book == null) return null;
+
+    final chapterIndex = book.chapters.indexWhere((c) => c.id == chapterId);
+    if (chapterIndex == -1) {
+      LogService.instance.warn('未找到要删除的章节: $chapterId');
+      return null;
+    }
+
+    try {
+      final newChapters = <ChapterStructure>[];
+      int globalLineIdCounter = 0;
+
+      for (final chapter in book.chapters) {
+        if (chapter.id == chapterId) continue;
+
+        final newLines = chapter.lines.map((line) {
+          return LineStructure(
+            id: globalLineIdCounter++,
+            text: line.text,
+            sourceInfo: line.sourceInfo,
+            originalContent: line.originalContent,
+            illustrationPaths: line.illustrationPaths,
+            videoPaths: line.videoPaths,
+            sceneDescription: line.sceneDescription,
+            translatedText: line.translatedText,
+          );
+        }).toList();
+
+        newChapters.add(ChapterStructure(
+          id: chapter.id,
+          title: chapter.title,
+          sourceFile: chapter.sourceFile,
+          chapterSummary: chapter.chapterSummary,
+          timeSpan: chapter.timeSpan,
+          settingUpdate: chapter.settingUpdate,
+          lines: newLines,
+        ));
+      }
+
+      final updatedBook = Book(
+        id: book.id,
+        title: book.title,
+        fileType: book.fileType,
+        originalPath: book.originalPath,
+        cachedPath: book.cachedPath,
+        coverImagePath: book.coverImagePath,
+        introduction: book.introduction,
+        backgroundSetting: book.backgroundSetting,
+        writingStyle: book.writingStyle,
+        characters: book.characters,
+        chapters: newChapters,
+      );
+
+      await saveBookDetail(updatedBook);
+      return updatedBook;
+    } catch (e, s) {
+      LogService.instance.error('删除章节 $chapterId in book $bookId 失败', e, s);
+      return null;
+    }
+  }
+
+  /// 在书籍末尾追加新章节
+  Future<Book?> appendChapter({
+    required String bookId,
+    required ChapterStructure newChapter,
+  }) async {
+    final book = await loadBookDetail(bookId);
+    if (book == null) return null;
+
+    try {
+      final newChapters = <ChapterStructure>[];
+      int globalLineIdCounter = 0;
+
+      for (final chapter in book.chapters) {
+        final newLines = chapter.lines.map((line) {
+          return LineStructure(
+            id: globalLineIdCounter++,
+            text: line.text,
+            sourceInfo: line.sourceInfo,
+            originalContent: line.originalContent,
+            illustrationPaths: line.illustrationPaths,
+            videoPaths: line.videoPaths,
+            sceneDescription: line.sceneDescription,
+            translatedText: line.translatedText,
+          );
+        }).toList();
+
+        newChapters.add(ChapterStructure(
+          id: chapter.id,
+          title: chapter.title,
+          sourceFile: chapter.sourceFile,
+          chapterSummary: chapter.chapterSummary,
+          timeSpan: chapter.timeSpan,
+          settingUpdate: chapter.settingUpdate,
+          lines: newLines,
+        ));
+      }
+
+      final newLinesWithIds = newChapter.lines.asMap().entries.map((e) {
+        return LineStructure(
+          id: globalLineIdCounter + e.key,
+          text: e.value.text,
+          sourceInfo: e.value.sourceInfo,
+          originalContent: e.value.originalContent,
+          illustrationPaths: e.value.illustrationPaths,
+          videoPaths: e.value.videoPaths,
+          sceneDescription: e.value.sceneDescription,
+          translatedText: e.value.translatedText,
+        );
+      }).toList();
+      globalLineIdCounter += newLinesWithIds.length;
+
+      newChapters.add(ChapterStructure(
+        id: newChapter.id,
+        title: newChapter.title,
+        sourceFile: newChapter.sourceFile,
+        chapterSummary: newChapter.chapterSummary,
+        timeSpan: newChapter.timeSpan,
+        settingUpdate: newChapter.settingUpdate,
+        lines: newLinesWithIds,
+      ));
+
+      final updatedBook = Book(
+        id: book.id,
+        title: book.title,
+        fileType: book.fileType,
+        originalPath: book.originalPath,
+        cachedPath: book.cachedPath,
+        coverImagePath: book.coverImagePath,
+        introduction: book.introduction,
+        backgroundSetting: book.backgroundSetting,
+        writingStyle: book.writingStyle,
+        characters: book.characters,
+        chapters: newChapters,
+      );
+
+      await saveBookDetail(updatedBook);
+      return updatedBook;
+    } catch (e, s) {
+      LogService.instance.error('追加章节到书籍 $bookId 失败', e, s);
+      return null;
+    }
+  }
+
+  /// 批量更新章节的摘要信息
+  /// summaries 的 key 为 chapterId，value 为 (chapterSummary, timeSpan, settingUpdate)
+  Future<Book?> updateChapterSummaries({
+    required String bookId,
+    required Map<String, ({String? chapterSummary, String? timeSpan, String? settingUpdate})> summaries,
+  }) async {
+    final book = await loadBookDetail(bookId);
+    if (book == null) return null;
+    if (summaries.isEmpty) return book;
+
+    try {
+      final newChapters = book.chapters.map((chapter) {
+        final s = summaries[chapter.id];
+        if (s == null) return chapter;
+
+        return ChapterStructure(
+          id: chapter.id,
+          title: chapter.title,
+          sourceFile: chapter.sourceFile,
+          chapterSummary: s.chapterSummary ?? chapter.chapterSummary,
+          timeSpan: s.timeSpan ?? chapter.timeSpan,
+          settingUpdate: s.settingUpdate ?? chapter.settingUpdate,
+          lines: chapter.lines,
+        );
+      }).toList();
+
+      final updatedBook = Book(
+        id: book.id,
+        title: book.title,
+        fileType: book.fileType,
+        originalPath: book.originalPath,
+        cachedPath: book.cachedPath,
+        coverImagePath: book.coverImagePath,
+        introduction: book.introduction,
+        backgroundSetting: book.backgroundSetting,
+        writingStyle: book.writingStyle,
+        characters: book.characters,
+        chapters: newChapters,
+      );
+
+      await saveBookDetail(updatedBook);
+      return updatedBook;
+    } catch (e, s) {
+      LogService.instance.error('更新书籍 $bookId 章节摘要失败', e, s);
+      return null;
+    }
+  }
 }

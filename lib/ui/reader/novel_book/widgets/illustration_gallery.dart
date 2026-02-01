@@ -1,4 +1,4 @@
-// lib/ui/reader/widgets/illustration_gallery.dart
+// lib/ui/reader/novel_book/widgets/illustration_gallery.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';

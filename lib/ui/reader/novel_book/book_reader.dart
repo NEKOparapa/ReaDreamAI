@@ -1,17 +1,18 @@
-// lib/ui/reader/book_reader.dart
+// lib/ui/reader/novel_book/book_reader.dart
 
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tiktoken/tiktoken.dart';
 
-import '../../base/config_service.dart';
-import '../../models/book.dart';
-import '../../services/cache_manager/cache_manager.dart';
-import '../../services/task_executor/single_illustration_executor.dart';
+import '../../../base/config_service.dart';
+import '../../../models/book.dart';
+import '../../../services/cache_manager/cache_manager.dart';
+import '../../../services/task_executor/single_illustration_executor.dart';
+import '../../../services/task_executor/novel_continuation_service.dart';
+import 'continue_chapter_dialog.dart';
 import 'widgets/illustration_gallery.dart';
 import 'widgets/reader_settings_panel.dart';
-
 
 class BookReaderPage extends StatefulWidget {
   final Book book;
@@ -53,6 +54,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
   final _configService = ConfigService();
   bool _settingsLoaded = false;
 
+  // --- AI 续写进度 ---
+  bool _isContinuationRunning = false;
+  double _continuationProgress = 0.0;
+  String _continuationStatus = '';
 
   @override
   void initState() {
@@ -68,7 +73,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   // 从ConfigService加载阅读器设置
   void _loadReaderSettings() {
-    final themeId = _configService.getSetting<String>('reader_theme_id', 'default');
+    final themeId = _configService.getSetting<String>(
+      'reader_theme_id',
+      'default',
+    );
     //使用公开的 ReaderTheme
     _currentTheme = ReaderTheme.themes.firstWhere(
       (t) => t.id == themeId,
@@ -76,7 +84,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
     );
     _fontSize = _configService.getSetting<double>('reader_font_size', 18.0);
     _lineHeight = _configService.getSetting<double>('reader_line_height', 1.8);
-    _fontFamily = _configService.getSetting<String>('reader_font_family', 'SystemDefault');
+    _fontFamily = _configService.getSetting<String>(
+      'reader_font_family',
+      'SystemDefault',
+    );
 
     setState(() {
       _settingsLoaded = true;
@@ -109,9 +120,14 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   // 通用任务处理逻辑，接收一个返回 Future 的函数
-  Future<void> _handleGenericTask(Future<dynamic> Function() taskFunction, String processingMessage) async {
+  Future<void> _handleGenericTask(
+    Future<dynamic> Function() taskFunction,
+    String processingMessage,
+  ) async {
     if (_isTaskRunning) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('已有任务在运行中,请稍候...')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已有任务在运行中,请稍候...')));
       return;
     }
     _isTaskRunning = true;
@@ -121,15 +137,25 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final safeTopPadding = MediaQuery.of(context).padding.top;
     final toolbarHeight = kToolbarHeight;
 
-    final safeBottomMargin = screenHeight - toolbarHeight - safeTopPadding - 100;
+    final safeBottomMargin =
+        screenHeight - toolbarHeight - safeTopPadding - 100;
 
     messenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(width: 16),
-            Expanded(child: Text(processingMessage, overflow: TextOverflow.ellipsis)),
+            Expanded(
+              child: Text(processingMessage, overflow: TextOverflow.ellipsis),
+            ),
           ],
         ),
         duration: const Duration(days: 1),
@@ -137,7 +163,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
         margin: EdgeInsets.only(
           bottom: safeBottomMargin.clamp(80.0, screenHeight - 150),
           left: 20,
-          right: 20
+          right: 20,
         ),
       ),
     );
@@ -148,7 +174,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
       print("任务执行失败: $e");
       messenger.hideCurrentSnackBar();
       if (mounted) {
-        messenger.showSnackBar(SnackBar(content: Text('操作失败: $e'), backgroundColor: Colors.red));
+        messenger.showSnackBar(
+          SnackBar(content: Text('操作失败: $e'), backgroundColor: Colors.red),
+        );
       }
     } finally {
       messenger.hideCurrentSnackBar();
@@ -163,27 +191,36 @@ class _BookReaderPageState extends State<BookReaderPage> {
       await CacheManager().saveBookDetail(_currentBook);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('视频生成成功！正在刷新...')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('视频生成成功！正在刷新...')));
         await _refreshBookState();
       }
     }, '正在生成视频...');
   }
 
   // 插图任务处理逻辑
-  Future<void> _handleIllustrationTask(Future<void> Function() taskFunction) async {
+  Future<void> _handleIllustrationTask(
+    Future<void> Function() taskFunction,
+  ) async {
     await _handleGenericTask(() async {
       await taskFunction();
       await CacheManager().saveBookDetail(_currentBook);
       if (mounted) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('插图生成成功！正在刷新...')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('插图生成成功！正在刷新...')));
         await _refreshBookState();
       }
     }, '正在生成插图...');
   }
 
   // 文本修改任务处理逻辑
-  Future<void> _handleTextModificationTask(Future<Book?> Function() modificationFunction, String successMessage) async {
+  Future<void> _handleTextModificationTask(
+    Future<Book?> Function() modificationFunction,
+    String successMessage,
+  ) async {
     await _handleGenericTask(() async {
       final updatedBook = await modificationFunction();
       if (updatedBook != null && mounted) {
@@ -191,7 +228,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
           _currentBook = updatedBook;
         });
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(successMessage)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(successMessage)));
       } else if (mounted) {
         throw Exception("未能成功更新书籍内容。");
       }
@@ -206,8 +245,14 @@ class _BookReaderPageState extends State<BookReaderPage> {
         title: const Text('确认删除'),
         content: const Text('确定要删除这张图片吗？此操作不可恢复。'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -219,11 +264,15 @@ class _BookReaderPageState extends State<BookReaderPage> {
         await File(imagePath).delete();
         await CacheManager().saveBookDetail(_currentBook);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('图片已删除')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('图片已删除')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除文件失败: $e'), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('删除文件失败: $e'), backgroundColor: Colors.red),
+          );
         }
         line.illustrationPaths.clear();
         line.illustrationPaths.addAll(originalPaths);
@@ -240,8 +289,14 @@ class _BookReaderPageState extends State<BookReaderPage> {
         title: const Text('确认删除'),
         content: const Text('确定要删除这个视频吗？此操作不可恢复。'),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('取消')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('删除', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
@@ -253,11 +308,15 @@ class _BookReaderPageState extends State<BookReaderPage> {
         await File(videoPath).delete();
         await CacheManager().saveBookDetail(_currentBook);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('视频已删除')));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('视频已删除')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('删除文件失败: $e'), backgroundColor: Colors.red));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('删除文件失败: $e'), backgroundColor: Colors.red),
+          );
         }
         line.videoPaths.clear();
         line.videoPaths.addAll(originalPaths);
@@ -267,10 +326,17 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   // 为选择文本生成插图
-  Future<void> _generateIllustrationForSelection(String selectedText, LineStructure targetLine, ChapterStructure targetChapter) async {
-    final illustrationsDir = await CacheManager().getOrCreateBookSubDir(_currentBook.id, 'illustrations');
-    await _handleIllustrationTask(() =>
-      _illustrationExecutor.generateIllustrationForSelection(
+  Future<void> _generateIllustrationForSelection(
+    String selectedText,
+    LineStructure targetLine,
+    ChapterStructure targetChapter,
+  ) async {
+    final illustrationsDir = await CacheManager().getOrCreateBookSubDir(
+      _currentBook.id,
+      'illustrations',
+    );
+    await _handleIllustrationTask(
+      () => _illustrationExecutor.generateIllustrationForSelection(
         book: _currentBook,
         chapter: targetChapter,
         targetLine: targetLine,
@@ -281,21 +347,36 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   // 删除划选文本
-  Future<void> _performDelete(LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter) async {
-    await _handleTextModificationTask(() => CacheManager().updateTextInRange(
-      bookId: _currentBook.id,
-      chapterId: chapter.id,
-      startLineId: firstLine.id,
-      endLineId: lastLine.id,
-      newContent: '',
-    ), '文本已删除');
+  Future<void> _performDelete(
+    LineStructure firstLine,
+    LineStructure lastLine,
+    ChapterStructure chapter,
+  ) async {
+    await _handleTextModificationTask(
+      () => CacheManager().updateTextInRange(
+        bookId: _currentBook.id,
+        chapterId: chapter.id,
+        startLineId: firstLine.id,
+        endLineId: lastLine.id,
+        newContent: '',
+      ),
+      '文本已删除',
+    );
   }
 
   // 显示改写要求对话框
-  Future<void> _showRewriteDialog(String selectedText, LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter) async {
+  Future<void> _showRewriteDialog(
+    String selectedText,
+    LineStructure firstLine,
+    LineStructure lastLine,
+    ChapterStructure chapter,
+  ) async {
     if (_currentBook.fileType != 'txt') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('错误：非 TXT 格式的书籍不支持改写功能。'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('错误：非 TXT 格式的书籍不支持改写功能。'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -315,9 +396,13 @@ class _BookReaderPageState extends State<BookReaderPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(requirementController.text),
+            onPressed: () =>
+                Navigator.of(context).pop(requirementController.text),
             child: const Text('确认'),
           ),
         ],
@@ -325,13 +410,30 @@ class _BookReaderPageState extends State<BookReaderPage> {
     );
 
     if (userRequirement != null && userRequirement.trim().isNotEmpty) {
-      await _performRewrite(userRequirement, selectedText, firstLine, lastLine, chapter);
+      await _performRewrite(
+        userRequirement,
+        selectedText,
+        firstLine,
+        lastLine,
+        chapter,
+      );
     }
   }
 
   // 执行文本改写
-  Future<void> _performRewrite(String requirement, String selectedText, LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter) async {
-    final context = _extractContextAroundSelection(firstLine, lastLine, chapter, 4000);
+  Future<void> _performRewrite(
+    String requirement,
+    String selectedText,
+    LineStructure firstLine,
+    LineStructure lastLine,
+    ChapterStructure chapter,
+  ) async {
+    final context = _extractContextAroundSelection(
+      firstLine,
+      lastLine,
+      chapter,
+      4000,
+    );
 
     await _handleTextModificationTask(() async {
       final rewrittenText = await _textModificationExecutor.rewriteText(
@@ -352,12 +454,18 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   // 提取划选文本前后的上下文
-  ({String preceding, String succeeding}) _extractContextAroundSelection(LineStructure firstLine, LineStructure lastLine, ChapterStructure chapter, int maxTokens) {
+  ({String preceding, String succeeding}) _extractContextAroundSelection(
+    LineStructure firstLine,
+    LineStructure lastLine,
+    ChapterStructure chapter,
+    int maxTokens,
+  ) {
     final encoding = encodingForModel("gpt-4");
     final lines = chapter.lines;
     final firstIndex = lines.indexOf(firstLine);
     final lastIndex = lines.indexOf(lastLine);
-    if (firstIndex == -1 || lastIndex == -1) return (preceding: '', succeeding: '');
+    if (firstIndex == -1 || lastIndex == -1)
+      return (preceding: '', succeeding: '');
 
     List<String> precedingLines = [];
     int precedingTokens = 0;
@@ -379,15 +487,23 @@ class _BookReaderPageState extends State<BookReaderPage> {
       succeedingLines.add(lineText);
     }
 
-    return (preceding: precedingLines.join('\n'), succeeding: succeedingLines.join('\n'));
+    return (
+      preceding: precedingLines.join('\n'),
+      succeeding: succeedingLines.join('\n'),
+    );
   }
 
-
   // 重新生成插图
-  Future<void> _regenerateIllustrationForLine(LineStructure line, ChapterStructure chapter) async {
-    final illustrationsDir = await CacheManager().getOrCreateBookSubDir(_currentBook.id, 'illustrations');
-    await _handleIllustrationTask(() =>
-      _illustrationExecutor.regenerateIllustration(
+  Future<void> _regenerateIllustrationForLine(
+    LineStructure line,
+    ChapterStructure chapter,
+  ) async {
+    final illustrationsDir = await CacheManager().getOrCreateBookSubDir(
+      _currentBook.id,
+      'illustrations',
+    );
+    await _handleIllustrationTask(
+      () => _illustrationExecutor.regenerateIllustration(
         chapter: chapter,
         line: line,
         imageSaveDir: illustrationsDir.path,
@@ -396,10 +512,17 @@ class _BookReaderPageState extends State<BookReaderPage> {
   }
 
   // 从图片生成视频的触发方法
-  Future<void> _generateVideoFromImage(String imagePath, LineStructure line, ChapterStructure chapter) async {
-    final videosDir = await CacheManager().getOrCreateBookSubDir(_currentBook.id, 'videos');
-    await _handleVideoTask(() =>
-      _videoExecutor.generateVideoFromImage(
+  Future<void> _generateVideoFromImage(
+    String imagePath,
+    LineStructure line,
+    ChapterStructure chapter,
+  ) async {
+    final videosDir = await CacheManager().getOrCreateBookSubDir(
+      _currentBook.id,
+      'videos',
+    );
+    await _handleVideoTask(
+      () => _videoExecutor.generateVideoFromImage(
         chapter: chapter,
         line: line,
         imagePath: imagePath,
@@ -410,7 +533,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   // 辅助函数，用于根据文本选择范围找到对应的起始和结束行
   ({ChapterStructure chapter, LineStructure firstLine, LineStructure lastLine})?
-      _findLinesForSelection(
+  _findLinesForSelection(
     TextSelection selection,
     List<({LineStructure line, ChapterStructure chapter})> linesInBlock,
   ) {
@@ -421,13 +544,15 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
     for (final info in linesInBlock) {
       final line = info.line;
-      String textToShow = (_displayMode == DisplayMode.translation &&
+      String textToShow =
+          (_displayMode == DisplayMode.translation &&
               line.translatedText?.isNotEmpty == true)
           ? line.translatedText!
           : line.text;
       int lineLength = (textToShow + '\n').length;
 
-      if (firstLine == null && selection.start < cumulativeLength + lineLength) {
+      if (firstLine == null &&
+          selection.start < cumulativeLength + lineLength) {
         firstLine = line;
         chapter = info.chapter;
       }
@@ -455,12 +580,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
     List<({LineStructure line, ChapterStructure chapter})> linesInBlock,
   ) {
     final selection = state.textEditingValue.selection;
-    final selectedText = state.textEditingValue.text.substring(
-      selection.start,
-      selection.end,
-    ).trim();
+    final selectedText = state.textEditingValue.text
+        .substring(selection.start, selection.end)
+        .trim();
 
-    final List<ContextMenuButtonItem> buttonItems = state.contextMenuButtonItems;
+    final List<ContextMenuButtonItem> buttonItems =
+        state.contextMenuButtonItems;
 
     if (selectedText.isNotEmpty) {
       final lineInfo = _findLinesForSelection(selection, linesInBlock);
@@ -470,21 +595,34 @@ class _BookReaderPageState extends State<BookReaderPage> {
             label: 'AI生成插图',
             onPressed: () {
               ContextMenuController.removeAny();
-              _generateIllustrationForSelection(selectedText, lineInfo.lastLine, lineInfo.chapter);
+              _generateIllustrationForSelection(
+                selectedText,
+                lineInfo.lastLine,
+                lineInfo.chapter,
+              );
             },
           ),
           ContextMenuButtonItem(
             label: 'AI改写文本',
             onPressed: () {
               ContextMenuController.removeAny();
-              _showRewriteDialog(selectedText, lineInfo.firstLine, lineInfo.lastLine, lineInfo.chapter);
+              _showRewriteDialog(
+                selectedText,
+                lineInfo.firstLine,
+                lineInfo.lastLine,
+                lineInfo.chapter,
+              );
             },
           ),
           ContextMenuButtonItem(
             label: '删除选中文本',
             onPressed: () {
               ContextMenuController.removeAny();
-              _performDelete(lineInfo.firstLine, lineInfo.lastLine, lineInfo.chapter);
+              _performDelete(
+                lineInfo.firstLine,
+                lineInfo.lastLine,
+                lineInfo.chapter,
+              );
             },
           ),
         ];
@@ -503,7 +641,10 @@ class _BookReaderPageState extends State<BookReaderPage> {
   Future<void> _showRewriteChapterDialog() async {
     if (_currentBook.fileType != 'txt') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('只有 TXT 格式的书籍才支持整章重写。'), backgroundColor: Colors.orange),
+        const SnackBar(
+          content: Text('只有 TXT 格式的书籍才支持整章重写。'),
+          backgroundColor: Colors.orange,
+        ),
       );
       return;
     }
@@ -524,9 +665,13 @@ class _BookReaderPageState extends State<BookReaderPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('取消')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
           FilledButton(
-            onPressed: () => Navigator.of(context).pop(requirementController.text),
+            onPressed: () =>
+                Navigator.of(context).pop(requirementController.text),
             child: const Text('开始重写'),
           ),
         ],
@@ -535,6 +680,161 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
     if (userRequirement != null && userRequirement.trim().isNotEmpty) {
       await _performChapterRewrite(userRequirement);
+    }
+  }
+
+  /// 删除当前章节
+  Future<void> _deleteCurrentChapter() async {
+    if (_currentBook.fileType != 'txt') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('只有 TXT 格式的书籍才支持删除章节。'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    if (_currentBook.chapters.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('无法删除最后一章。'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认删除章节'),
+        content: Text(
+          '确定要删除「${_currentBook.chapters[_currentChapterIndex].title}」吗？此操作不可恢复。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final chapterId = _currentBook.chapters[_currentChapterIndex].id;
+    final updatedBook = await CacheManager().deleteChapter(
+      bookId: _currentBook.id,
+      chapterId: chapterId,
+    );
+    if (updatedBook != null && mounted) {
+      int newIndex = _currentChapterIndex;
+      if (newIndex >= updatedBook.chapters.length) {
+        newIndex = updatedBook.chapters.length - 1;
+      }
+      setState(() {
+        _currentBook = updatedBook;
+        _currentChapterIndex = newIndex;
+      });
+      _pageController.jumpToPage(newIndex);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('章节已删除')));
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('删除失败'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  /// 显示 AI 续写新章弹窗并在阅读界面显示进度
+  Future<void> _showContinueChapterDialog() async {
+    if (_currentBook.fileType != 'txt') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('只有 TXT 格式的书籍才支持 AI 续写。'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    final result = await showDialog<ContinuationParams>(
+      context: context,
+      builder: (context) => ContinueChapterDialog(book: _currentBook),
+    );
+    if (result == null || !mounted) return;
+
+    if (_isTaskRunning || _isContinuationRunning) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('已有任务在运行中，请稍候...')));
+      return;
+    }
+
+    setState(() {
+      _isContinuationRunning = true;
+      _continuationProgress = 0.0;
+      _continuationStatus = '准备中...';
+      _isToolbarVisible.value = true;
+    });
+
+    try {
+      final continuationResult = await NovelContinuationService.instance
+          .runContinuation(
+            book: _currentBook,
+            params: result,
+            onPhaseStatus: (msg) {
+              if (mounted) {
+                setState(() => _continuationStatus = msg);
+              }
+            },
+            onGenerateProgress: (msg, p) {
+              if (mounted) {
+                setState(() {
+                  _continuationStatus = msg;
+                  _continuationProgress = 0.4 + 0.5 * p;
+                });
+              }
+            },
+            onPhaseProgress: (phase, p) {
+              if (mounted) {
+                setState(() {
+                  const phaseWeights = [0.0, 0.2, 0.4, 0.9, 1.0];
+                  final base = phaseWeights[phase.clamp(0, 4)];
+                  final next = phaseWeights[(phase + 1).clamp(0, 4)];
+                  _continuationProgress = base + (next - base) * p;
+                });
+              }
+            },
+            isTerminated: () => false,
+          );
+
+      if (mounted) {
+        setState(() {
+          _currentBook = continuationResult.updatedBook;
+          _isContinuationRunning = false;
+          _continuationProgress = 0.0;
+          _continuationStatus = '';
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('新章节已添加！')));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isContinuationRunning = false;
+          _continuationProgress = 0.0;
+          _continuationStatus = '';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('续写失败: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -560,7 +860,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
         setState(() {
           _currentBook = updatedBook;
         });
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('章节重写成功！')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('章节重写成功！')));
       } else {
         throw Exception("未能成功更新书籍内容。");
       }
@@ -576,7 +878,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
     if (entryIndex != -1) {
       final currentEntry = entries[entryIndex];
       if (currentEntry.lastReadChapterIndex != chapterIndex) {
-        entries[entryIndex] = currentEntry.copyWith(lastReadChapterIndex: chapterIndex);
+        entries[entryIndex] = currentEntry.copyWith(
+          lastReadChapterIndex: chapterIndex,
+        );
         await cacheManager.saveBookshelf(entries);
       }
     }
@@ -604,19 +908,20 @@ class _BookReaderPageState extends State<BookReaderPage> {
           initialLineHeight: _lineHeight,
           initialFontFamily: _fontFamily,
           initialDisplayMode: _displayMode,
-          onSettingsChanged: (theme, fontSize, fontFamily, displayMode, lineHeight) {
-            setState(() {
-              _currentTheme = theme;
-              _fontSize = fontSize;
-              _fontFamily = fontFamily;
-              _displayMode = displayMode;
-              _lineHeight = lineHeight;
-            });
-            _configService.modifySetting('reader_theme_id', theme.id);
-            _configService.modifySetting('reader_font_size', fontSize);
-            _configService.modifySetting('reader_line_height', lineHeight);
-            _configService.modifySetting('reader_font_family', fontFamily);
-          },
+          onSettingsChanged:
+              (theme, fontSize, fontFamily, displayMode, lineHeight) {
+                setState(() {
+                  _currentTheme = theme;
+                  _fontSize = fontSize;
+                  _fontFamily = fontFamily;
+                  _displayMode = displayMode;
+                  _lineHeight = lineHeight;
+                });
+                _configService.modifySetting('reader_theme_id', theme.id);
+                _configService.modifySetting('reader_font_size', fontSize);
+                _configService.modifySetting('reader_line_height', lineHeight);
+                _configService.modifySetting('reader_font_family', fontFamily);
+              },
         );
       },
     );
@@ -624,15 +929,13 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   // 跳转到指定章节
   void _jumpToChapter(int chapterIndex) {
-      _pageController.jumpToPage(chapterIndex);
+    _pageController.jumpToPage(chapterIndex);
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_settingsLoaded) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -644,14 +947,66 @@ class _BookReaderPageState extends State<BookReaderPage> {
             children: [
               child!,
               _buildTopToolbar(isVisible),
+              if (_isContinuationRunning)
+                Positioned(
+                  top: MediaQuery.of(context).padding.top + kToolbarHeight + 12,
+                  right: 16,
+                  width: 160,
+                  child: Material(
+                    elevation: 2,
+                    borderRadius: BorderRadius.circular(6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  _continuationStatus,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1,
+                                ),
+                                const SizedBox(height: 4),
+                                LinearProgressIndicator(
+                                  value: _continuationProgress > 0
+                                      ? _continuationProgress
+                                      : null,
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerHighest,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
             ],
           );
         },
         child: GestureDetector(
           onTap: _toggleToolbarVisibility,
-          child: SafeArea(
-            child: _buildReaderBody(),
-          ),
+          child: SafeArea(child: _buildReaderBody()),
         ),
       ),
       drawer: Drawer(
@@ -667,8 +1022,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
                   chapter.title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontWeight: _currentChapterIndex == index ? FontWeight.bold : FontWeight.normal,
-                    color: _currentChapterIndex == index ? Theme.of(context).colorScheme.primary : null,
+                    fontWeight: _currentChapterIndex == index
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                    color: _currentChapterIndex == index
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                 ),
                 onTap: () {
@@ -723,7 +1082,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
                         IconButton(
                           icon: const Icon(Icons.chevron_left),
                           tooltip: '上一章',
-                          onPressed: _currentChapterIndex > 0 ? () => _jumpToChapter(_currentChapterIndex - 1) : null,
+                          onPressed: _currentChapterIndex > 0
+                              ? () => _jumpToChapter(_currentChapterIndex - 1)
+                              : null,
                         ),
                         Flexible(
                           child: Builder(
@@ -731,10 +1092,14 @@ class _BookReaderPageState extends State<BookReaderPage> {
                               return Tooltip(
                                 message: '目录',
                                 child: InkWell(
-                                  onTap: () => Scaffold.of(context).openDrawer(),
+                                  onTap: () =>
+                                      Scaffold.of(context).openDrawer(),
                                   borderRadius: BorderRadius.circular(4),
                                   child: Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                      horizontal: 4,
+                                    ),
                                     child: Text(
                                       chapterTitle,
                                       style: const TextStyle(fontSize: 16),
@@ -751,7 +1116,11 @@ class _BookReaderPageState extends State<BookReaderPage> {
                         IconButton(
                           icon: const Icon(Icons.chevron_right),
                           tooltip: '下一章',
-                          onPressed: _currentChapterIndex < _currentBook.chapters.length - 1 ? () => _jumpToChapter(_currentChapterIndex + 1) : null,
+                          onPressed:
+                              _currentChapterIndex <
+                                  _currentBook.chapters.length - 1
+                              ? () => _jumpToChapter(_currentChapterIndex + 1)
+                              : null,
                         ),
                       ],
                     ),
@@ -762,10 +1131,50 @@ class _BookReaderPageState extends State<BookReaderPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
+                      PopupMenuButton<String>(
+                        tooltip: 'AI 章节操作',
                         icon: const Icon(Icons.auto_fix_high_outlined),
-                        tooltip: 'AI重写本章',
-                        onPressed: _showRewriteChapterDialog,
+                        onSelected: (value) {
+                          if (value == 'rewrite') {
+                            _showRewriteChapterDialog();
+                          } else if (value == 'continue') {
+                            _showContinueChapterDialog();
+                          } else if (value == 'delete') {
+                            _deleteCurrentChapter();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'rewrite',
+                            child: Row(
+                              children: [
+                                Icon(Icons.autorenew, size: 20),
+                                SizedBox(width: 12),
+                                Text('AI重写本章'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'continue',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add_circle_outline, size: 20),
+                                SizedBox(width: 12),
+                                Text('AI续写新章'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, size: 20),
+                                SizedBox(width: 12),
+                                Text('删除本章节'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                       IconButton(
                         icon: const Icon(Icons.settings_outlined),
@@ -786,7 +1195,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
   // 构建阅读器主体
   Widget _buildReaderBody() {
     if (_currentBook.chapters.isEmpty) {
-      return Center(child: Text('书籍内容为空', style: TextStyle(color: _currentTheme.font)));
+      return Center(
+        child: Text('书籍内容为空', style: TextStyle(color: _currentTheme.font)),
+      );
     }
 
     return PageView.builder(
@@ -837,12 +1248,13 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
   List<Widget> _buildContentWidgets(ChapterStructure chapter) {
     List<Widget> contentWidgets = [];
-    List<({LineStructure line, ChapterStructure chapter})> currentTextLines = [];
+    List<({LineStructure line, ChapterStructure chapter})> currentTextLines =
+        [];
 
     void submitTextBlock() {
       if (currentTextLines.isNotEmpty) {
         contentWidgets.add(
-            _buildSelectableTextBlock(List.from(currentTextLines))
+          _buildSelectableTextBlock(List.from(currentTextLines)),
         );
         currentTextLines.clear();
       }
@@ -863,7 +1275,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
             onRegenerate: () => _regenerateIllustrationForLine(line, chapter),
             onDeleteImage: (path) => _deleteIllustration(path, line),
             onDeleteVideo: (path) => _deleteVideo(path, line),
-            onGenerateVideo: (path) => _generateVideoFromImage(path, line, chapter),
+            onGenerateVideo: (path) =>
+                _generateVideoFromImage(path, line, chapter),
           ),
         );
       }
@@ -873,13 +1286,17 @@ class _BookReaderPageState extends State<BookReaderPage> {
     return contentWidgets;
   }
 
-  Widget _buildSelectableTextBlock(List<({LineStructure line, ChapterStructure chapter})> linesInfo) {
+  Widget _buildSelectableTextBlock(
+    List<({LineStructure line, ChapterStructure chapter})> linesInfo,
+  ) {
     return SelectableText.rich(
       TextSpan(
         children: linesInfo.map((info) {
           final line = info.line;
           String textToShow;
-          if (_displayMode == DisplayMode.translation && line.translatedText != null && line.translatedText!.isNotEmpty) {
+          if (_displayMode == DisplayMode.translation &&
+              line.translatedText != null &&
+              line.translatedText!.isNotEmpty) {
             textToShow = line.translatedText!;
           } else {
             textToShow = line.text;
@@ -894,7 +1311,8 @@ class _BookReaderPageState extends State<BookReaderPage> {
         fontFamily: _fontFamily == 'SystemDefault' ? null : _fontFamily,
       ),
       textAlign: TextAlign.justify,
-      contextMenuBuilder: (context, state) => _buildTextContextMenu(context, state, linesInfo),
+      contextMenuBuilder: (context, state) =>
+          _buildTextContextMenu(context, state, linesInfo),
     );
   }
 }

@@ -16,7 +16,7 @@ import '../../services/task_manager/task_manager_service.dart';
 import '../../base/log/log_service.dart';
 
 // 导入相关页面
-import '../reader/book_reader.dart';
+import '../reader/novel_book/book_reader.dart';
 import '../reader/video_book_reader.dart';
 import '../reader/game_book/game_book_reader_page.dart';
 
