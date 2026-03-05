@@ -101,7 +101,7 @@ final List<ApiPlatformPreset> drawingPlatformPresets = [
   const ApiPlatformPreset(
     provider: ApiProvider.google, name: '谷歌', icon: Icons.data_usage, 
     // 这是谷歌的绘画模型预设
-    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'imagen-4.0-generate-001', 
+    defaultUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-3.1-flash-image-preview', 
     defaultFormat: ApiFormat.none, defaultConcurrency: 3, defaultRpm: 30
   ),
   const ApiPlatformPreset(

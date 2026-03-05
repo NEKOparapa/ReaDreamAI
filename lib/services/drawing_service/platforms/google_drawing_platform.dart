@@ -155,8 +155,18 @@ class GoogleDrawingPlatform implements DrawingPlatform {
 
     // 解析响应数据
     final responseData = jsonDecode(utf8.decode(apiResponse.bodyBytes));
-    // 从响应中提取Base64编码的图片数据
-    final b64Json = responseData['candidates']?[0]?['content']?['parts']?[0]?['inlineData']?['data'] as String?;
+
+    // 从响应中提取Base64编码的图片数据（兼容 REST 的 snake_case 和部分 SDK 的 camelCase）
+    final candidates = responseData['candidates'] as List?;
+    final content = candidates != null && candidates.isNotEmpty
+        ? candidates[0]['content'] as Map<String, dynamic>?
+        : null;
+    final contentParts = content != null ? content['parts'] as List? : null;
+    final firstPart = contentParts != null && contentParts.isNotEmpty
+        ? contentParts[0] as Map<String, dynamic>?
+        : null;
+    final inline = firstPart?['inline_data'] ?? firstPart?['inlineData'];
+    final b64Json = inline != null ? inline['data'] as String? : null;
 
     if (b64Json == null || b64Json.isEmpty) {
       // 如果API没有返回有效的图片数据，记录警告并返回null
