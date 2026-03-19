@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pool/pool.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../base/api_model.dart';
 import '../../../base/config_service.dart';
 import '../../../base/log/log_service.dart';
 import '../../../models/book.dart';
@@ -122,7 +123,14 @@ class _NovelGenerationProgressPageState
     }
   }
 
-  /// 并行生成模式（原有逻辑：并行规划 + 并行写作）
+  /// Returns the configured API for novel body generation.
+  ApiModel _getNovelGenerateApi() {
+    return _configService.getLanguageApiById(
+      _configService.getSetting<String?>('ai_novel_creation_generate_api_id', null),
+    );
+  }
+
+  /// Parallel generation mode: plan and write chapters concurrently.
   Future<void> _startParallelGeneration() async {
     LogService.instance.info('开始并行生成小说正文...');
     _addLog('生成任务已启动（完全并行模式）', Icons.flash_on);
@@ -135,10 +143,12 @@ class _NovelGenerationProgressPageState
         'ai_novel_creation_words_per_chapter', 1500);
     _addLog('目标字数设定为每章约 $wordsPerChapter 字', Icons.format_size);
 
-    final llmApi = _configService.getActiveLanguageApi();
-    final concurrency = llmApi.concurrencyLimit ?? 3;
+    final llmApi = _getNovelGenerateApi();
+    final concurrency = max(1, llmApi.concurrencyLimit ?? 3);
     final pool = Pool(concurrency);
-    LogService.instance.info('启动小说生成任务池，最大并发数: $concurrency');
+    LogService.instance.info(
+      'Novel body generation pool started. API: ${llmApi.name}, max concurrency: $concurrency',
+    );
 
     try {
       final storyline =
@@ -339,9 +349,12 @@ class _NovelGenerationProgressPageState
       });
     }
 
-    final llmApi = _configService.getActiveLanguageApi();
-    final concurrency = llmApi.concurrencyLimit ?? 3;
+    final llmApi = _getNovelGenerateApi();
+    final concurrency = max(1, llmApi.concurrencyLimit ?? 3);
     final pool = Pool(concurrency);
+    LogService.instance.info(
+      'Parallel chapter writing uses API: ${llmApi.name}, max concurrency: $concurrency',
+    );
     final futures = <Future>[];
     int completedChapters = 0;
 
