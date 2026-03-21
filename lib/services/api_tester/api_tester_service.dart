@@ -31,7 +31,13 @@ class ApiTesterService {
       // 使用一个简单、无害的提示词进行测试
       final response = await LlmService.instance.requestCompletion(
         systemPrompt: 'You are a helpful assistant.',
-        messages: [{'role': 'user', 'content': 'Hi, please respond with only the words "test successful"'}],
+        messages: [
+          {
+            'role': 'user',
+            'content':
+                'Hi, please respond with only the words "test successful"',
+          },
+        ],
         apiConfig: apiConfig,
       );
 
@@ -71,13 +77,17 @@ class ApiTesterService {
       );
 
       if (imagePaths != null && imagePaths.isNotEmpty) {
-        return TestResult(true, '测试成功: API成功生成并返回了 ${imagePaths.length} 张图片的路径。');
+        return TestResult(
+          true,
+          '测试成功: API成功生成并返回了 ${imagePaths.length} 张图片的路径。',
+        );
       } else {
         return TestResult(false, '测试失败: API调用成功，但未返回任何图片。');
       }
     } catch (e) {
       return TestResult(false, '测试失败: ${e.toString()}');
-    } finally { // 确保清理
+    } finally {
+      // 确保清理
       if (testSaveDir != null && await testSaveDir.exists()) {
         try {
           await testSaveDir.delete(recursive: true);
@@ -111,13 +121,17 @@ class ApiTesterService {
       );
 
       if (videoPaths != null && videoPaths.isNotEmpty) {
-        return TestResult(true, '测试成功: API成功生成并返回了 ${videoPaths.length} 个视频的路径。');
+        return TestResult(
+          true,
+          '测试成功: API成功生成并返回了 ${videoPaths.length} 个视频的路径。',
+        );
       } else {
         return TestResult(false, '测试失败: API调用成功，但未返回任何视频。');
       }
     } catch (e) {
       return TestResult(false, '测试失败: ${e.toString()}');
-    } finally { // 确保清理
+    } finally {
+      // 确保清理
       if (testSaveDir != null && await testSaveDir.exists()) {
         try {
           await testSaveDir.delete(recursive: true);
@@ -135,10 +149,10 @@ class ApiTesterService {
     Directory? testSaveDir; // 在 try 块外部声明，以便 finally 块访问
     try {
       LogService.instance.info('开始测试音乐API: ${apiConfig.name}');
-      // 1. 创建一个临时的文件夹用来存放wav格式音乐
+      // 1. 创建一个临时的文件夹用来存放测试音乐
       tempDir = await getTemporaryDirectory();
-      testSaveDir = Directory(p.join(tempDir.path, 'api_test_music_wav'));
-      
+      testSaveDir = Directory(p.join(tempDir.path, 'api_test_music'));
+
       // 确保目录在测试前是干净的
       if (await testSaveDir.exists()) {
         await testSaveDir.delete(recursive: true);
@@ -149,11 +163,12 @@ class ApiTesterService {
 
       // 2. 发起一个非常简单的音乐生成请求
       final audioFilePath = await MusicService.instance.generateMusic(
-        prompt: '独立民谣,忧郁,内省,渴望,独自漫步,咖啡馆',
-        lyrics: '[verse]\n街灯微亮晚风轻抚\n影子拉长独自漫步\n旧外套裹着深深忧郁\n不知去向渴望何处\n[chorus]\n推开木门香气弥漫\n熟悉的角落陌生人看',
+        prompt:
+            'indie folk, melancholic, introspective, wistful, solitary walk, cafe ambience, instrumental, no vocals, no lyrics',
         apiConfig: apiConfig,
         saveDir: testSaveDir.path,
-        outputFormat: 'wav', 
+        outputFormat: 'wav',
+        isInstrumental: true,
       );
 
       // 3. 检查结果：文件路径是否存在且指向一个真实文件
@@ -161,7 +176,7 @@ class ApiTesterService {
         final File generatedFile = File(audioFilePath);
         if (await generatedFile.exists()) {
           LogService.instance.info('音乐文件成功生成并保存到: $audioFilePath');
-          return TestResult(true, '测试成功: API成功生成并保存了 WAV 音频文件到: $audioFilePath');
+          return TestResult(true, '测试成功: API成功生成并保存了音频文件到: $audioFilePath');
         } else {
           LogService.instance.error('API声称成功，但音频文件未在指定路径找到: $audioFilePath');
           return TestResult(false, '测试失败: API调用成功，但音频文件未在指定路径找到。');

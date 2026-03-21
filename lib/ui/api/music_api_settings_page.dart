@@ -15,7 +15,7 @@ class MusicApiSettingsPage extends StatefulWidget {
 
 class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // 控制器
   late TextEditingController _nameController;
   late TextEditingController _keyController;
@@ -23,7 +23,7 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
   late TextEditingController _urlController;
   late TextEditingController _concurrencyController;
   late TextEditingController _rpmController;
-  
+
   late ApiProvider _selectedProvider;
 
   // 使用定义好的音乐平台预设
@@ -36,10 +36,14 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
     _keyController = TextEditingController(text: widget.apiModel.apiKey);
     _modelController = TextEditingController(text: widget.apiModel.model);
     _urlController = TextEditingController(text: widget.apiModel.url);
-    
+
     // 初始化速率设置
-    _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
-    _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
+    _concurrencyController = TextEditingController(
+      text: widget.apiModel.concurrencyLimit?.toString() ?? '',
+    );
+    _rpmController = TextEditingController(
+      text: widget.apiModel.rpm?.toString() ?? '',
+    );
 
     _selectedProvider = widget.apiModel.provider;
   }
@@ -88,18 +92,26 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
                   children: [
                     // 第一部分：基础信息 (名称、Key、模型)
                     _buildSectionTitle('基础信息'),
-                    _buildTextField(_nameController, '接口名称', '例如：Minimax Music'),
-                    _buildTextField(_keyController, 'API Key', '请输入 API Key / Group ID'),
-                    _buildTextField(_modelController, '模型名称', '例如：music-2.0'),
-                    
+                    _buildTextField(
+                      _nameController,
+                      '接口名称',
+                      '例如：Minimax Music',
+                    ),
+                    _buildTextField(
+                      _keyController,
+                      'API Key',
+                      '请输入 API Key / Group ID',
+                    ),
+                    _buildTextField(_modelController, '模型名称', '例如：music-2.5+'),
+
                     const SizedBox(height: 24),
-                    
+
                     // 第二部分：接口平台 (选择器 + URL)
                     _buildSectionTitle('接口平台'),
                     _buildPlatformSelector(),
                     const SizedBox(height: 16),
                     _buildUrlField(),
-                    
+
                     const SizedBox(height: 24),
 
                     // 第三部分：接口速率 (并发、RPM)
@@ -134,7 +146,10 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
         height: 48,
         child: ElevatedButton.icon(
           icon: const Icon(Icons.save),
-          label: const Text('保存配置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          label: const Text(
+            '保存配置',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           onPressed: _saveAndExit,
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
@@ -159,7 +174,11 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    String hint,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -167,13 +186,18 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         validator: (value) {
           // Key 和 Model 允许为空
-          if (controller == _keyController || controller == _modelController) return null;
+          if (controller == _keyController || controller == _modelController)
+            return null;
           if (value == null || value.isEmpty) return '此项不能为空';
           return null;
         },
@@ -190,9 +214,11 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
         decoration: InputDecoration(
           labelText: '接口地址',
           hintText: 'https://api.example.com/v1',
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
           filled: true,
-          fillColor: _selectedProvider == ApiProvider.custom 
+          fillColor: _selectedProvider == ApiProvider.custom
               ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3)
               : Theme.of(context).disabledColor.withOpacity(0.05),
         ),
@@ -204,19 +230,29 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
     );
   }
 
-  Widget _buildNumberField(TextEditingController controller, String label, String hint) {
+  Widget _buildNumberField(
+    TextEditingController controller,
+    String label,
+    String hint,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.digitsOnly,
+        ],
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
       ),
     );
@@ -227,16 +263,8 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionTitle('接口速率'),
-        _buildNumberField(
-          _concurrencyController,
-          '并发数限制',
-          '同时进行的最大请求数 (可选)',
-        ),
-        _buildNumberField(
-          _rpmController,
-          'RPM (每分钟请求数)',
-          '每分钟允许的最大请求数 (可选)',
-        ),
+        _buildNumberField(_concurrencyController, '并发数限制', '同时进行的最大请求数 (可选)'),
+        _buildNumberField(_rpmController, 'RPM (每分钟请求数)', '每分钟允许的最大请求数 (可选)'),
       ],
     );
   }
@@ -263,7 +291,8 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
               if (_selectedProvider != ApiProvider.custom) {
                 _urlController.text = option.defaultUrl;
                 _modelController.text = option.defaultModel;
-                _concurrencyController.text = option.defaultConcurrency.toString();
+                _concurrencyController.text = option.defaultConcurrency
+                    .toString();
                 _rpmController.text = option.defaultRpm.toString();
               }
             });
@@ -274,19 +303,34 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent, 
-                width: 2
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
+                width: 2,
               ),
             ),
-            color: isSelected 
-                ? Theme.of(context).colorScheme.primaryContainer 
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer
                 : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(option.icon, size: 30, color: isSelected ? Theme.of(context).colorScheme.primary : null),
+                Icon(
+                  option.icon,
+                  size: 30,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
                 const SizedBox(height: 8),
-                Text(option.name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                Text(
+                  option.name,
+                  style: TextStyle(
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
               ],
             ),
           ),
