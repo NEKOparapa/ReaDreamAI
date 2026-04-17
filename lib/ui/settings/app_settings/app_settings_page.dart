@@ -1,12 +1,13 @@
-// lib/ui/settings/app_settings_page.dart
+// lib/ui/settings/app_settings/app_settings_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../base/version/version.dart';
+
 import '../../../base/config_service.dart';
+import '../../../base/version/version.dart';
 import '../widgets/settings_widgets.dart';
-import 'version_check_dialog.dart'; // 1. 导入新的对话框
+import 'version_check_dialog.dart';
 
 class AppSettingsPage extends StatefulWidget {
   const AppSettingsPage({super.key});
@@ -19,14 +20,13 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
   final ConfigService _configService = ConfigService();
   late bool _isDarkMode;
   late bool _proxyEnabled;
+  late bool _includeLastAssistantMessageInPrompt;
   late TextEditingController _proxyPortController;
-  
-  // 版本信息
+
   String _appName = '';
   String _version = '';
   String _buildNumber = '';
 
-  // GitHub 项目主页的 URL
   final Uri _githubUrl = Uri.parse('https://github.com/NEKOparapa/ReaDreamAI');
 
   @override
@@ -35,7 +35,7 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     _proxyPortController = TextEditingController();
     _loadSettings();
     _loadAppInfo();
-    
+
     _proxyPortController.addListener(() {
       _onProxyPortChanged(_proxyPortController.text);
     });
@@ -51,11 +51,17 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     setState(() {
       _isDarkMode = _configService.getSetting<bool>('isDarkMode', false);
       _proxyEnabled = _configService.getSetting<bool>('proxy_enabled', false);
-      _proxyPortController.text = _configService.getSetting<String>('proxy_port', '7890');
+      _includeLastAssistantMessageInPrompt = _configService.getSetting<bool>(
+        'include_last_assistant_message_in_prompt',
+        true,
+      );
+      _proxyPortController.text = _configService.getSetting<String>(
+        'proxy_port',
+        '7890',
+      );
     });
   }
 
-  // 加载应用信息
   void _loadAppInfo() {
     setState(() {
       _appName = AppVersion.appName;
@@ -77,14 +83,12 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     }
   }
 
-  // 处理 URL 跳转
   Future<void> _launchUrl(Uri url) async {
-    // 使用外部应用（如浏览器）打开链接
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开链接: ${url.toString()}')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('无法打开链接: ${url.toString()}')));
       }
     }
   }
@@ -94,7 +98,6 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
     return SettingsPageLayout(
       title: '应用设置',
       children: [
-        // ... 其他 SettingsGroup 不变 ...
         SettingsGroup(
           title: '外观',
           children: [
@@ -112,12 +115,33 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
           ],
         ),
         SettingsGroup(
+          title: 'AI',
+          children: [
+            SettingsCard(
+              title: '预回复信息',
+              subtitle: '关闭后，构建提示词时不加入最后一条助手信息',
+              control: Switch(
+                value: _includeLastAssistantMessageInPrompt,
+                onChanged: (value) async {
+                  await _configService.modifySetting<bool>(
+                    'include_last_assistant_message_in_prompt',
+                    value,
+                  );
+                  setState(() => _includeLastAssistantMessageInPrompt = value);
+                },
+              ),
+            ),
+          ],
+        ),
+        SettingsGroup(
           title: '网络',
           children: [
             Card(
               margin: const EdgeInsets.only(bottom: 12.0),
               elevation: 0.5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 children: [
                   Padding(
@@ -135,9 +159,12 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                               const SizedBox(height: 4.0),
                               Text(
                                 '为应用的所有网络请求设置HTTP代理',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                             ],
                           ),
@@ -155,11 +182,18 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
                     curve: Curves.easeInOut,
                     child: _proxyEnabled
                         ? Padding(
-                            padding: const EdgeInsets.fromLTRB(16.0, 4.0, 16.0, 16.0),
+                            padding: const EdgeInsets.fromLTRB(
+                              16.0,
+                              4.0,
+                              16.0,
+                              16.0,
+                            ),
                             child: TextField(
                               controller: _proxyPortController,
                               keyboardType: TextInputType.number,
-                              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
                               decoration: const InputDecoration(
                                 labelText: '代理端口 (例如: 7890)',
                                 border: OutlineInputBorder(),
@@ -177,13 +211,11 @@ class _AppSettingsPageState extends State<AppSettingsPage> {
         SettingsGroup(
           title: '关于',
           children: [
-            // 版本信息卡片
             SettingsCard(
               title: _appName.isEmpty ? 'ReaDreamAI' : _appName,
               subtitle: '版本 $_version (Build $_buildNumber)',
               control: const Icon(Icons.info_outline),
               onTap: () {
-                // 2. 将旧的 AlertDialog 替换为新的 VersionCheckDialog
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
