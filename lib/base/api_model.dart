@@ -28,6 +28,8 @@ enum ApiProvider {
 // 接口格式枚举
 enum ApiFormat { openai, google, anthropic, none }
 
+enum LlmThinkingDepth { low, medium, high, xhigh }
+
 // =================================================================
 // 统一的平台预设信息类
 // =================================================================
@@ -102,7 +104,7 @@ final List<ApiPlatformPreset> languagePlatformPresets = [
     name: 'DeepSeek',
     icon: Icons.view_in_ar,
     defaultUrl: 'https://api.deepseek.com/v1',
-    defaultModel: 'deepseek-chat',
+    defaultModel: 'deepseek-v4-pro',
     defaultFormat: ApiFormat.openai,
     defaultConcurrency: 30,
     defaultRpm: 3000,
@@ -292,6 +294,8 @@ class ApiModel {
   ApiFormat format;
   int? concurrencyLimit;
   int? rpm;
+  bool thinkingEnabled;
+  LlmThinkingDepth thinkingDepth;
 
   ApiModel({
     required this.id,
@@ -305,6 +309,8 @@ class ApiModel {
     this.format = ApiFormat.openai,
     this.concurrencyLimit,
     this.rpm,
+    this.thinkingEnabled = false,
+    this.thinkingDepth = LlmThinkingDepth.medium,
   });
 
   factory ApiModel.create(String name) {
@@ -397,6 +403,15 @@ class ApiModel {
       ),
       concurrencyLimit: json['concurrencyLimit'],
       rpm: json['rpm'],
+      thinkingEnabled: json['thinkingEnabled'] as bool? ?? false,
+      thinkingDepth: _parseThinkingDepth(json['thinkingDepth']),
+    );
+  }
+
+  static LlmThinkingDepth _parseThinkingDepth(Object? value) {
+    return LlmThinkingDepth.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => LlmThinkingDepth.medium,
     );
   }
 
@@ -413,6 +428,8 @@ class ApiModel {
       'format': format.name,
       'concurrencyLimit': concurrencyLimit,
       'rpm': rpm,
+      'thinkingEnabled': thinkingEnabled,
+      'thinkingDepth': thinkingDepth.name,
     };
   }
 }

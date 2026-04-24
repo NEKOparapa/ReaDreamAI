@@ -7,10 +7,7 @@ import '../../base/api_model.dart';
 class ApiSettingsPage extends StatefulWidget {
   final ApiModel apiModel;
 
-  const ApiSettingsPage({
-    super.key,
-    required this.apiModel,
-  });
+  const ApiSettingsPage({super.key, required this.apiModel});
 
   @override
   State<ApiSettingsPage> createState() => _ApiSettingsPageState();
@@ -28,6 +25,8 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
 
   late ApiProvider _selectedProvider;
   late ApiFormat _selectedFormat;
+  late bool _thinkingEnabled;
+  late LlmThinkingDepth _thinkingDepth;
 
   // 直接从 api_model.dart 获取预设平台列表
   final List<ApiPlatformPreset> _platformOptions = languagePlatformPresets;
@@ -39,11 +38,17 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
     _keyController = TextEditingController(text: widget.apiModel.apiKey);
     _modelController = TextEditingController(text: widget.apiModel.model);
     _urlController = TextEditingController(text: widget.apiModel.url);
-    _concurrencyController = TextEditingController(text: widget.apiModel.concurrencyLimit?.toString() ?? '');
-    _rpmController = TextEditingController(text: widget.apiModel.rpm?.toString() ?? '');
+    _concurrencyController = TextEditingController(
+      text: widget.apiModel.concurrencyLimit?.toString() ?? '',
+    );
+    _rpmController = TextEditingController(
+      text: widget.apiModel.rpm?.toString() ?? '',
+    );
 
     _selectedProvider = widget.apiModel.provider;
     _selectedFormat = widget.apiModel.format;
+    _thinkingEnabled = widget.apiModel.thinkingEnabled;
+    _thinkingDepth = widget.apiModel.thinkingDepth;
   }
 
   @override
@@ -69,6 +74,8 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         url: _urlController.text,
         concurrencyLimit: int.tryParse(_concurrencyController.text),
         rpm: int.tryParse(_rpmController.text),
+        thinkingEnabled: _thinkingEnabled,
+        thinkingDepth: _thinkingDepth,
       );
       Navigator.pop(context, updatedModel);
     }
@@ -77,9 +84,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('接口设置'),
-      ),
+      appBar: AppBar(title: const Text('接口设置')),
       body: Column(
         children: [
           Expanded(
@@ -92,8 +97,16 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
                   children: [
                     _buildSectionTitle('基础信息'),
                     _buildTextField(_nameController, '接口命名', '为你的接口取一个好记的名字'),
-                    _buildTextField(_keyController, '接口Key (API Key)', '请输入你的API Key'),
-                    _buildTextField(_modelController, '模型选择', '例如：gpt-4, gemini-pro'),
+                    _buildTextField(
+                      _keyController,
+                      '接口Key (API Key)',
+                      '请输入你的API Key',
+                    ),
+                    _buildTextField(
+                      _modelController,
+                      '模型选择',
+                      '例如：gpt-4, gemini-pro',
+                    ),
                     const SizedBox(height: 24),
                     _buildSectionTitle('接口平台'),
                     _buildPlatformSelector(),
@@ -103,6 +116,8 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
                     _buildFormatSelector(),
                     const SizedBox(height: 24),
                     _buildRateLimitSection(),
+                    const SizedBox(height: 24),
+                    _buildThinkingSection(),
                   ],
                 ),
               ),
@@ -133,7 +148,10 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         // 改为 ElevatedButton.icon 以获得更简洁的样式
         child: ElevatedButton.icon(
           icon: const Icon(Icons.save),
-          label: const Text('保存配置', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          label: const Text(
+            '保存配置',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           onPressed: _saveAndExit,
           style: ElevatedButton.styleFrom(
             shape: RoundedRectangleBorder(
@@ -151,14 +169,18 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       child: Text(
         title,
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, String hint) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label,
+    String hint,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -170,7 +192,9 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         validator: (value) {
           if (controller == _keyController || controller == _modelController) {
@@ -185,7 +209,11 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
     );
   }
 
-  Widget _buildNumberField(TextEditingController controller, String label, String hint) {
+  Widget _buildNumberField(
+    TextEditingController controller,
+    String label,
+    String hint,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
@@ -197,10 +225,14 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         keyboardType: TextInputType.number,
-        inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.digitsOnly,
+        ],
       ),
     );
   }
@@ -210,18 +242,126 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSectionTitle('接口速率'),
-        _buildNumberField(
-          _concurrencyController,
-          '并发数限制',
-          '同时进行的最大请求数 (可选)',
-        ),
-        _buildNumberField(
-          _rpmController,
-          'RPM (每分钟请求数)',
-          '每分钟允许的最大请求数 (可选)',
+        _buildNumberField(_concurrencyController, '并发数限制', '同时进行的最大请求数 (可选)'),
+        _buildNumberField(_rpmController, 'RPM (每分钟请求数)', '每分钟允许的最大请求数 (可选)'),
+      ],
+    );
+  }
+
+  Widget _buildThinkingSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildSectionTitle('思考设置'),
+        Card(
+          margin: const EdgeInsets.symmetric(vertical: 8.0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('启用思考'),
+                      const SizedBox(height: 4),
+                      Text(
+                        '开启后会按接口格式发送推理或思考参数',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: _thinkingEnabled
+                      ? Padding(
+                          key: const ValueKey('thinking-depth'),
+                          padding: const EdgeInsets.only(left: 12),
+                          child: _buildCompactThinkingDepthSelector(),
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('thinking-depth-hidden'),
+                        ),
+                ),
+                const SizedBox(width: 8),
+                Switch(
+                  value: _thinkingEnabled,
+                  onChanged: (value) {
+                    setState(() {
+                      _thinkingEnabled = value;
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
+  }
+
+  Widget _buildCompactThinkingDepthSelector() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('深度', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(width: 8),
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Theme.of(context).colorScheme.outline),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<LlmThinkingDepth>(
+              value: _thinkingDepth,
+              isDense: true,
+              onChanged: (LlmThinkingDepth? value) {
+                if (value != null) {
+                  setState(() {
+                    _thinkingDepth = value;
+                  });
+                }
+              },
+              items: LlmThinkingDepth.values.map((depth) {
+                return DropdownMenuItem<LlmThinkingDepth>(
+                  value: depth,
+                  child: Text(_thinkingDepthLabel(depth)),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _thinkingDepthLabel(LlmThinkingDepth depth) {
+    switch (depth) {
+      case LlmThinkingDepth.low:
+        return '低';
+      case LlmThinkingDepth.medium:
+        return '中';
+      case LlmThinkingDepth.high:
+        return '高';
+      case LlmThinkingDepth.xhigh:
+        return '超高';
+    }
   }
 
   Widget _buildUrlField() {
@@ -237,7 +377,9 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -276,18 +418,21 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
               if (_selectedProvider != ApiProvider.custom) {
                 _urlController.text = option.defaultUrl;
                 _modelController.text = option.defaultModel;
-                _concurrencyController.text = option.defaultConcurrency.toString();
+                _concurrencyController.text = option.defaultConcurrency
+                    .toString();
                 _rpmController.text = option.defaultRpm.toString();
               } else {
                 if (widget.apiModel.provider == ApiProvider.custom) {
                   _urlController.text = widget.apiModel.url;
                   _modelController.text = widget.apiModel.model;
-                  _concurrencyController.text = widget.apiModel.concurrencyLimit?.toString() ?? '';
+                  _concurrencyController.text =
+                      widget.apiModel.concurrencyLimit?.toString() ?? '';
                   _rpmController.text = widget.apiModel.rpm?.toString() ?? '';
                 } else {
                   _urlController.text = option.defaultUrl;
                   _modelController.text = option.defaultModel;
-                  _concurrencyController.text = option.defaultConcurrency.toString();
+                  _concurrencyController.text = option.defaultConcurrency
+                      .toString();
                   _rpmController.text = option.defaultRpm.toString();
                 }
               }
@@ -299,17 +444,34 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                color: isSelected
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.transparent,
                 width: 2,
               ),
             ),
-            color: isSelected ? Theme.of(context).colorScheme.primaryContainer : null,
+            color: isSelected
+                ? Theme.of(context).colorScheme.primaryContainer
+                : null,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(option.icon, size: 36, color: isSelected ? Theme.of(context).colorScheme.primary : null),
+                Icon(
+                  option.icon,
+                  size: 36,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.primary
+                      : null,
+                ),
                 const SizedBox(height: 8),
-                Text(option.name, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                Text(
+                  option.name,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                ),
               ],
             ),
           ),
@@ -327,9 +489,13 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         value: _selectedFormat,
         decoration: InputDecoration(
           labelText: '接口格式',
-          border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+          ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(
+            context,
+          ).colorScheme.surfaceVariant.withOpacity(0.3),
           helperText: isCustomProvider ? '为自定义地址选择兼容的接口格式' : '此平台格式已固定，无需选择',
         ),
         onChanged: isCustomProvider
