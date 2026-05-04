@@ -199,7 +199,7 @@ class NovelGeneratorService {
     const fakeUserPromptForOutline = """
 故事要求：一个关于高中男生突然患上“一觉醒来变成女孩子的病”的校园恋爱喜剧故事，风格类似藤本树，诙谐和紧张来回跳跃的故事。
 章节数：1
-每章字数：约1500字
+每章字数：约2000字
 
 请基于以上所有信息，生成一个完整的小说大纲。
 """;
@@ -459,7 +459,7 @@ $chapterIdsToRegenerate
 
     LogService.instance.info('[小说生成服务] 开始处理第 ${chapterIndex + 1} 章内容...');
 
-    final segmentCount = max(1, (wordsPerChapter / 1500).ceil());
+    final segmentCount = max(1, (wordsPerChapter / 2000).ceil());
     final chapterKey = '$title-$chapterIndex';
     late final List<String> segmentPlan;
 
