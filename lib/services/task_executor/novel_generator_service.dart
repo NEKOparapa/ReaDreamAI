@@ -467,7 +467,7 @@ $chapterIdsToRegenerate
 
     LogService.instance.info('[小说生成服务] 开始处理第 ${chapterIndex + 1} 章内容...');
 
-    final segmentCount = max(1, (wordsPerChapter / 2000).ceil());
+    final segmentCount = max(1, (wordsPerChapter / 2500).ceil());
     final chapterKey = '$title-$chapterIndex';
     late final List<String> segmentPlan;
 
@@ -756,7 +756,7 @@ $previousPlansText
     }
 
     // 2. 如果没有，调用内部私有方法生成
-    final segmentCount = max(1, (wordsPerChapter / 1500).ceil());
+    final segmentCount = max(1, (wordsPerChapter / 2500).ceil());
 
     LogService.instance.info('正在串行规划第 ${chapterIndex + 1} 章...');
 
