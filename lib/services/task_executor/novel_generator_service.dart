@@ -16,6 +16,14 @@ class NovelGeneratorService {
   // 用于缓存章节分段规划的Map。键为 '小说标题-章节索引'，值为分段计划列表。
   final Map<String, List<String>> _segmentPlanCache = {};
 
+  List<Map<String, dynamic>> _buildStorylineContextWindow(
+    List<Map<String, dynamic>> storyline,
+    int chapterIndex,
+  ) {
+    final endIndex = min(storyline.length, chapterIndex + 3);
+    return storyline.sublist(chapterIndex, endIndex);
+  }
+
   // JSON 提取辅助方法
   String _extractJsonString(String response) {
     final codeBlockMatch = RegExp(
@@ -609,6 +617,10 @@ $chapterIdsToRegenerate
 """;
 
     final currentChapter = storyline[chapterIndex];
+    final storylineContext = _buildStorylineContextWindow(
+      storyline,
+      chapterIndex,
+    );
 
     // 构建之前的章节规划上下文
     String previousPlansText = "";
@@ -633,8 +645,8 @@ $backgroundSetting
 ### 主要角色:
 ${jsonEncode(mainCharacters)}
 
-### 小说故事线:
-${jsonEncode(storyline)}
+### 当前及后续故事线:
+${jsonEncode(storylineContext)}
 
 $previousPlansText
 
@@ -838,6 +850,10 @@ $previousPlansText
 </textarea>
 """;
     final currentSegmentDescription = segmentPlan[segmentIndex];
+    final storylineContext = _buildStorylineContextWindow(
+      storyline,
+      chapterIndex,
+    );
 
     final fullPlanWithContext = segmentPlan
         .asMap()
@@ -862,8 +878,8 @@ $backgroundSetting
 ### 主要角色
 ${jsonEncode(mainCharacters)}
 
-### 小说故事线
-${jsonEncode(storyline)}
+### 当前及后续故事线
+${jsonEncode(storylineContext)}
 
 我们正在撰写小说《$title》的第 ${chapterIndex + 1} 章 “${storyline[chapterIndex]['chapter_title']}”。
 
