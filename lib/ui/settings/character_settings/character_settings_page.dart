@@ -18,9 +18,11 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
   final ConfigService _configService = ConfigService();
   final String _cardsConfigKey = 'drawing_character_cards';
   final String _activeIdsConfigKey = 'active_drawing_character_card_ids';
+  final TextEditingController _searchController = TextEditingController();
 
   List<CharacterCard> _cards = [];
   List<String> _activeCardIds = [];
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -28,16 +30,41 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
     _loadData();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<CharacterCard> get _filteredCards {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _cards;
+
+    return _cards.where((card) {
+      final cardName = card.name.trim().toLowerCase();
+      final characterName = card.characterName.trim().toLowerCase();
+      return cardName.contains(query) || characterName.contains(query);
+    }).toList();
+  }
+
   void _loadData() {
-    final cardsJson = _configService.getSetting<List<dynamic>>(_cardsConfigKey, []);
-    final activeIdsJson = _configService.getSetting<List<dynamic>>(_activeIdsConfigKey, []);
-    
+    final cardsJson = _configService.getSetting<List<dynamic>>(
+      _cardsConfigKey,
+      [],
+    );
+    final activeIdsJson = _configService.getSetting<List<dynamic>>(
+      _activeIdsConfigKey,
+      [],
+    );
+
     setState(() {
-      _cards = cardsJson.map((json) => CharacterCard.fromJson(json as Map<String, dynamic>)).toList();
+      _cards = cardsJson
+          .map((json) => CharacterCard.fromJson(json as Map<String, dynamic>))
+          .toList();
       _activeCardIds = activeIdsJson.map((id) => id.toString()).toList();
     });
   }
-  
+
   Future<void> _toggleCardActivation(String cardId) async {
     final updatedIds = List<String>.from(_activeCardIds);
 
@@ -46,6 +73,21 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
     } else {
       updatedIds.add(cardId);
     }
+
+    await _configService.modifySetting(_activeIdsConfigKey, updatedIds);
+    _loadData();
+  }
+
+  Future<void> _setFilteredCardsActivation(
+    List<CharacterCard> filteredCards,
+    bool isActive,
+  ) async {
+    if (filteredCards.isEmpty) return;
+
+    final filteredIds = filteredCards.map((card) => card.id).toSet();
+    final updatedIds = isActive
+        ? <String>{..._activeCardIds, ...filteredIds}.toList()
+        : _activeCardIds.where((id) => !filteredIds.contains(id)).toList();
 
     await _configService.modifySetting(_activeIdsConfigKey, updatedIds);
     _loadData();
@@ -89,7 +131,9 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
   void _navigateToEditPage([CharacterCard? card]) async {
     final result = await Navigator.push<CharacterCard>(
       context,
-      MaterialPageRoute(builder: (context) => EditCharacterCardPage(card: card)),
+      MaterialPageRoute(
+        builder: (context) => EditCharacterCardPage(card: card),
+      ),
     );
 
     if (result != null) {
@@ -113,7 +157,7 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
         _cards.addAll(extractedCards);
       });
       await _saveCards();
-      
+
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -128,120 +172,214 @@ class _CharacterSettingsPageState extends State<CharacterSettingsPage> {
 
   Widget _buildImageAvatar(CharacterCard card) {
     ImageProvider? imageProvider;
-    if (card.referenceImagePath != null && card.referenceImagePath!.isNotEmpty) {
+    if (card.referenceImagePath != null &&
+        card.referenceImagePath!.isNotEmpty) {
       // 判断是 assets 路径还是本地文件路径
       if (card.referenceImagePath!.startsWith('assets/')) {
-        imageProvider = AssetImage(card.referenceImagePath!);  // ✅ 使用 AssetImage
+        imageProvider = AssetImage(card.referenceImagePath!); // ✅ 使用 AssetImage
       } else {
         imageProvider = FileImage(File(card.referenceImagePath!));
       }
-    } else if (card.referenceImageUrl != null && card.referenceImageUrl!.isNotEmpty) {
+    } else if (card.referenceImageUrl != null &&
+        card.referenceImageUrl!.isNotEmpty) {
       imageProvider = NetworkImage(card.referenceImageUrl!);
     }
 
     return CircleAvatar(
       backgroundImage: imageProvider,
       backgroundColor: Colors.grey.shade200,
-      child: imageProvider == null ? const Icon(Icons.person, color: Colors.grey) : null,
+      child: imageProvider == null
+          ? const Icon(Icons.person, color: Colors.grey)
+          : null,
     );
   }
 
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('角色设定'),
+  Widget _buildToolbar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          labelText: '搜索角色卡',
+          hintText: '按卡片名字或角色名字搜索',
+          prefixIcon: const Icon(Icons.search),
+          suffixIcon: _searchQuery.isEmpty
+              ? null
+              : IconButton(
+                  tooltip: '清空搜索',
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                ),
+          border: const OutlineInputBorder(),
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8.0),
-        itemCount: _cards.length,
-        itemBuilder: (context, index) {
-          final card = _cards[index];
-          final subtitleText = [
-            if (card.identity.isNotEmpty) card.identity,
-            if (card.appearance.isNotEmpty) card.appearance,
-            if (card.clothing.isNotEmpty) card.clothing,
-            if (card.personality.isNotEmpty) card.personality, // 新增
-            if (card.status.isNotEmpty) card.status,           // 新增
-            if (card.other.isNotEmpty) card.other,
-          ].join(', ');
+    );
+  }
 
-          return InkWell(
-            onTap: () => _toggleCardActivation(card.id),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-              child: Row(
+  Widget _buildFloatingActions(List<CharacterCard> filteredCards) {
+    final showBatchActions =
+        _searchQuery.trim().isNotEmpty && filteredCards.isNotEmpty;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (showBatchActions) ...[
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.done_all),
+                label: const Text('选中当前结果'),
+                onPressed: () =>
+                    _setFilteredCardsActivation(filteredCards, true),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.remove_done),
+                label: const Text('取消当前结果'),
+                onPressed: () =>
+                    _setFilteredCardsActivation(filteredCards, false),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton(
+              heroTag: 'add',
+              onPressed: () => _navigateToEditPage(),
+              child: const Icon(Icons.add),
+            ),
+            const SizedBox(width: 16),
+            FloatingActionButton(
+              heroTag: 'extract',
+              onPressed: _showExtractionDialog,
+              child: const Icon(Icons.search),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final message = _cards.isEmpty ? '暂无角色卡' : '无匹配结果';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
+      ),
+    );
+  }
+
+  Widget _buildCardTile(CharacterCard card) {
+    final subtitleText = [
+      if (card.identity.isNotEmpty) card.identity,
+      if (card.appearance.isNotEmpty) card.appearance,
+      if (card.clothing.isNotEmpty) card.clothing,
+      if (card.personality.isNotEmpty) card.personality, // 新增
+      if (card.status.isNotEmpty) card.status, // 新增
+      if (card.other.isNotEmpty) card.other,
+    ].join(', ');
+
+    return InkWell(
+      onTap: () => _toggleCardActivation(card.id),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Row(
+          children: [
+            Checkbox(
+              value: _activeCardIds.contains(card.id),
+              onChanged: (bool? isChecked) {
+                _toggleCardActivation(card.id);
+              },
+            ),
+            const SizedBox(width: 16),
+            _buildImageAvatar(card),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Checkbox(
-                    value: _activeCardIds.contains(card.id),
-                    onChanged: (bool? isChecked) {
-                      _toggleCardActivation(card.id);
-                    },
+                  Text(
+                    card.name,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(width: 16),
-                  _buildImageAvatar(card),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(card.name, style: Theme.of(context).textTheme.titleMedium),
-                        if (subtitleText.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitleText,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ],
+                  if (subtitleText.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitleText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (card.isSystemPreset)
-                    const Icon(Icons.lock_outline, color: Colors.grey)
-                  else
-                    PopupMenuButton<String>(
-                      onSelected: (value) {
-                        if (value == 'edit') {
-                          _navigateToEditPage(card);
-                        } else if (value == 'delete') {
-                          _deleteCard(card.id);
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('编辑')),
-                        const PopupMenuItem(value: 'delete', child: Text('删除')),
-                      ],
-                    ),
+                  ],
                 ],
               ),
             ),
-          );
-        },
+            const SizedBox(width: 8),
+            if (card.isSystemPreset)
+              const Icon(Icons.lock_outline, color: Colors.grey)
+            else
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _navigateToEditPage(card);
+                  } else if (value == 'delete') {
+                    _deleteCard(card.id);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'edit', child: Text('编辑')),
+                  const PopupMenuItem(value: 'delete', child: Text('删除')),
+                ],
+              ),
+          ],
+        ),
       ),
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredCards = _filteredCards;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('角色设定')),
+      body: Column(
         children: [
-          FloatingActionButton(
-            heroTag: 'add',
-            onPressed: () => _navigateToEditPage(),
-            child: const Icon(Icons.add),
+          _buildToolbar(),
+          Expanded(
+            child: filteredCards.isEmpty
+                ? _buildEmptyState()
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    itemCount: filteredCards.length,
+                    itemBuilder: (context, index) {
+                      final card = filteredCards[index];
+                      return _buildCardTile(card);
+                    },
+                  ),
           ),
-
-          const SizedBox(width: 16),
-
-          FloatingActionButton(
-            heroTag: 'extract',
-            onPressed: _showExtractionDialog,
-            child: const Icon(Icons.search),
-          )
-
         ],
       ),
+      floatingActionButton: _buildFloatingActions(filteredCards),
     );
   }
 }
