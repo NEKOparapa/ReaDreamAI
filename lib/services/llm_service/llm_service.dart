@@ -282,11 +282,7 @@ class LlmService {
       'Content-Type': 'application/json',
     };
 
-    final processedMessages = List<Map<String, String>>.from(messages);
-    if (_shouldRemoveLastAssistantMessage(processedMessages, apiConfig)) {
-      processedMessages.removeLast();
-    }
-
+    final processedMessages = _prepareMessages(messages, apiConfig);
     final allMessages = <Map<String, String>>[];
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
       allMessages.add({'role': 'system', 'content': systemPrompt});
@@ -329,6 +325,17 @@ class LlmService {
     }
   }
 
+  List<Map<String, String>> _prepareMessages(
+    List<Map<String, String>> messages,
+    ApiModel apiConfig,
+  ) {
+    final processedMessages = List<Map<String, String>>.from(messages);
+    if (_shouldRemoveLastAssistantMessage(processedMessages, apiConfig)) {
+      processedMessages.removeLast();
+    }
+    return processedMessages;
+  }
+
   bool _shouldRemoveLastAssistantMessage(
     List<Map<String, String>> messages,
     ApiModel apiConfig,
@@ -358,7 +365,8 @@ class LlmService {
     );
     final headers = {'Content-Type': 'application/json'};
 
-    final contents = messages.map((msg) {
+    final processedMessages = _prepareMessages(messages, apiConfig);
+    final contents = processedMessages.map((msg) {
       final role = msg['role'] == 'assistant' ? 'model' : 'user';
       return {
         'role': role,
@@ -445,7 +453,7 @@ class LlmService {
       'model': apiConfig.model,
       'max_tokens': 60000,
       'temperature': 1,
-      'messages': messages,
+      'messages': _prepareMessages(messages, apiConfig),
     };
 
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
