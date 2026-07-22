@@ -119,7 +119,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -168,7 +168,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         validator: (value) {
           if (isRequired && (value == null || value.isEmpty)) {
@@ -192,7 +192,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         keyboardType: TextInputType.number,
         inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
@@ -215,7 +215,7 @@ class _VideoApiSettingsPageState extends State<VideoApiSettingsPage> {
             borderRadius: BorderRadius.all(Radius.circular(12)),
           ),
           filled: true,
-          fillColor: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+          fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         validator: (value) {
           if (isUrlEditable) {

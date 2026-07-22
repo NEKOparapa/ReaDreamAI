@@ -302,9 +302,9 @@ class DashscopePlatform implements DrawingPlatform {
       }
     }
     
-    final originalSizeStringForCheck = "${width}*${height}";
+    final originalSizeStringForCheck = "$width*$height";
     if (bestMatch != originalSizeStringForCheck) {
-       LogService.instance.warn('[通义千问] ⚠️  分辨率适配：将 ${width}x${height} (比例: ${targetRatio.toStringAsFixed(2)}) 调整为最接近的支持分辨率 $bestMatch');
+       LogService.instance.warn('[通义千问] ⚠️  分辨率适配：将 ${width}x$height (比例: ${targetRatio.toStringAsFixed(2)}) 调整为最接近的支持分辨率 $bestMatch');
     }
 
     return bestMatch;

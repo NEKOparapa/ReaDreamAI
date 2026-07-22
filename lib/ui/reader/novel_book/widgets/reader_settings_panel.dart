@@ -94,7 +94,7 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
             width: 40,
             height: 5,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(10),
             ),
           ),
@@ -207,7 +207,7 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: DropdownButtonFormField<String>(
-        value: _fontFamily,
+        initialValue: _fontFamily,
         decoration: InputDecoration(
           labelText: '选用字体',
           prefixIcon: const Icon(Icons.font_download_outlined),
@@ -271,13 +271,13 @@ class _ThemeChip extends StatelessWidget {
               color: theme.background,
               shape: BoxShape.circle,
               border: Border.all(
-                color: isSelected ? Theme.of(context).colorScheme.primary : theme.font.withOpacity(0.5),
+                color: isSelected ? Theme.of(context).colorScheme.primary : theme.font.withValues(alpha: 0.5),
                 width: 2.5,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                         blurRadius: 5,
                         spreadRadius: 2,
                       )

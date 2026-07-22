@@ -280,7 +280,7 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
     _hideControlsTimer?.cancel(); // 打开目录时，停止隐藏控件的计时
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.black.withOpacity(0.8),
+      backgroundColor: Colors.black.withValues(alpha: 0.8),
       builder: (context) {
         return ListView.builder(
           itemCount: _videoBook!.script.length,
@@ -432,7 +432,7 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+          colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
         ),
       ),
       child: AppBar(
@@ -456,7 +456,7 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+            colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
           ),
         ),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -511,8 +511,8 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
         padding: const EdgeInsets.symmetric(vertical: 8.0),
         colors: VideoProgressColors(
           playedColor: Theme.of(context).colorScheme.primary,
-          bufferedColor: Colors.white.withOpacity(0.5),
-          backgroundColor: Colors.white.withOpacity(0.2),
+          bufferedColor: Colors.white.withValues(alpha: 0.5),
+          backgroundColor: Colors.white.withValues(alpha: 0.2),
         ),
       );
     }
@@ -523,9 +523,9 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
         builder: (context, child) {
           return LinearProgressIndicator(
             value: _imageProgressController.value,
-            backgroundColor: Colors.white.withOpacity(0.2),
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
             valueColor: AlwaysStoppedAnimation<Color>(
-              Theme.of(context).colorScheme.primary.withOpacity(0.7)
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.7)
             ),
           );
         },
@@ -534,7 +534,7 @@ class _VideoBookReaderPageState extends State<VideoBookReaderPage> with SingleTi
     // 如果没有可播放内容，则显示一个空的占位条
     return LinearProgressIndicator(
       value: 0,
-      backgroundColor: Colors.white.withOpacity(0.2),
+      backgroundColor: Colors.white.withValues(alpha: 0.2),
     );
   }
 }

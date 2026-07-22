@@ -1,4 +1,4 @@
-/// lib/main.dart
+// lib/main.dart
 
 import 'dart:io'; // 导入 'dart:io' 库来检查操作系统平台
 import 'package:flutter/material.dart';

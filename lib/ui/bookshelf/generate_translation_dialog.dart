@@ -224,7 +224,7 @@ class _GenerateTranslationDialogState extends State<GenerateTranslationDialog> {
                   children: [
                     Card(
                       elevation: 0,
-                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(

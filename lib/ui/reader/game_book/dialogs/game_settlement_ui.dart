@@ -176,7 +176,7 @@ class _SettlementProgressDialogState extends State<_SettlementProgressDialog> {
                     Container(
                       margin: const EdgeInsets.only(top: 16),
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                       child: Row(
                         children: [
                           const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
@@ -192,7 +192,7 @@ class _SettlementProgressDialogState extends State<_SettlementProgressDialog> {
           if (isAllFinished)
             TextButton(
               style: TextButton.styleFrom(
-                backgroundColor: Colors.cyanAccent.withOpacity(0.1),
+                backgroundColor: Colors.cyanAccent.withValues(alpha: 0.1),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
               ),
               onPressed: () => Navigator.pop(context, true), // 返回 true 表示成功
@@ -243,9 +243,9 @@ class _SettlementProgressDialogState extends State<_SettlementProgressDialog> {
       margin: const EdgeInsets.symmetric(vertical: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: isCurrent ? Colors.white.withOpacity(0.05) : null,
+        color: isCurrent ? Colors.white.withValues(alpha: 0.05) : null,
         borderRadius: BorderRadius.circular(8),
-        border: isCurrent && status == 'error' ? Border.all(color: Colors.redAccent.withOpacity(0.3)) : null,
+        border: isCurrent && status == 'error' ? Border.all(color: Colors.redAccent.withValues(alpha: 0.3)) : null,
       ),
       child: Row(
         children: [

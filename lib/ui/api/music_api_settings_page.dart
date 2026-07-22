@@ -135,7 +135,7 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -192,12 +192,13 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         validator: (value) {
           // Key 和 Model 允许为空
-          if (controller == _keyController || controller == _modelController)
+          if (controller == _keyController || controller == _modelController) {
             return null;
+          }
           if (value == null || value.isEmpty) return '此项不能为空';
           return null;
         },
@@ -219,8 +220,8 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
           ),
           filled: true,
           fillColor: _selectedProvider == ApiProvider.custom
-              ? Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3)
-              : Theme.of(context).disabledColor.withOpacity(0.05),
+              ? Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3)
+              : Theme.of(context).disabledColor.withValues(alpha: 0.05),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return '接口地址不能为空';
@@ -252,7 +253,7 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
       ),
     );
@@ -311,7 +312,7 @@ class _MusicApiSettingsPageState extends State<MusicApiSettingsPage> {
             ),
             color: isSelected
                 ? Theme.of(context).colorScheme.primaryContainer
-                : Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+                : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

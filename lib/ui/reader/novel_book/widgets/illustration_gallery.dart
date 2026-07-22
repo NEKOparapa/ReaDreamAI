@@ -96,7 +96,7 @@ class _ImageTile extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.6),
+                      color: Colors.black.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(30),
                     ),
                     child: Row(
@@ -165,7 +165,7 @@ class _ImageTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(8.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -285,7 +285,7 @@ class _VideoTileState extends State<_VideoTile> {
           borderRadius: BorderRadius.circular(8.0),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -310,7 +310,7 @@ class _VideoTileState extends State<_VideoTile> {
                 child: Container(
                   color: Colors.transparent,
                   child: Center(
-                    child: Icon(Icons.play_circle_outline, color: Colors.white.withOpacity(0.7), size: 50),
+                    child: Icon(Icons.play_circle_outline, color: Colors.white.withValues(alpha: 0.7), size: 50),
                   ),
                 ),
               ),
@@ -410,7 +410,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
                         if (!_isPlaying)
                           Icon(
                             Icons.play_arrow,
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             size: 80,
                           ),
                       ],
@@ -425,7 +425,7 @@ class _VideoPlayerDialogState extends State<_VideoPlayerDialog> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                  color: Colors.black.withValues(alpha: 0.6),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: _ViewerButton(

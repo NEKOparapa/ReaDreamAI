@@ -146,7 +146,7 @@ class _CharacterExtractionDialogState extends State<CharacterExtractionDialog> {
     return Chip(
       label: Text('$label: $value'),
       labelStyle: Theme.of(context).textTheme.bodySmall,
-      backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
       side: BorderSide(color: Theme.of(context).dividerColor),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       shape: RoundedRectangleBorder(
@@ -215,7 +215,7 @@ class _CharacterExtractionDialogState extends State<CharacterExtractionDialog> {
             // 顶部栏
             Container(
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -290,9 +290,9 @@ class _CharacterExtractionDialogState extends State<CharacterExtractionDialog> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           children: [

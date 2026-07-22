@@ -28,7 +28,7 @@ class GameTopBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E1E),
-          border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05)))
+          border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)))
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -39,7 +39,7 @@ class GameTopBar extends StatelessWidget {
                 Text("第 $week 周", style: const TextStyle(color: Colors.white38, fontSize: 10)),
                 Text("DAY $dayOfWeek", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Monospace')),
                 if (eventStats['total']! > 0)
-                  Text("${eventStats['total']} 事件待发生", style: TextStyle(color: Colors.amber.withOpacity(0.7), fontSize: 10)),
+                  Text("${eventStats['total']} 事件待发生", style: TextStyle(color: Colors.amber.withValues(alpha: 0.7), fontSize: 10)),
               ],
             ),
             IconButton(icon: const Icon(Icons.settings_outlined, color: Colors.white70), onPressed: onSettingsTap),
@@ -77,10 +77,10 @@ class GameBottomBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1A1A1A),
         // 顶部添加一根细线
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4),
             offset: const Offset(0, -4),
             blurRadius: 16,
           )
@@ -154,8 +154,8 @@ class GameBottomBar extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         // 点击时的水波纹颜色
-        splashColor: color.withOpacity(0.1),
-        highlightColor: color.withOpacity(0.05),
+        splashColor: color.withValues(alpha: 0.1),
+        highlightColor: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
         child: Column(
           mainAxisSize: MainAxisSize.min, // 垂直方向最小占用
@@ -167,16 +167,16 @@ class GameBottomBar extends StatelessWidget {
               decoration: BoxDecoration(
                 // 主要按钮给一个明显的背景，普通按钮背景很淡
                 color: isPrimaryAction 
-                    ? color.withOpacity(0.2) 
-                    : color.withOpacity(0.1),
+                    ? color.withValues(alpha: 0.2) 
+                    : color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
                 border: isPrimaryAction 
-                    ? Border.all(color: color.withOpacity(0.3), width: 1) 
+                    ? Border.all(color: color.withValues(alpha: 0.3), width: 1) 
                     : null,
               ),
               child: Icon(
                 icon, 
-                color: isPrimaryAction ? color : color.withOpacity(0.9), 
+                color: isPrimaryAction ? color : color.withValues(alpha: 0.9), 
                 size: 24
               ),
             ),
@@ -198,7 +198,7 @@ class GameBottomBar extends StatelessWidget {
             Text(
               subLabel,
               style: TextStyle(
-                color: color.withOpacity(0.6),
+                color: color.withValues(alpha: 0.6),
                 fontSize: 10,
                 fontFamily: 'Monospace'
               ),

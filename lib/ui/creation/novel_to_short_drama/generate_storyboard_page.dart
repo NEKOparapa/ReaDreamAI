@@ -331,7 +331,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
                 hintText: '请选择...',
                 filled: true,
               ),
-              value: _config.selectedBookId,
+              initialValue: _config.selectedBookId,
               onChanged: _isLoading ? null : _onBookSelected,
               items: _bookshelfEntries
                   .map<DropdownMenuItem<String>>((BookshelfEntry entry) {
@@ -510,7 +510,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: _config.characterSource == CharacterSourceOption.manual
@@ -629,7 +629,7 @@ class _GenerateStoryboardPageState extends State<GenerateStoryboardPage> {
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),

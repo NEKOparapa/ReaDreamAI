@@ -251,8 +251,9 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       if (!await bookFolder.exists()) await bookFolder.create(recursive: true);
 
       final assetsFolder = Directory(p.join(bookFolder.path, 'assets'));
-      if (!await assetsFolder.exists())
+      if (!await assetsFolder.exists()) {
         await assetsFolder.create(recursive: true);
+      }
 
       final initialWorldStateFolder = Directory(
         p.join(bookFolder.path, 'initial_world_state'),
@@ -421,10 +422,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       }
     } catch (e) {
       LogService.instance.error('角色立绘生成失败', e);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('生成失败: $e')));
+      }
     }
   }
 
@@ -457,10 +459,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       }
     } catch (e) {
       LogService.instance.error('场景图生成失败', e);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('生成失败: $e')));
+      }
     }
   }
 
@@ -494,10 +497,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       }
     } catch (e) {
       LogService.instance.error('场景音乐生成失败', e);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('生成失败: $e')));
+      }
     }
   }
 
@@ -628,10 +632,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
 
     final file = File(path);
     if (!await file.exists()) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('音频文件不存在')));
+      }
       return;
     }
 
@@ -655,10 +660,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       });
     } catch (e) {
       LogService.instance.error('播放音频失败', e);
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('无法播放此音频文件')));
+      }
     }
   }
 
@@ -1110,11 +1116,11 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           borderRadius: BorderRadius.circular(16),
           // 使用极淡的边框和阴影，保持干净
           border: Border.all(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.2),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
           ),
           boxShadow: [
             BoxShadow(
-              color: theme.shadowColor.withOpacity(0.05),
+              color: theme.shadowColor.withValues(alpha: 0.05),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1128,7 +1134,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             Text(
               'WORLD NAME',
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.secondary.withOpacity(0.6),
+                color: theme.colorScheme.secondary.withValues(alpha: 0.6),
                 letterSpacing: 3.0,
                 fontWeight: FontWeight.bold,
               ),
@@ -1149,7 +1155,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               decoration: InputDecoration(
                 hintText: '输入世界名称',
                 hintStyle: TextStyle(
-                  color: theme.colorScheme.onSurfaceVariant.withOpacity(0.3),
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                   fontWeight: FontWeight.w400,
                 ),
                 border: InputBorder.none, // 去除下划线
@@ -1165,7 +1171,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               width: 24,
               height: 4,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withOpacity(0.2),
+                color: theme.colorScheme.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1267,8 +1273,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withOpacity(
-                  0.5,
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
                 ),
                 borderRadius: BorderRadius.circular(8),
               ),
@@ -1407,8 +1413,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                       Icon(
                         Icons.image_not_supported_outlined,
                         size: 40,
-                        color: theme.colorScheme.onSurfaceVariant.withOpacity(
-                          0.5,
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.5,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -1429,7 +1435,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
           right: 8,
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
@@ -1479,7 +1485,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       elevation: 0,
       color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.5), width: 1),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5), width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ExpansionTile(
@@ -1557,8 +1563,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                       icon: const Icon(Icons.delete_outline, size: 20),
                       label: const Text('删除'),
                       style: TextButton.styleFrom(
-                        foregroundColor: theme.colorScheme.error.withOpacity(
-                          0.8,
+                        foregroundColor: theme.colorScheme.error.withValues(
+                          alpha: 0.8,
                         ),
                       ),
                     ),
@@ -1668,7 +1674,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       elevation: 0,
       color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.5), width: 1),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5), width: 1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -1697,7 +1703,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                   onPressed: () => _deleteGameScene(index),
                   tooltip: '删除场景',
                   style: IconButton.styleFrom(
-                    foregroundColor: theme.colorScheme.error.withOpacity(0.7),
+                    foregroundColor: theme.colorScheme.error.withValues(alpha: 0.7),
                   ),
                 ),
               ],
@@ -1739,7 +1745,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
+                border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
               ),
               child: Row(
                 children: [
@@ -1836,7 +1842,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                         _triggerImmediateSave();
                       },
                       icon: const Icon(Icons.close, size: 18),
-                      color: theme.colorScheme.error.withOpacity(0.6),
+                      color: theme.colorScheme.error.withValues(alpha: 0.6),
                       iconSize: 20,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -1961,7 +1967,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       elevation: 0,
       color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.4)),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(12),
       ),
       clipBehavior: Clip.antiAlias,
@@ -2006,7 +2012,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
-                    color: theme.colorScheme.error.withOpacity(0.7),
+                    color: theme.colorScheme.error.withValues(alpha: 0.7),
                     tooltip: '删除此事件',
                     visualDensity: VisualDensity.compact,
                     onPressed: () => _deleteEventStep(stepIndex),
@@ -2024,7 +2030,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: theme.colorScheme.surfaceContainer.withOpacity(0.3),
+              color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
               child: Row(
                 children: [
                   const SizedBox(width: 38),
@@ -2040,8 +2046,8 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     '发生地点:',
                     style: TextStyle(
                       fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(
-                        0.8,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.8,
                       ),
                     ),
                   ),
@@ -2064,7 +2070,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                   Icon(
                     Icons.arrow_forward_ios,
                     size: 12,
-                    color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
                   ),
                 ],
               ),
@@ -2087,13 +2093,13 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                     Icon(
                       Icons.add_comment_outlined,
                       size: 18,
-                      color: theme.colorScheme.primary.withOpacity(0.8),
+                      color: theme.colorScheme.primary.withValues(alpha: 0.8),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       '添加对话内容',
                       style: TextStyle(
-                        color: theme.colorScheme.primary.withOpacity(0.8),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.8),
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -2143,15 +2149,15 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surface.withOpacity(0.5),
+                  color: theme.colorScheme.surface.withValues(alpha: 0.5),
                   border: Border(
-                    top: BorderSide(color: theme.dividerColor.withOpacity(0.2)),
+                    top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.2)),
                   ),
                 ),
                 child: Icon(
                   Icons.add,
                   size: 20,
-                  color: theme.colorScheme.primary.withOpacity(0.6),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -2176,7 +2182,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerLow,
         border: Border(
-          bottom: BorderSide(color: theme.dividerColor.withOpacity(0.1)),
+          bottom: BorderSide(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
       ),
       child: Material(
@@ -2215,7 +2221,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 13,
-                          color: theme.colorScheme.onSurface.withOpacity(0.8),
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -2246,7 +2252,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                         minHeight: 32,
                       ),
                       onPressed: () => _deleteEventDialogue(stepIndex, index),
-                      color: theme.colorScheme.outline.withOpacity(0.5),
+                      color: theme.colorScheme.outline.withValues(alpha: 0.5),
                       tooltip: '删除',
                     ),
                     // 拖拽句柄 (ReorderableDragStartListener)
@@ -2258,7 +2264,7 @@ class _GameStageWorkbenchPageState extends State<GameStageWorkbenchPage> {
                         child: Icon(
                           Icons.drag_indicator,
                           size: 20,
-                          color: theme.colorScheme.outline.withOpacity(0.5),
+                          color: theme.colorScheme.outline.withValues(alpha: 0.5),
                         ),
                       ),
                     ),

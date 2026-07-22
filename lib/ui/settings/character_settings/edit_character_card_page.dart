@@ -252,7 +252,7 @@ class _EditCharacterCardPageState extends State<EditCharacterCardPage> {
                       label: const Text('清除图片'),
                       onPressed: _clearImage,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red.withOpacity(0.1),
+                        backgroundColor: Colors.red.withValues(alpha: 0.1),
                         foregroundColor: Colors.red,
                       ),
                     ),

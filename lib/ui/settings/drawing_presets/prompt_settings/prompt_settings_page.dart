@@ -220,8 +220,8 @@ class _PromptSettingsPageState extends State<PromptSettingsPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _addCard,
-        child: const Icon(Icons.add),
         tooltip: '新增提示词',
+        child: const Icon(Icons.add),
       ),
     );
   }

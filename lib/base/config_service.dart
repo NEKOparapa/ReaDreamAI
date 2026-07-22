@@ -245,7 +245,7 @@ class ConfigService {
     final tempDirs = await getOrCreateGameWorkbenchTempDirs();
 
     // 辅助函数：移动文件夹内容
-    Future<void> _moveContents(Directory source, Directory target) async {
+    Future<void> moveContents(Directory source, Directory target) async {
       if (!await source.exists()) return;
       
       // 1. 清空目标目录 (删除旧的媒体资源)
@@ -272,9 +272,9 @@ class ConfigService {
     }
 
     try {
-      await _moveContents(tempDirs['character']!, realDirs['character']!);
-      await _moveContents(tempDirs['scene_image']!, realDirs['scene_image']!);
-      await _moveContents(tempDirs['scene_music']!, realDirs['scene_music']!);
+      await moveContents(tempDirs['character']!, realDirs['character']!);
+      await moveContents(tempDirs['scene_image']!, realDirs['scene_image']!);
+      await moveContents(tempDirs['scene_music']!, realDirs['scene_music']!);
 
       // 最后清理临时文件夹根目录
       await clearGameWorkbenchTemp();
@@ -295,7 +295,7 @@ class ConfigService {
       final videoDir = workbenchDirs['video']!;
       final characterDir = workbenchDirs['character']!;
 
-      Future<void> _clearDirectory(Directory dir) async {
+      Future<void> clearDirectory(Directory dir) async {
         if (await dir.exists()) {
           final entities = dir.list();
           await for (final entity in entities) {
@@ -309,9 +309,9 @@ class ConfigService {
         }
       }
 
-      await _clearDirectory(imageDir);
-      await _clearDirectory(videoDir);
-      await _clearDirectory(characterDir);
+      await clearDirectory(imageDir);
+      await clearDirectory(videoDir);
+      await clearDirectory(characterDir);
       logger.success("工作台媒体文件已清空。");
     } catch (e, s) {
       logger.error("清空工作台媒体文件时发生错误", e, s);

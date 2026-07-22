@@ -20,7 +20,7 @@ class SettingsPageLayout extends StatelessWidget {
         scrolledUnderElevation: 1,
       ),
       body: Container(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         child: ListView(
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
           children: children,

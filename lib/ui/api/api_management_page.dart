@@ -57,7 +57,7 @@ class _ApiManagementPageState extends State<ApiManagementPage> {
                       child: Container(
                         padding: const EdgeInsets.all(4.0),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: TabBar(
@@ -81,7 +81,7 @@ class _ApiManagementPageState extends State<ApiManagementPage> {
                     // 右侧的“更多”按钮
                     Container(
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(12.0),
                       ),
                       child: PopupMenuButton<String>(
@@ -451,7 +451,7 @@ class _ApiCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
       elevation: isActive ? 4.0 : 1.0,
-      shadowColor: isActive ? colorScheme.primary.withOpacity(0.5) : null,
+      shadowColor: isActive ? colorScheme.primary.withValues(alpha: 0.5) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
         side: BorderSide(
@@ -461,7 +461,7 @@ class _ApiCard extends StatelessWidget {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.fromLTRB(20, 10, 10, 10),
-        tileColor: isActive ? colorScheme.primary.withOpacity(0.08) : null,
+        tileColor: isActive ? colorScheme.primary.withValues(alpha: 0.08) : null,
         leading: Icon(
           _getIconForProvider(api.provider),
           color: isActive ? colorScheme.primary : colorScheme.onSurfaceVariant,

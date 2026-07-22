@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:fal_client/fal_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../base/api_model.dart';

@@ -113,7 +113,7 @@ class _PlayerProfileSheetState extends State<PlayerProfileSheet> {
                       children: [
                         CircleAvatar(
                           radius: 45,
-                          backgroundColor: Colors.cyan.shade900.withOpacity(0.5),
+                          backgroundColor: Colors.cyan.shade900.withValues(alpha: 0.5),
                           child: Text(
                             player['name']?.isNotEmpty == true ? player['name'][0] : 'P',
                             style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.cyanAccent),
@@ -153,15 +153,15 @@ class _PlayerProfileSheetState extends State<PlayerProfileSheet> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(title, style: TextStyle(color: Colors.cyanAccent.withOpacity(0.7), fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.bold));
+    return Text(title, style: TextStyle(color: Colors.cyanAccent.withValues(alpha: 0.7), fontSize: 12, letterSpacing: 1, fontWeight: FontWeight.bold));
   }
 
   Widget _buildEditableField(String label, TextEditingController controller, {required IconData icon, int maxLines = 1}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: _isEditing ? Border.all(color: Colors.cyanAccent.withOpacity(0.3)) : null,
+        border: _isEditing ? Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)) : null,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(

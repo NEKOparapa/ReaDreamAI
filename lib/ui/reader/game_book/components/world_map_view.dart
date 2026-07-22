@@ -43,11 +43,11 @@ class WorldMapView extends StatelessWidget {
     Color borderColor = Colors.white10;
     if (hasEvent) {
       if (isPlaying) {
-        borderColor = Colors.blueAccent.withOpacity(0.6);
+        borderColor = Colors.blueAccent.withValues(alpha: 0.6);
       } else if (isTemporary) {
-        borderColor = Colors.cyan.withOpacity(0.6);
+        borderColor = Colors.cyan.withValues(alpha: 0.6);
       } else {
-        borderColor = Colors.amber.withOpacity(0.6);
+        borderColor = Colors.amber.withValues(alpha: 0.6);
       }
     }
 
@@ -63,7 +63,7 @@ class WorldMapView extends StatelessWidget {
           // --- 背景图片逻辑 ---
           image: hasImage 
             ? DecorationImage(
-                image: FileImage(File(imagePath!)),
+                image: FileImage(File(imagePath)),
                 fit: BoxFit.cover,
               )
             : null,
@@ -73,7 +73,7 @@ class WorldMapView extends StatelessWidget {
                 end: Alignment.bottomRight, 
                 colors: [
                   const Color(0xFF252525), 
-                  isPlaying ? Colors.blue.withOpacity(0.15) : (isTemporary ? Colors.cyan.withOpacity(0.15) : Colors.amber.withOpacity(0.1))
+                  isPlaying ? Colors.blue.withValues(alpha: 0.15) : (isTemporary ? Colors.cyan.withValues(alpha: 0.15) : Colors.amber.withValues(alpha: 0.1))
                 ]
               ) 
             : null,
@@ -85,7 +85,7 @@ class WorldMapView extends StatelessWidget {
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10.5), // 略小于外框
-                  color: Colors.black.withOpacity(0.6), // 半透明黑色遮罩
+                  color: Colors.black.withValues(alpha: 0.6), // 半透明黑色遮罩
                 ),
               ),
 
@@ -118,7 +118,7 @@ class WorldMapView extends StatelessWidget {
                     Text(
                       '${events.length} 个事件', 
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.6), 
+                        color: Colors.white.withValues(alpha: 0.6), 
                         fontSize: 10,
                         shadows: hasImage ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
                       )

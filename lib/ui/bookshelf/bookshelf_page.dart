@@ -504,7 +504,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
           right: MediaQuery.of(context).size.width * 0.3,
         ),
         backgroundColor:
-            isError ? Colors.red.withOpacity(0.9) : Colors.black.withOpacity(0.8),
+            isError ? Colors.red.withValues(alpha: 0.9) : Colors.black.withValues(alpha: 0.8),
         duration: duration,
         showCloseIcon: false,
       ),
@@ -536,7 +536,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                     : Colors.transparent,
                 width: 3),
             color: _isDragging
-                ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                 : Colors.transparent,
           ),
           padding: const EdgeInsets.all(20.0),
@@ -663,7 +663,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.6),
+                    color: Colors.black.withValues(alpha: 0.6),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -681,7 +681,7 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade800.withOpacity(0.8),
+                    color: Colors.blue.shade800.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -719,8 +719,9 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     final color = colors[entry.id.hashCode % colors.length];
 
     IconData icon = Icons.book_outlined;
-    if (entry.fileType == 'gameBook') icon = Icons.sports_esports;
-    else if (entry.fileType == 'videoBook') icon = Icons.movie_creation_outlined;
+    if (entry.fileType == 'gameBook') {
+      icon = Icons.sports_esports;
+    } else if (entry.fileType == 'videoBook') icon = Icons.movie_creation_outlined;
 
     return Container(
       color: color[300],
@@ -728,13 +729,13 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: Colors.white.withOpacity(0.8)),
+            Icon(icon, size: 50, color: Colors.white.withValues(alpha: 0.8)),
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Text(
                 entry.title,
-                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,

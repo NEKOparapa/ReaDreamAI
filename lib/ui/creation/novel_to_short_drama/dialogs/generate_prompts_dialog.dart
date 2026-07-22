@@ -80,7 +80,7 @@ class _GeneratePromptsDialogState extends State<GeneratePromptsDialog> {
               child: SingleChildScrollView(
                 child: Card(
                   elevation: 0,
-                  color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(

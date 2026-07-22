@@ -76,8 +76,8 @@ class CharacterListSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF222222),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.purpleAccent.withOpacity(0.2), width: 1),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 6, offset: const Offset(0, 4))],
+        border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.2), width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 6, offset: const Offset(0, 4))],
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -88,10 +88,10 @@ class CharacterListSheet extends StatelessWidget {
             width: 52, height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.purple.withOpacity(0.1),
-              border: Border.all(color: Colors.purpleAccent.withOpacity(0.5), width: 1.5),
+              color: Colors.purple.withValues(alpha: 0.1),
+              border: Border.all(color: Colors.purpleAccent.withValues(alpha: 0.5), width: 1.5),
               image: hasImage 
-                  ? DecorationImage(image: FileImage(File(imagePath!)), fit: BoxFit.cover)
+                  ? DecorationImage(image: FileImage(File(imagePath)), fit: BoxFit.cover)
                   : null,
             ),
             child: !hasImage 
@@ -140,7 +140,7 @@ class CharacterListSheet extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.file(
-                          File(imagePath!),
+                          File(imagePath),
                           fit: BoxFit.contain,
                           errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
                         ),
@@ -204,7 +204,7 @@ class CharacterListSheet extends StatelessWidget {
                           ],
                         ),
                       );
-                    }).toList(),
+                    }),
                 ],
               ),
             ),
@@ -221,9 +221,9 @@ class CharacterListSheet extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: Colors.purpleAccent.withOpacity(0.8)),
+          Icon(icon, size: 16, color: Colors.purpleAccent.withValues(alpha: 0.8)),
           const SizedBox(width: 8),
-          Text(title, style: TextStyle(color: Colors.purpleAccent.withOpacity(0.9), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          Text(title, style: TextStyle(color: Colors.purpleAccent.withValues(alpha: 0.9), fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1)),
           const SizedBox(width: 8),
           Expanded(child: Container(height: 1, color: Colors.white10)),
         ],
@@ -264,7 +264,7 @@ class CharacterListSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -288,9 +288,9 @@ class CharacterListSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15), 
+        color: color.withValues(alpha: 0.15), 
         borderRadius: BorderRadius.circular(4), 
-        border: Border.all(color: color.withOpacity(0.4), width: 0.5)
+        border: Border.all(color: color.withValues(alpha: 0.4), width: 0.5)
       ),
       child: Text(
         text, 

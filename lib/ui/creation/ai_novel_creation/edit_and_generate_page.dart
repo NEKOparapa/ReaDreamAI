@@ -838,7 +838,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               key: ObjectKey(chapter),
               margin: const EdgeInsets.symmetric(vertical: 8),
               color: isSelected
-                  ? theme.colorScheme.primaryContainer.withOpacity(0.3)
+                  ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
                   : null,
               shape: isSelected
                   ? RoundedRectangleBorder(
@@ -992,8 +992,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                                 hintText: '例如: 半天内、黄昏到午夜...',
                                 border: const OutlineInputBorder(),
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceVariant
-                                    .withOpacity(0.3),
+                                fillColor: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
                                 isDense: true,
                               ),
                               maxLines: 1,
@@ -1015,8 +1015,8 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
                                 hintText: '例如: 新角色[某某]登场...',
                                 border: const OutlineInputBorder(),
                                 filled: true,
-                                fillColor: theme.colorScheme.surfaceVariant
-                                    .withOpacity(0.3),
+                                fillColor: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
                                 isDense: true,
                               ),
                               maxLines: 2,
@@ -1079,7 +1079,7 @@ class EditAndGeneratePageState extends State<EditAndGeneratePage> {
               labelText: label,
               border: const OutlineInputBorder(),
               filled: true,
-              fillColor: Theme.of(context).colorScheme.background,
+              fillColor: Theme.of(context).colorScheme.surface,
             ),
             maxLines: maxLines,
             onChanged: (val) {

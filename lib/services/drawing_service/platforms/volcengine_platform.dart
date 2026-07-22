@@ -92,7 +92,7 @@ class VolcenginePlatform implements DrawingPlatform {
       "prompt": positivePrompt,
       "negative_prompt": negativePrompt,
       "model": apiConfig.model.isNotEmpty ? apiConfig.model : "doubao-seedream-3-0-t2i-250415", // 模型ID
-      "size": "${width}x${height}", // 图像尺寸
+      "size": "${width}x$height", // 图像尺寸
       "n": count, // 生成数量
       "response_format": "b64_json", // 返回Base64编码的图像数据
       "watermark": false, // 不添加水印
@@ -120,7 +120,7 @@ class VolcenginePlatform implements DrawingPlatform {
       "negative_prompt": negativePrompt,
       // 图生图建议使用支持该功能的模型
       "model": apiConfig.model.isNotEmpty ? apiConfig.model : "doubao-seedream-4-0-250828",
-      "size": "${width}x${height}",
+      "size": "${width}x$height",
       "n": count,
       "response_format": "b64_json", 
       "watermark": false,

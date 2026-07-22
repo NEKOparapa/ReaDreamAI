@@ -604,7 +604,7 @@ class _NovelToShortDramaWorkbenchPageState
   }) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       builder: (context) {
         return _MediaViewerDialog(
           mediaPath: path,
@@ -679,7 +679,7 @@ class _NovelToShortDramaWorkbenchPageState
             onPressed: _isGenerating ? null : _showGeneratePromptsDialog,
             heroTag: 'generate_prompts',
             backgroundColor: _isGenerating
-                ? Theme.of(context).colorScheme.surfaceVariant
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : Theme.of(context).colorScheme.primaryContainer,
             icon: Icon(
               Icons.auto_awesome,
@@ -702,7 +702,7 @@ class _NovelToShortDramaWorkbenchPageState
             onPressed: _isGenerating ? null : _showGenerateMediaDialog,
             heroTag: 'generate_media',
             backgroundColor: _isGenerating
-                ? Theme.of(context).colorScheme.surfaceVariant
+                ? Theme.of(context).colorScheme.surfaceContainerHighest
                 : Theme.of(context).colorScheme.secondaryContainer,
             icon: Icon(
               Icons.movie_creation_outlined,
@@ -816,7 +816,7 @@ class _NovelToShortDramaWorkbenchPageState
     return Card(
       margin: const EdgeInsets.only(top: 16),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+      color: Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: 0.5),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -845,7 +845,7 @@ class _NovelToShortDramaWorkbenchPageState
               value: _generationProgress,
               minHeight: 8,
               borderRadius: BorderRadius.circular(4),
-              backgroundColor: Theme.of(context).colorScheme.surfaceVariant,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
           ],
         ),
@@ -898,7 +898,7 @@ class _NovelToShortDramaWorkbenchPageState
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
@@ -947,7 +947,7 @@ class _NovelToShortDramaWorkbenchPageState
           const SizedBox(height: 16),
           ...chapter.scenes.map((scene) {
             return _buildSceneItem(chapter, scene);
-          }).toList()
+          })
         ],
       ),
     );
@@ -958,7 +958,7 @@ class _NovelToShortDramaWorkbenchPageState
     return Container(
       margin: const EdgeInsets.only(top: 8, bottom: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
@@ -966,13 +966,13 @@ class _NovelToShortDramaWorkbenchPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
             child: IntrinsicHeight(
               child: Row(
                 children: [
                   Container(
                     width: 5,
-                    color: theme.colorScheme.primary.withOpacity(0.8),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.8),
                   ),
                   const SizedBox(width: 12),
                   Text(
@@ -1077,7 +1077,7 @@ class _NovelToShortDramaWorkbenchPageState
             width: double.infinity,
             padding:
                 const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: Row(
               children: [
                 Text(
@@ -1342,10 +1342,10 @@ class _NovelToShortDramaWorkbenchPageState
     final theme = Theme.of(context);
     return Card(
       elevation: 0,
-      color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: theme.dividerColor.withOpacity(0.5)),
+        side: BorderSide(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
       child: Container(
         height: 150,
@@ -1393,7 +1393,7 @@ class _NovelToShortDramaWorkbenchPageState
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.3)),
+        side: BorderSide(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
       ),
       child: Container(
         height: 150,
@@ -1619,7 +1619,7 @@ class _MainCharacterSelectionDialog extends StatelessWidget {
               ),
               title: const Text('消除主体角色'),
               selected: currentCharacter.isEmpty,
-              selectedTileColor: theme.colorScheme.errorContainer.withOpacity(0.3),
+              selectedTileColor: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
               onTap: () => Navigator.of(context).pop(''),
             ),
             const Divider(),
@@ -1646,10 +1646,10 @@ class _MainCharacterSelectionDialog extends StatelessWidget {
                 title: Text(name),
                 subtitle: Text('角色名: $characterName'),
                 selected: currentCharacter == characterName,
-                selectedTileColor: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                selectedTileColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
                 onTap: () => Navigator.of(context).pop(characterName),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -1803,7 +1803,7 @@ class _EditableCharacterCardItemState
           width: double.infinity,
           height: 200,
           decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+            color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: theme.dividerColor),
           ),
@@ -2044,8 +2044,8 @@ class _MediaItem extends StatelessWidget {
               color: Colors.transparent,
               child: InkWell(
                 onTap: onTap,
-                splashColor: Colors.white.withOpacity(0.1),
-                highlightColor: Colors.white.withOpacity(0.1),
+                splashColor: Colors.white.withValues(alpha: 0.1),
+                highlightColor: Colors.white.withValues(alpha: 0.1),
                 child: Container(),
               ),
             ),
@@ -2060,8 +2060,8 @@ class _MediaItem extends StatelessWidget {
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(0.7),
-                    Colors.black.withOpacity(0.0),
+                    Colors.black.withValues(alpha: 0.7),
+                    Colors.black.withValues(alpha: 0.0),
                   ],
                 ),
               ),
@@ -2083,7 +2083,7 @@ class _MediaItem extends StatelessWidget {
           if (isGenerating)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 child: const Center(
                     child: CircularProgressIndicator(color: Colors.white)),
               ),
@@ -2201,7 +2201,7 @@ class _MediaViewerDialogState extends State<_MediaViewerDialog> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(30),
             ),
             child: Row(

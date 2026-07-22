@@ -420,8 +420,8 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   // 1.2 遮罩层
                   Container(
                     color: _backgroundImagePath != null 
-                        ? Colors.black.withOpacity(0.6) 
-                        : Colors.black.withOpacity(0.75),
+                        ? Colors.black.withValues(alpha: 0.6) 
+                        : Colors.black.withValues(alpha: 0.75),
                   ),
                 ],
               ),
@@ -442,14 +442,14 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                 Container(
                   height: boxHeight,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E1E).withOpacity(0.98),
+                    color: const Color(0xFF1E1E1E).withValues(alpha: 0.98),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isPlayer ? Colors.blue.withOpacity(0.5) : Colors.amber.withOpacity(0.5), 
+                      color: isPlayer ? Colors.blue.withValues(alpha: 0.5) : Colors.amber.withValues(alpha: 0.5), 
                       width: 2
                     ),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.6), blurRadius: 20, spreadRadius: 2)
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20, spreadRadius: 2)
                     ],
                   ),
                   child: Column(
@@ -464,7 +464,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                             margin: EdgeInsets.only(left: (!isPlayer && hasImage) ? 10 : 0),
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                             decoration: BoxDecoration(
-                              color: isPlayer ? Colors.blue.withOpacity(0.2) : Colors.amber.withOpacity(0.2),
+                              color: isPlayer ? Colors.blue.withValues(alpha: 0.2) : Colors.amber.withValues(alpha: 0.2),
                               borderRadius: const BorderRadius.only(
                                 topLeft: Radius.circular(14),
                                 bottomRight: Radius.circular(14),
@@ -489,7 +489,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                               height: 10, 
                               child: CircularProgressIndicator(
                                 strokeWidth: 1.5, 
-                                color: Colors.cyan.withOpacity(0.5) // 调暗颜色
+                                color: Colors.cyan.withValues(alpha: 0.5) // 调暗颜色
                               )
                             ),
                             const SizedBox(width: 8),
@@ -505,7 +505,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                           ],
                           
                           // 进度文本
-                          Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12))),
+                          Padding(padding: const EdgeInsets.only(right: 16), child: Text(progress, style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12))),
                           
                           if (isPlayer && hasImage) const SizedBox(width: 10),
                         ],
@@ -591,7 +591,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                               if (showNextIndicator && _displayingText.length >= (currentLine['message']?.length ?? 0))
                                  Padding(
                                    padding: const EdgeInsets.only(right: 12),
-                                   child: Icon(Icons.arrow_drop_down, color: Colors.white.withOpacity(0.3)),
+                                   child: Icon(Icons.arrow_drop_down, color: Colors.white.withValues(alpha: 0.3)),
                                  ),
 
                               // 明显的“对话”按钮
@@ -604,12 +604,12 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                                     color: const Color(0xFF2A2A2A), // 深灰背景
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: Colors.cyanAccent.withOpacity(0.3), // 微弱的科技蓝边框
+                                      color: Colors.cyanAccent.withValues(alpha: 0.3), // 微弱的科技蓝边框
                                       width: 1
                                     ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.cyanAccent.withOpacity(0.05),
+                                        color: Colors.cyanAccent.withValues(alpha: 0.05),
                                         blurRadius: 4,
                                         spreadRadius: 0
                                       )
@@ -622,7 +622,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                                       Text(
                                         "对话", 
                                         style: TextStyle(
-                                          color: Colors.cyanAccent.withOpacity(0.9),
+                                          color: Colors.cyanAccent.withValues(alpha: 0.9),
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500
                                         ),
@@ -654,12 +654,12 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                           color: const Color(0xFF222222), 
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: isPlayer ? Colors.blue.withOpacity(0.8) : Colors.amber.withOpacity(0.8), 
+                            color: isPlayer ? Colors.blue.withValues(alpha: 0.8) : Colors.amber.withValues(alpha: 0.8), 
                             width: 3
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.5), 
+                              color: Colors.black.withValues(alpha: 0.5), 
                               blurRadius: 10, 
                               offset: const Offset(4, 4)
                             )
@@ -668,7 +668,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(9), 
                           child: Image.file(
-                            File(imagePath!),
+                            File(imagePath),
                             fit: BoxFit.cover, 
                             alignment: Alignment.topCenter,
                           ),
@@ -696,10 +696,10 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A2A).withOpacity(0.95), // 保持高不透明度以防背景杂乱
+                        color: const Color(0xFF2A2A2A).withValues(alpha: 0.95), // 保持高不透明度以防背景杂乱
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.amber.withOpacity(0.5)),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 4, offset: const Offset(0, 2))],
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 4, offset: const Offset(0, 2))],
                       ),
                       child: Text(opt, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
                     ),
@@ -716,7 +716,7 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
               onPressed: widget.onExit,
               icon: const Icon(Icons.exit_to_app, color: Colors.white70, size: 20),
               label: const Text('离开', style: TextStyle(color: Colors.white70)),
-              style: TextButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
+              style: TextButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.3)),
             ),
           ),
           
@@ -731,14 +731,14 @@ class _GalgamePlayerOverlayState extends State<GalgamePlayerOverlay> {
                   onPressed: _showHistory,
                   icon: const Icon(Icons.history, color: Colors.white70),
                   tooltip: '历史记录',
-                  style: IconButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
+                  style: IconButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.3)),
                 ),
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _finishEvent,
                   icon: const Icon(Icons.check_circle_outline, color: Colors.white70, size: 20),
                   label: const Text('完成', style: TextStyle(color: Colors.white70)),
-                  style: TextButton.styleFrom(backgroundColor: Colors.black.withOpacity(0.3)),
+                  style: TextButton.styleFrom(backgroundColor: Colors.black.withValues(alpha: 0.3)),
                 ),
               ],
             ),

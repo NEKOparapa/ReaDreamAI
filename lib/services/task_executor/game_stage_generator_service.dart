@@ -271,8 +271,9 @@ class GameStageGeneratorService {
   // 辅助方法: 尝试修复常见的 JSON 格式问题
   String _attemptJsonRepair(String brokenJson) {
     String repaired = brokenJson.trim();
-    if (repaired.endsWith(','))
+    if (repaired.endsWith(',')) {
       repaired = repaired.substring(0, repaired.length - 1);
+    }
     repaired = repaired.replaceAll(RegExp(r',\s*([}\]])'), r'$1');
     try {
       final valueContentRegex = RegExp(r'(?<=":\s*")(.*?)(?="\s*[,}])');
@@ -681,10 +682,12 @@ $firstDayRequirements
           orElse: () => null,
         );
         if (target != null && target is Map) {
-          if (p['imagePrompt'] != null)
+          if (p['imagePrompt'] != null) {
             target['imagePrompt'] = p['imagePrompt'];
-          if (p['musicPrompt'] != null)
+          }
+          if (p['musicPrompt'] != null) {
             target['musicPrompt'] = p['musicPrompt'];
+          }
           target.remove('lyrics');
         }
       }

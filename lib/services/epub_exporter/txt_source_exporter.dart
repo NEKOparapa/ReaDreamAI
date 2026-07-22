@@ -67,7 +67,7 @@ class _TxtSourceExporter {
     await _MediaHelper.addMediaToArchive(archive, mediaPaths, 'OEBPS');
 
     // 9. 压缩数据并返回
-    final List<int>? epubData = ZipEncoder().encode(archive); // epubData 的类型是 List<int>?
+    final List<int> epubData = ZipEncoder().encode(archive); // epubData 的类型是 List<int>?
     
     // 如果 epubData 不为 null，则将其转换为 Uint8List 并返回
     if (epubData != null) {

@@ -1087,7 +1087,7 @@ class _NovelGenerationProgressPageState
         case ChapterStatus.pending:
           statusColor = Theme.of(
             context,
-          ).colorScheme.onSurface.withOpacity(0.6);
+          ).colorScheme.onSurface.withValues(alpha: 0.6);
           leading = Icon(Icons.hourglass_empty, color: statusColor);
           statusText = '等待中';
           break;
@@ -1199,7 +1199,7 @@ class _NovelGenerationProgressPageState
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: ListTile(
           leading: CircleAvatar(
-            backgroundColor: statusColor.withOpacity(0.1),
+            backgroundColor: statusColor.withValues(alpha: 0.1),
             child: leading,
           ),
           title: Text(
@@ -1295,7 +1295,7 @@ class _NovelGenerationProgressPageState
           padding: const EdgeInsets.symmetric(vertical: 12),
           foregroundColor: Theme.of(context).colorScheme.error,
           side: BorderSide(
-            color: Theme.of(context).colorScheme.error.withOpacity(0.5),
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.5),
           ),
         ),
         onPressed: _terminateTask,
@@ -1318,7 +1318,7 @@ class _NovelGenerationProgressPageState
               CircularProgressIndicator(
                 value: value,
                 strokeWidth: 8,
-                backgroundColor: progressColor.withOpacity(0.2),
+                backgroundColor: progressColor.withValues(alpha: 0.2),
                 color: progressColor,
               ),
               Center(
@@ -1353,7 +1353,7 @@ class _NovelGenerationProgressPageState
       height: 200,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.dividerColor, width: 0.5),
       ),

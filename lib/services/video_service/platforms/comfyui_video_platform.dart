@@ -255,7 +255,7 @@ class ComfyUiVideoPlatform implements VideoPlatform {
   /// 等待任务完成
   Future<bool> _waitForCompletion(String promptId, String clientId, ApiModel apiConfig) async {
     final completer = Completer<bool>();
-    final wsUri = Uri.parse(apiConfig.url.replaceFirst('http', 'ws') + '/ws?clientId=$clientId');
+    final wsUri = Uri.parse('${apiConfig.url.replaceFirst('http', 'ws')}/ws?clientId=$clientId');
     final channel = WebSocketChannel.connect(wsUri);
 
     LogService.instance.info('[ComfyUI视频] ⏳ 正在建立 WebSocket 连接并等待任务完成...');

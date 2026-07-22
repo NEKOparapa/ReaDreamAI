@@ -76,7 +76,7 @@ class _EpubSourceExporter {
     await _MediaHelper.addMediaToArchive(newArchive, newMediaPaths, oebpsDir);
 
     // 步骤 10: 使用 ZipEncoder 将新 Archive 压缩成最终的 EPUB 文件数据。
-    final List<int>? epubData = ZipEncoder().encode(newArchive); // epubData 的类型是 List<int>?
+    final List<int> epubData = ZipEncoder().encode(newArchive); // epubData 的类型是 List<int>?
     
     // 如果 epubData 不为 null，则将其转换为 Uint8List 并返回
     if (epubData != null) {

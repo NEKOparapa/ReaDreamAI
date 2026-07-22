@@ -85,7 +85,7 @@ class OpenAiPlatform implements DrawingPlatform {
       "prompt": positivePrompt,
       "negative_prompt": negativePrompt,
       "model": apiConfig.model,
-      "size": "${width}x${height}",
+      "size": "${width}x$height",
       "n": count,
       "response_format": "b64_json", // 请求返回Base64编码的图片数据
     };
@@ -141,7 +141,7 @@ class OpenAiPlatform implements DrawingPlatform {
       request.fields.addAll({
         'prompt': positivePrompt,
         'model': apiConfig.model,
-        'size': '${width}x${height}',
+        'size': '${width}x$height',
         'n': count.toString(),
         'response_format': 'b64_json',
       });

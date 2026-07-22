@@ -136,7 +136,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -194,7 +194,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         validator: (value) {
           if (controller == _keyController || controller == _modelController) {
@@ -227,7 +227,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         keyboardType: TextInputType.number,
         inputFormatters: <TextInputFormatter>[
@@ -379,7 +379,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         ),
         validator: (value) {
           if (value == null || value.isEmpty) {
@@ -486,7 +486,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: DropdownButtonFormField<ApiFormat>(
-        value: _selectedFormat,
+        initialValue: _selectedFormat,
         decoration: InputDecoration(
           labelText: '接口格式',
           border: const OutlineInputBorder(
@@ -495,7 +495,7 @@ class _ApiSettingsPageState extends State<ApiSettingsPage> {
           filled: true,
           fillColor: Theme.of(
             context,
-          ).colorScheme.surfaceVariant.withOpacity(0.3),
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           helperText: isCustomProvider ? '为自定义地址选择兼容的接口格式' : '此平台格式已固定，无需选择',
         ),
         onChanged: isCustomProvider

@@ -144,7 +144,7 @@ class CreationPage extends StatelessWidget {
                 child: Icon(
                   icon,
                   size: 140,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
               
@@ -158,7 +158,7 @@ class CreationPage extends StatelessWidget {
                       width: 70,
                       height: 70,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.15),
+                        color: Colors.white.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -196,7 +196,7 @@ class CreationPage extends StatelessWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     // 样式完全保持一致
-                                    color: Colors.white.withOpacity(0.2),
+                                    color: Colors.white.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
@@ -218,7 +218,7 @@ class CreationPage extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.white.withOpacity(0.85),
+                              color: Colors.white.withValues(alpha: 0.85),
                               fontSize: 13,
                               height: 1.3,
                             ),
@@ -230,7 +230,7 @@ class CreationPage extends StatelessWidget {
                     // 右侧箭头图标
                     Icon(
                       Icons.arrow_forward_ios,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       size: 18,
                     ),
                   ],

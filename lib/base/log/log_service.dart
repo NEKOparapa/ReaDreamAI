@@ -1,4 +1,5 @@
 /// lib/base/log/log_service.dart
+library;
 
 import 'dart:io';
 import 'package:flutter/foundation.dart'; 

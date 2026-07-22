@@ -336,7 +336,7 @@ class IllustrationGeneratorService {
     final width = sizeParts[0];
     final height = sizeParts[1];
 
-    LogService.instance.info("      [绘图] 开始为《${chapter.title}》ID为 $lineId 的行生成 $imagesPerScene 张插图 (尺寸: ${width}x${height})...");
+    LogService.instance.info("      [绘图] 开始为《${chapter.title}》ID为 $lineId 的行生成 $imagesPerScene 张插图 (尺寸: ${width}x$height)...");
     LogService.instance.info("      - 场景: ${sceneDescription ?? '无'}");
     if (appearingCharacters.isNotEmpty) {
        LogService.instance.info("      - 登场角色: ${appearingCharacters.join(', ')}");

@@ -162,7 +162,7 @@ class ComfyUiPlatform implements DrawingPlatform {
     // 创建一个Completer，用于异步地返回任务是否成功的结果
     final completer = Completer<bool>();
     // 将API的http/https协议替换为ws/wss来构建WebSocket连接地址
-    final wsUri = Uri.parse(apiConfig.url.replaceFirst('http', 'ws') + '/ws?clientId=$clientId');
+    final wsUri = Uri.parse('${apiConfig.url.replaceFirst('http', 'ws')}/ws?clientId=$clientId');
     final channel = WebSocketChannel.connect(wsUri);
 
     LogService.instance.info('[ComfyUI] ⏳ 正在建立 WebSocket 连接并等待任务完成...');

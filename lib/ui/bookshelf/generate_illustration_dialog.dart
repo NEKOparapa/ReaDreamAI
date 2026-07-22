@@ -253,7 +253,7 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: isSelected
                   ? BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       border: Border.all(
                         color: Theme.of(context).colorScheme.primary,
                         width: 1.5,
@@ -471,7 +471,7 @@ class _GenerateIllustrationDialogState extends State<GenerateIllustrationDialog>
                   children: [
                     Card(
                       elevation: 0,
-                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(

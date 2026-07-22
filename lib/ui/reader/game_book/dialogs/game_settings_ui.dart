@@ -178,7 +178,7 @@ class GameSettingsUI {
                   SwitchListTile(
                     title: const Text("背景音乐自动播放", style: TextStyle(color: Colors.white)),
                     subtitle: const Text("进入场景时自动播放BGM", style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    activeColor: Colors.pinkAccent,
+                    activeThumbColor: Colors.pinkAccent,
                     value: autoPlay,
                     onChanged: (value) async {
                       await config.modifySetting('game_bgm_autoplay', value);
@@ -188,7 +188,7 @@ class GameSettingsUI {
                   const Divider(color: Colors.white10),
                   SwitchListTile(
                     title: const Text("背景音乐自动循环", style: TextStyle(color: Colors.white)),
-                    activeColor: Colors.pinkAccent,
+                    activeThumbColor: Colors.pinkAccent,
                     value: loop,
                     onChanged: (value) async {
                       await config.modifySetting('game_bgm_loop', value);

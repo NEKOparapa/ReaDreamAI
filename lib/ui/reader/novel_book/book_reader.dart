@@ -464,8 +464,9 @@ class _BookReaderPageState extends State<BookReaderPage> {
     final lines = chapter.lines;
     final firstIndex = lines.indexOf(firstLine);
     final lastIndex = lines.indexOf(lastLine);
-    if (firstIndex == -1 || lastIndex == -1)
+    if (firstIndex == -1 || lastIndex == -1) {
       return (preceding: '', succeeding: '');
+    }
 
     List<String> precedingLines = [];
     int precedingTokens = 0;
@@ -549,7 +550,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
               line.translatedText?.isNotEmpty == true)
           ? line.translatedText!
           : line.text;
-      int lineLength = (textToShow + '\n').length;
+      int lineLength = ('$textToShow\n').length;
 
       if (firstLine == null &&
           selection.start < cumulativeLength + lineLength) {
@@ -1054,7 +1055,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       left: 0,
       right: 0,
       child: Material(
-        color: Theme.of(context).appBarTheme.backgroundColor?.withOpacity(0.8),
+        color: Theme.of(context).appBarTheme.backgroundColor?.withValues(alpha: 0.8),
         elevation: 1,
         child: Padding(
           padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),

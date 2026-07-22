@@ -162,7 +162,7 @@ class _AiGenerateOutlinePageState extends State<AiGenerateOutlinePage> {
         color: Theme.of(context).scaffoldBackgroundColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -366,13 +366,13 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
     }
 
     return DropdownButtonFormField<String?>(
-      value: selectedApiId,
+      initialValue: selectedApiId,
       decoration: InputDecoration(
         labelText: title,
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
         filled: true,
-        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
       ),
       onChanged: onChanged,
       items: [
@@ -382,7 +382,7 @@ class _ApiSettingsDialogState extends State<ApiSettingsDialog> {
             value: api.id,
             child: Text(api.name),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -753,7 +753,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
             Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: Wrap(
@@ -779,7 +779,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                         }
                       },
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
@@ -810,7 +810,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
             Container(
               padding: const EdgeInsets.all(12.0),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: Wrap(
@@ -851,7 +851,7 @@ class GenerateOutlineFormState extends State<GenerateOutlineForm> {
                         });
                       },
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             ),
