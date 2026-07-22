@@ -79,9 +79,7 @@ class _EpubSourceExporter {
     final List<int> epubData = ZipEncoder().encode(newArchive); // epubData 的类型是 List<int>?
     
     // 如果 epubData 不为 null，则将其转换为 Uint8List 并返回
-    if (epubData != null) {
-      return Uint8List.fromList(epubData); 
-    }
+    return Uint8List.fromList(epubData); 
     
     // 如果为 null，则返回 null
     return null;
