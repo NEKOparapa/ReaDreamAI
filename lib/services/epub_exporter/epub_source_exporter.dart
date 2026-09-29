@@ -90,9 +90,8 @@ class _EpubSourceExporter {
     final filesToModify = <String, List<LineStructure>>{};
     for (final chapter in book.chapters) {
       for (final line in chapter.lines) {
-        // 检查行是否有翻译、插图或视频，只要有任意一项就需要修改。
-        final hasModifications = (line.translatedText != null && line.translatedText!.isNotEmpty) ||
-            line.illustrationPaths.isNotEmpty ||
+        // 检查行是否有插图或视频，只要有任意一项就需要修改。
+        final hasModifications = line.illustrationPaths.isNotEmpty ||
             line.videoPaths.isNotEmpty;
         
         if (hasModifications) {
@@ -106,7 +105,7 @@ class _EpubSourceExporter {
     return filesToModify;
   }
 
-  /// 在给定的 HTML 内容中，根据 `linesToModify` 列表插入翻译、图片和视频。
+  /// 在给定的 HTML 内容中，根据 `linesToModify` 列表插入图片和视频。
   String _modifyHtmlContentWithLines(String html, List<LineStructure> linesToModify, String oebpsDir, String currentFilePath) {
     if (linesToModify.isEmpty) return html;
 
@@ -136,7 +135,7 @@ class _EpubSourceExporter {
       
       modifiedCount++;
       
-      // 构建要插入的新内容（图片、视频、翻译文本）。
+      // 构建要插入的新内容（图片、视频）。
       final insertions = StringBuffer();
       
       // 插入图片
@@ -153,11 +152,6 @@ class _EpubSourceExporter {
           p.basename(videoPath), 
           relativePrefix: relativePrefix
         ));
-      }
-      
-      // 插入翻译文本
-      if (line.translatedText != null && line.translatedText!.isNotEmpty) {
-        insertions.write('<p>${line.translatedText}</p>\n');
       }
       
       // 在原始内容之前插入新内容。

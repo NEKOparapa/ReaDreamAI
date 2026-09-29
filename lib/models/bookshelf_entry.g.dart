@@ -37,28 +37,6 @@ const _$ChunkStatusEnumMap = {
   ChunkStatus.failed: 'failed',
 };
 
-TranslationTaskChunk _$TranslationTaskChunkFromJson(
-  Map<String, dynamic> json,
-) => TranslationTaskChunk(
-  id: json['id'] as String,
-  chapterId: json['chapterId'] as String,
-  startLineId: (json['startLineId'] as num).toInt(),
-  endLineId: (json['endLineId'] as num).toInt(),
-  status:
-      $enumDecodeNullable(_$ChunkStatusEnumMap, json['status']) ??
-      ChunkStatus.pending,
-);
-
-Map<String, dynamic> _$TranslationTaskChunkToJson(
-  TranslationTaskChunk instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'chapterId': instance.chapterId,
-  'startLineId': instance.startLineId,
-  'endLineId': instance.endLineId,
-  'status': _$ChunkStatusEnumMap[instance.status]!,
-};
-
 VideoGenerationTaskChunk _$VideoGenerationTaskChunkFromJson(
   Map<String, dynamic> json,
 ) => VideoGenerationTaskChunk(
@@ -108,21 +86,6 @@ BookshelfEntry _$BookshelfEntryFromJson(
   updatedAt: json['updatedAt'] == null
       ? null
       : DateTime.parse(json['updatedAt'] as String),
-  translationStatus:
-      $enumDecodeNullable(_$TaskStatusEnumMap, json['translationStatus']) ??
-      TaskStatus.notStarted,
-  translationTaskChunks:
-      (json['translationTaskChunks'] as List<dynamic>?)
-          ?.map((e) => TranslationTaskChunk.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      [],
-  translationErrorMessage: json['translationErrorMessage'] as String?,
-  translationCreatedAt: json['translationCreatedAt'] == null
-      ? null
-      : DateTime.parse(json['translationCreatedAt'] as String),
-  translationUpdatedAt: json['translationUpdatedAt'] == null
-      ? null
-      : DateTime.parse(json['translationUpdatedAt'] as String),
   videoGenerationStatus:
       $enumDecodeNullable(_$TaskStatusEnumMap, json['videoGenerationStatus']) ??
       TaskStatus.notStarted,
@@ -157,13 +120,6 @@ Map<String, dynamic> _$BookshelfEntryToJson(
   'errorMessage': instance.errorMessage,
   'createdAt': instance.createdAt?.toIso8601String(),
   'updatedAt': instance.updatedAt?.toIso8601String(),
-  'translationStatus': _$TaskStatusEnumMap[instance.translationStatus]!,
-  'translationTaskChunks': instance.translationTaskChunks
-      .map((e) => e.toJson())
-      .toList(),
-  'translationErrorMessage': instance.translationErrorMessage,
-  'translationCreatedAt': instance.translationCreatedAt?.toIso8601String(),
-  'translationUpdatedAt': instance.translationUpdatedAt?.toIso8601String(),
   'videoGenerationStatus': _$TaskStatusEnumMap[instance.videoGenerationStatus]!,
   'videoGenerationTaskChunks': instance.videoGenerationTaskChunks
       .map((e) => e.toJson())

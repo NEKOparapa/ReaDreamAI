@@ -45,27 +45,6 @@ class IllustrationTaskChunk {
   Map<String, dynamic> toJson() => _$IllustrationTaskChunkToJson(this);
 }
 
-// 翻译任务的子任务区块
-@JsonSerializable()
-class TranslationTaskChunk {
-  final String id;
-  final String chapterId;
-  final int startLineId;
-  final int endLineId;
-  ChunkStatus status;
-
-  TranslationTaskChunk({
-    required this.id,
-    required this.chapterId,
-    required this.startLineId,
-    required this.endLineId,
-    this.status = ChunkStatus.pending,
-  });
-
-  factory TranslationTaskChunk.fromJson(Map<String, dynamic> json) => _$TranslationTaskChunkFromJson(json);
-  Map<String, dynamic> toJson() => _$TranslationTaskChunkToJson(this);
-}
-
 // 视频生成子任务区块
 @JsonSerializable()
 class VideoGenerationTaskChunk {
@@ -110,15 +89,6 @@ class BookshelfEntry {
   DateTime? createdAt;
   DateTime? updatedAt;
 
-  // --- 翻译任务字段 ---
-  @JsonKey(defaultValue: TaskStatus.notStarted)
-  TaskStatus translationStatus;
-  @JsonKey(defaultValue: [])
-  List<TranslationTaskChunk> translationTaskChunks;
-  String? translationErrorMessage;
-  DateTime? translationCreatedAt;
-  DateTime? translationUpdatedAt;
-
   // --- [新增] 图生视频任务字段 ---
   @JsonKey(defaultValue: TaskStatus.notStarted)
   TaskStatus videoGenerationStatus;
@@ -142,12 +112,6 @@ class BookshelfEntry {
     this.errorMessage,
     this.createdAt,
     this.updatedAt,
-    // 翻译任务
-    this.translationStatus = TaskStatus.notStarted,
-    this.translationTaskChunks = const [],
-    this.translationErrorMessage,
-    this.translationCreatedAt,
-    this.translationUpdatedAt,
     // 视频任务
     this.videoGenerationStatus = TaskStatus.notStarted,
     this.videoGenerationTaskChunks = const [],
@@ -165,16 +129,6 @@ class BookshelfEntry {
     // 避免除以零
     if (taskChunks.isEmpty) return 0.0;
     return completedCount / taskChunks.length;
-  }
-
-  // 翻译进度
-  double get translationProgress {
-    if (translationTaskChunks.isEmpty) {
-      return translationStatus == TaskStatus.completed ? 1.0 : 0.0;
-    }
-    final completedCount = translationTaskChunks.where((c) => c.status == ChunkStatus.completed).length;
-    if (translationTaskChunks.isEmpty) return 0.0;
-    return completedCount / translationTaskChunks.length;
   }
 
   // 视频生成进度
@@ -200,13 +154,6 @@ class BookshelfEntry {
     DateTime? createdAt,
     DateTime? updatedAt,
 
-    TaskStatus? translationStatus,
-    List<TranslationTaskChunk>? translationTaskChunks,
-    String? translationErrorMessage,
-    bool clearTranslationErrorMessage = false,
-    DateTime? translationCreatedAt,
-    DateTime? translationUpdatedAt,
-
     TaskStatus? videoGenerationStatus,
     List<VideoGenerationTaskChunk>? videoGenerationTaskChunks,
     String? videoGenerationErrorMessage,
@@ -228,12 +175,6 @@ class BookshelfEntry {
       errorMessage: clearErrorMessage ? null : (errorMessage ?? this.errorMessage),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
-      // 翻译
-      translationStatus: translationStatus ?? this.translationStatus,
-      translationTaskChunks: translationTaskChunks ?? this.translationTaskChunks,
-      translationErrorMessage: clearTranslationErrorMessage ? null : (translationErrorMessage ?? this.translationErrorMessage),
-      translationCreatedAt: translationCreatedAt ?? this.translationCreatedAt,
-      translationUpdatedAt: translationUpdatedAt ?? DateTime.now(),
       // 视频
       videoGenerationStatus: videoGenerationStatus ?? this.videoGenerationStatus,
       videoGenerationTaskChunks: videoGenerationTaskChunks ?? this.videoGenerationTaskChunks,

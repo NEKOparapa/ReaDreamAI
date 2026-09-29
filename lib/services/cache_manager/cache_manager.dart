@@ -283,7 +283,6 @@ class CacheManager {
               illustrationPaths: line.illustrationPaths,
               videoPaths: line.videoPaths,
               sceneDescription: line.sceneDescription,
-              translatedText: line.translatedText,
             );
           }).toList();
         } else {
@@ -300,7 +299,7 @@ class CacheManager {
             final line = chapter.lines[i];
             newLinesForChapter.add(LineStructure(
               id: globalLineIdCounter++, text: line.text, sourceInfo: line.sourceInfo, originalContent: line.originalContent,
-              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription, translatedText: line.translatedText,
+              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription,
             ));
           }
 
@@ -319,7 +318,6 @@ class CacheManager {
                     illustrationPaths: [],
                     videoPaths: [],
                     sceneDescription: null,
-                    translatedText: null,
                   ),
                 );
               }
@@ -331,7 +329,7 @@ class CacheManager {
             final line = chapter.lines[i];
              newLinesForChapter.add(LineStructure(
               id: globalLineIdCounter++, text: line.text, sourceInfo: line.sourceInfo, originalContent: line.originalContent,
-              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription, translatedText: line.translatedText,
+              illustrationPaths: line.illustrationPaths, videoPaths: line.videoPaths, sceneDescription: line.sceneDescription,
             ));
           }
         }
@@ -397,7 +395,6 @@ class CacheManager {
                   illustrationPaths: [],
                   videoPaths: [],
                   sceneDescription: null,
-                  translatedText: null,
                 ),
               );
             }
@@ -415,7 +412,6 @@ class CacheManager {
               illustrationPaths: line.illustrationPaths,
               videoPaths: line.videoPaths,
               sceneDescription: line.sceneDescription,
-              translatedText: line.translatedText,
             );
           }).toList();
         }
@@ -480,7 +476,6 @@ class CacheManager {
             illustrationPaths: line.illustrationPaths,
             videoPaths: line.videoPaths,
             sceneDescription: line.sceneDescription,
-            translatedText: line.translatedText,
           );
         }).toList();
 
@@ -539,7 +534,6 @@ class CacheManager {
             illustrationPaths: line.illustrationPaths,
             videoPaths: line.videoPaths,
             sceneDescription: line.sceneDescription,
-            translatedText: line.translatedText,
           );
         }).toList();
 
@@ -563,7 +557,6 @@ class CacheManager {
           illustrationPaths: e.value.illustrationPaths,
           videoPaths: e.value.videoPaths,
           sceneDescription: e.value.sceneDescription,
-          translatedText: e.value.translatedText,
         );
       }).toList();
       globalLineIdCounter += newLinesWithIds.length;

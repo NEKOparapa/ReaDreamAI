@@ -48,7 +48,6 @@ class _BookReaderPageState extends State<BookReaderPage> {
   late double _fontSize;
   late double _lineHeight;
   late String _fontFamily;
-  DisplayMode _displayMode = DisplayMode.original;
 
   // --- 配置服务实例和加载状态 ---
   final _configService = ConfigService();
@@ -545,12 +544,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
 
     for (final info in linesInBlock) {
       final line = info.line;
-      String textToShow =
-          (_displayMode == DisplayMode.translation &&
-              line.translatedText?.isNotEmpty == true)
-          ? line.translatedText!
-          : line.text;
-      int lineLength = ('$textToShow\n').length;
+      int lineLength = ('${line.text}\n').length;
 
       if (firstLine == null &&
           selection.start < cumulativeLength + lineLength) {
@@ -908,14 +902,12 @@ class _BookReaderPageState extends State<BookReaderPage> {
           initialFontSize: _fontSize,
           initialLineHeight: _lineHeight,
           initialFontFamily: _fontFamily,
-          initialDisplayMode: _displayMode,
           onSettingsChanged:
-              (theme, fontSize, fontFamily, displayMode, lineHeight) {
+              (theme, fontSize, fontFamily, lineHeight) {
                 setState(() {
                   _currentTheme = theme;
                   _fontSize = fontSize;
                   _fontFamily = fontFamily;
-                  _displayMode = displayMode;
                   _lineHeight = lineHeight;
                 });
                 _configService.modifySetting('reader_theme_id', theme.id);
@@ -1294,15 +1286,7 @@ class _BookReaderPageState extends State<BookReaderPage> {
       TextSpan(
         children: linesInfo.map((info) {
           final line = info.line;
-          String textToShow;
-          if (_displayMode == DisplayMode.translation &&
-              line.translatedText != null &&
-              line.translatedText!.isNotEmpty) {
-            textToShow = line.translatedText!;
-          } else {
-            textToShow = line.text;
-          }
-          return TextSpan(text: '$textToShow\n');
+          return TextSpan(text: '${line.text}\n');
         }).toList(),
       ),
       style: TextStyle(

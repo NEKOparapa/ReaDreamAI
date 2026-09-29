@@ -23,7 +23,6 @@ LineStructure _$LineStructureFromJson(Map<String, dynamic> json) =>
               .toList() ??
           const [],
       sceneDescription: json['sceneDescription'] as String?,
-      translatedText: json['translatedText'] as String?,
     );
 
 Map<String, dynamic> _$LineStructureToJson(LineStructure instance) =>
@@ -35,7 +34,6 @@ Map<String, dynamic> _$LineStructureToJson(LineStructure instance) =>
       'illustrationPaths': instance.illustrationPaths,
       'videoPaths': instance.videoPaths,
       'sceneDescription': instance.sceneDescription,
-      'translatedText': instance.translatedText,
     };
 
 ChapterStructure _$ChapterStructureFromJson(Map<String, dynamic> json) =>

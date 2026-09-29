@@ -10,7 +10,7 @@ import '../../base/config_service.dart';
 import '../../base/log/log_service.dart';
 
 /// 任务切分器服务
-/// 负责将书籍内容根据不同任务类型（如插图、翻译）切分成小的、可执行的任务块（Chunk）。
+/// 负责将书籍内容切分成可执行的插图生成任务块（Chunk）。
 class TaskSplitterService {
   // 使用私有构造函数实现单例模式
   TaskSplitterService._();
@@ -96,51 +96,4 @@ class TaskSplitterService {
     return allChunks;
   }
 
-  /// 将书籍内容拆分为适合翻译的任务块
-  List<TranslationTaskChunk> splitBookForTranslations(Book book) {
-    final maxChunkTokens = _configService.getSetting<int>('translation_tokens', 4000);
-    final List<TranslationTaskChunk> allChunks = [];
-    final encoding = encodingForModel("gpt-4");
-
-    for (final chapter in book.chapters) {
-      if (chapter.lines.isEmpty) continue;
-
-      int totalChapterChars = chapter.lines.map((line) => line.text.length).reduce((a, b) => a + b);
-
-      if (totalChapterChars < 500) {
-        LogService.instance.info('跳过翻译任务章节《${chapter.title}》，因字符数 ($totalChapterChars) 过少。');
-        continue;
-      }
-
-      List<LineStructure> currentChunkLines = [];
-      int currentTokens = 0;
-
-      for (final line in chapter.lines) {
-        final lineTokens = encoding.encode(line.text).length;
-        if (currentTokens + lineTokens > maxChunkTokens && currentChunkLines.isNotEmpty) {
-          allChunks.add(TranslationTaskChunk(
-            id: _uuid.v4(),
-            chapterId: chapter.id,
-            startLineId: currentChunkLines.first.id,
-            endLineId: currentChunkLines.last.id,
-          ));
-          currentChunkLines.clear();
-          currentTokens = 0;
-        }
-        currentChunkLines.add(line);
-        currentTokens += lineTokens;
-      }
-
-      if (currentChunkLines.isNotEmpty) {
-        allChunks.add(TranslationTaskChunk(
-          id: _uuid.v4(),
-          chapterId: chapter.id,
-          startLineId: currentChunkLines.first.id,
-          endLineId: currentChunkLines.last.id,
-        ));
-      }
-    }
-
-    return allChunks;
-  }
 }

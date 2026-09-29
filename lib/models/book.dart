@@ -26,7 +26,6 @@ class LineStructure {
   final List<String> illustrationPaths; // 插图路径列表
   final List<String> videoPaths; // 视频路径列表
   final String? sceneDescription; // 场景描述（存储包含prompt和登场角色的JSON字符串）
-  final String? translatedText; // 翻译后的文本
 
   LineStructure({
     required this.id,
@@ -36,12 +35,10 @@ class LineStructure {
     this.illustrationPaths = const [],
     this.videoPaths = const [],
     this.sceneDescription,
-    this.translatedText,
   });
 
   // copyWith 方法，便于更新
   LineStructure copyWith({
-    String? translatedText,
     List<String>? illustrationPaths,
     List<String>? videoPaths,
     String? sceneDescription,
@@ -54,7 +51,6 @@ class LineStructure {
       illustrationPaths: illustrationPaths ?? this.illustrationPaths,
       videoPaths: videoPaths ?? this.videoPaths,
       sceneDescription: sceneDescription ?? this.sceneDescription,
-      translatedText: translatedText ?? this.translatedText,
     );
   }
 

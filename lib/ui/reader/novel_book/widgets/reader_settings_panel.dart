@@ -18,21 +18,16 @@ class ReaderTheme {
   ];
 }
 
-// 内容显示模式
-enum DisplayMode { original, translation }
-
 // 设置面板组件
 class ReaderSettingsPanel extends StatefulWidget {
   final ReaderTheme initialTheme;
   final double initialFontSize;
   final double initialLineHeight;
   final String initialFontFamily;
-  final DisplayMode initialDisplayMode;
   final Function(
     ReaderTheme theme,
     double fontSize,
     String fontFamily,
-    DisplayMode displayMode,
     double lineHeight,
   ) onSettingsChanged;
 
@@ -42,7 +37,6 @@ class ReaderSettingsPanel extends StatefulWidget {
     required this.initialFontSize,
     required this.initialLineHeight,
     required this.initialFontFamily,
-    required this.initialDisplayMode,
     required this.onSettingsChanged,
   });
 
@@ -55,7 +49,6 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
   late double _fontSize;
   late double _lineHeight;
   late String _fontFamily;
-  late DisplayMode _displayMode;
 
   @override
   void initState() {
@@ -64,11 +57,10 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
     _fontSize = widget.initialFontSize;
     _lineHeight = widget.initialLineHeight;
     _fontFamily = widget.initialFontFamily;
-    _displayMode = widget.initialDisplayMode;
   }
 
   void _notifyParent() {
-    widget.onSettingsChanged(_currentTheme, _fontSize, _fontFamily, _displayMode, _lineHeight);
+    widget.onSettingsChanged(_currentTheme, _fontSize, _fontFamily, _lineHeight);
   }
 
   @override
@@ -114,9 +106,6 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
                   _buildLineHeightControl(),
                   const SizedBox(height: 16),
                   _buildFontFamilySelector(),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle(context, '内容显示'),
-                  _buildDisplayModeControl(),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -229,25 +218,6 @@ class _ReaderSettingsPanelState extends State<ReaderSettingsPanel> {
     );
   }
 
-  Widget _buildDisplayModeControl() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: SizedBox(
-        width: double.infinity,
-        child: SegmentedButton<DisplayMode>(
-          segments: const [
-            ButtonSegment(value: DisplayMode.original, label: Text('原文'), icon: Icon(Icons.menu_book)),
-            ButtonSegment(value: DisplayMode.translation, label: Text('译文'), icon: Icon(Icons.translate)),
-          ],
-          selected: {_displayMode},
-          onSelectionChanged: (newSelection) {
-            setState(() => _displayMode = newSelection.first);
-            _notifyParent();
-          },
-        ),
-      ),
-    );
-  }
 }
 
 // 主题选择小部件

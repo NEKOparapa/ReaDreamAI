@@ -172,7 +172,7 @@ class _TxtSourceExporter {
   String _buildChapterHtml(ChapterStructure chapter) {
     String content = '';
     for (final line in chapter.lines) {
-      final text = line.translatedText?.isNotEmpty == true ? line.translatedText! : line.text;
+      final text = line.text;
       final safeText = text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
       content += '<p>$safeText</p>\n';
 

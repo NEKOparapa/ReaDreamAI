@@ -22,7 +22,6 @@ import '../reader/game_book/game_book_reader_page.dart';
 
 // 导入功能弹窗
 import 'generate_illustration_dialog.dart';
-import 'generate_translation_dialog.dart';
 import 'generate_video_dialog.dart';
 import 'export_book_dialog.dart';
 
@@ -298,35 +297,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
     }
   }
 
-  /// 为指定书籍生成翻译任务
-  Future<void> _generateTranslations(BookshelfEntry entry) async {
-    // 显示配置对话框，并等待其返回结果
-    final bool? taskCreated = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => GenerateTranslationDialog(entry: entry),
-    );
-
-    // 如果对话框返回true，说明任务已成功创建
-    if (taskCreated == true && mounted) {
-      // 重新从缓存加载书架数据，以更新UI状态（例如显示"排队中"）
-      await _loadBookshelf();
-
-      // 找到更新后的条目，以获取正确的任务信息用于提示
-      final updatedEntry = _entries.firstWhere(
-        (e) => e.id == entry.id,
-        orElse: () => entry,
-      );
-
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('已为《${updatedEntry.title}》创建 ${updatedEntry.translationTaskChunks.length} 个翻译子任务'),
-        ),
-      );
-    }
-  }
-
   Future<void> _generateVideosFromImages(BookshelfEntry entry) async {
     final bool? taskCreated = await showDialog<bool>(
       context: context,
@@ -429,17 +399,6 @@ class _BookshelfPageState extends State<BookshelfPage> with WidgetsBindingObserv
                 Icon(Icons.video_library, color: Colors.purple),
                 SizedBox(width: 8),
                 Text('图生视频')
-              ]),
-            ),
-            PopupMenuItem(
-              enabled: entry.translationStatus == TaskStatus.notStarted ||
-                  entry.translationStatus == TaskStatus.failed ||
-                  entry.translationStatus == TaskStatus.canceled,
-              onTap: () => _generateTranslations(entry),
-              child: const Row(children: [
-                Icon(Icons.translate, color: Colors.green),
-                SizedBox(width: 8),
-                Text('生成翻译')
               ]),
             ),
             // 分隔线，仅在有生成选项时显示

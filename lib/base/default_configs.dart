@@ -211,10 +211,6 @@ const Map<String, dynamic> appDefaultConfigs = {
     },
   ],
 
-  // --- 翻译设置 ---
-  'translation_tokens': 2000, // 翻译使用的最大Token数
-  'translation_source_lang': 'ja', // 源语言
-  'translation_target_lang': 'zh-CN', // 目标语言
   // --- ComfyUI节点设置 ---
   'comfyui_workflow_type': 'wai_illustrious', // 默认工作流类型代号
   'comfyui_system_workflow_path':

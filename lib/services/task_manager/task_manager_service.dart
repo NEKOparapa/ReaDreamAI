@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import '../../models/bookshelf_entry.dart';
 import '../cache_manager/cache_manager.dart';
 import '../task_executor/illustration_generator_service.dart';
-import '../task_executor/translation_generator_service.dart';
 import '../task_executor/image_to_video_generator_service.dart';
 import '../../base/log/log_service.dart';
 
@@ -16,8 +15,8 @@ class CancellationToken {
   void cancel() => _isCanceled = true;
 }
 
-/// 定义任务类型，区分插图生成和翻译
-enum TaskType { illustration, translation , videoGeneration}
+/// 定义任务类型，区分插图生成和视频生成
+enum TaskType { illustration, videoGeneration }
 
 /// 任务管理器服务 (单例)，负责调度和管理所有后台任务
 class TaskManagerService {
@@ -50,11 +49,6 @@ class TaskManagerService {
         entries[i].status = TaskStatus.paused;
         needsSave = true;
       }
-      // 处理翻译任务状态
-      if (entries[i].translationStatus == TaskStatus.running || entries[i].translationStatus == TaskStatus.queued) {
-        entries[i].translationStatus = TaskStatus.paused;
-        needsSave = true;
-      }
       // 处理视频生成任务状态
       if (entries[i].videoGenerationStatus == TaskStatus.running || entries[i].videoGenerationStatus == TaskStatus.queued) {
         entries[i].videoGenerationStatus = TaskStatus.paused;
@@ -83,11 +77,6 @@ class TaskManagerService {
       // 将暂停的插图任务放回队列
       if (entry.status == TaskStatus.paused) {
         entry.status = TaskStatus.queued;
-        needsUpdate = true;
-      }
-      // 将暂停的翻译任务放回队列
-      if (entry.translationStatus == TaskStatus.paused) {
-        entry.translationStatus = TaskStatus.queued;
         needsUpdate = true;
       }
       // 将暂停的视频任务放回队列
@@ -169,18 +158,12 @@ class TaskManagerService {
       nextTaskType = TaskType.illustration;
     } catch (e) {
       try {
-        // 优先级 2: 查找排队的翻译任务
-        nextTaskEntry = tasksNotifier.value.firstWhere((e) => e.translationStatus == TaskStatus.queued);
-        nextTaskType = TaskType.translation;
+        // 优先级 2: 查找排队的视频生成任务
+        nextTaskEntry = tasksNotifier.value.firstWhere((e) => e.videoGenerationStatus == TaskStatus.queued);
+        nextTaskType = TaskType.videoGeneration;
       } catch (e) {
-        // 优先级 3: 查找排队的视频生成任务
-        try {
-          nextTaskEntry = tasksNotifier.value.firstWhere((e) => e.videoGenerationStatus == TaskStatus.queued);
-          nextTaskType = TaskType.videoGeneration;
-        } catch (e) {
-          // 没有排队的任务
-          return;
-        }
+        // 没有排队的任务
+        return;
       }
     }
     
@@ -188,7 +171,7 @@ class TaskManagerService {
     _executeTask(nextTaskEntry, nextTaskType);
   }
 
-  /// 执行单个任务 (插图、翻译或视频)
+  /// 执行单个任务 (插图或视频)
   Future<void> _executeTask(BookshelfEntry entry, TaskType taskType) async {
     _runningTasks.add(entry);
     final token = CancellationToken();
@@ -197,8 +180,6 @@ class TaskManagerService {
     // 1. 更新任务状态为“运行中”
     if (taskType == TaskType.illustration) {
       _updateEntry(entry.copyWith(status: TaskStatus.running, clearErrorMessage: true));
-    } else if (taskType == TaskType.translation) {
-      _updateEntry(entry.copyWith(translationStatus: TaskStatus.running, clearTranslationErrorMessage: true));
     } else {
       _updateEntry(entry.copyWith(videoGenerationStatus: TaskStatus.running, clearVideoGenerationErrorMessage: true));
     }
@@ -211,8 +192,6 @@ class TaskManagerService {
       BookshelfEntry updatedEntry;
       if (taskType == TaskType.illustration) {
         updatedEntry = entry.copyWith(status: TaskStatus.failed, errorMessage: errorMsg);
-      } else if (taskType == TaskType.translation) {
-        updatedEntry = entry.copyWith(translationStatus: TaskStatus.failed, translationErrorMessage: errorMsg);
       } else {
         updatedEntry = entry.copyWith(videoGenerationStatus: TaskStatus.failed, videoGenerationErrorMessage: errorMsg);
       }
@@ -243,22 +222,6 @@ class TaskManagerService {
           },
           isPaused: () => getTaskEntry(entry.id)?.status == TaskStatus.paused,
         );
-      } else if (taskType == TaskType.translation) { 
-        await TranslationGeneratorService.instance.generateForBook(
-          book,
-          cancellationToken: token,
-          onProgressUpdate: (progress, chunkStatus) async {
-            final currentEntry = getTaskEntry(entry.id);
-            if (currentEntry == null || getTaskEntry(entry.id)?.translationStatus == TaskStatus.paused) return;
-            
-            final chunkIndex = currentEntry.translationTaskChunks.indexWhere((c) => c.id == chunkStatus.id);
-            if (chunkIndex != -1) {
-               currentEntry.translationTaskChunks[chunkIndex].status = chunkStatus.status;
-               _updateEntry(currentEntry.copyWith(translationUpdatedAt: DateTime.now()));
-            }
-          },
-          isPaused: () => getTaskEntry(entry.id)?.translationStatus == TaskStatus.paused,
-        );
       } else {
         await ImageToVideoGeneratorService.instance.generateForBook(
           book,
@@ -281,8 +244,6 @@ class TaskManagerService {
       BookshelfEntry finalEntry;
       if (taskType == TaskType.illustration) {
         finalEntry = entry.copyWith(status: finalStatus);
-      } else if (taskType == TaskType.translation) {
-        finalEntry = entry.copyWith(translationStatus: finalStatus);
       } else {
         finalEntry = entry.copyWith(videoGenerationStatus: finalStatus);
       }
@@ -300,8 +261,6 @@ class TaskManagerService {
       BookshelfEntry failedEntry;
       if (taskType == TaskType.illustration) {
         failedEntry = entry.copyWith(status: TaskStatus.failed, errorMessage: e.toString());
-      } else if (taskType == TaskType.translation) {
-        failedEntry = entry.copyWith(translationStatus: TaskStatus.failed, translationErrorMessage: e.toString());
       } else {
         failedEntry = entry.copyWith(videoGenerationStatus: TaskStatus.failed, videoGenerationErrorMessage: e.toString());
       }
@@ -322,9 +281,6 @@ class TaskManagerService {
     if (taskType == TaskType.illustration && entry.status == TaskStatus.running) {
       _updateEntry(entry.copyWith(status: TaskStatus.paused));
       LogService.instance.info("插图任务已暂停: $entryId");
-    } else if (taskType == TaskType.translation && entry.translationStatus == TaskStatus.running) {
-      _updateEntry(entry.copyWith(translationStatus: TaskStatus.paused));
-      LogService.instance.info("翻译任务已暂停: $entryId");
     } else if (taskType == TaskType.videoGeneration && entry.videoGenerationStatus == TaskStatus.running) { // [新增]
       _updateEntry(entry.copyWith(videoGenerationStatus: TaskStatus.paused));
       LogService.instance.info("视频生成任务已暂停: $entryId");
@@ -340,10 +296,6 @@ class TaskManagerService {
       _updateEntry(entry.copyWith(status: TaskStatus.queued));
       LogService.instance.info("插图任务已恢复到队列: $entryId");
       processQueue(); 
-    } else if (taskType == TaskType.translation && entry.translationStatus == TaskStatus.paused) {
-      _updateEntry(entry.copyWith(translationStatus: TaskStatus.queued));
-      LogService.instance.info("翻译任务已恢复到队列: $entryId");
-      processQueue();
     } else if (taskType == TaskType.videoGeneration && entry.videoGenerationStatus == TaskStatus.paused) { // [新增]
       _updateEntry(entry.copyWith(videoGenerationStatus: TaskStatus.queued));
       LogService.instance.info("视频生成任务已恢复到队列: $entryId");
@@ -362,10 +314,6 @@ class TaskManagerService {
     bool changed = false;
     if (entry.status == TaskStatus.queued) {
        updatedEntry = updatedEntry.copyWith(status: TaskStatus.canceled);
-       changed = true;
-    }
-    if (entry.translationStatus == TaskStatus.queued) {
-       updatedEntry = updatedEntry.copyWith(translationStatus: TaskStatus.canceled);
        changed = true;
     }
     if (entry.videoGenerationStatus == TaskStatus.queued) { // [新增]
@@ -391,10 +339,6 @@ class TaskManagerService {
        updatedEntry = updatedEntry.copyWith(status: TaskStatus.queued, clearErrorMessage: true);
        changed = true;
     }
-    if (entry.translationStatus == TaskStatus.failed || entry.translationStatus == TaskStatus.canceled) {
-       updatedEntry = updatedEntry.copyWith(translationStatus: TaskStatus.queued, clearTranslationErrorMessage: true);
-       changed = true;
-    }
     // 重试视频生成任务
     if (entry.videoGenerationStatus == TaskStatus.failed || entry.videoGenerationStatus == TaskStatus.canceled) {
        updatedEntry = updatedEntry.copyWith(videoGenerationStatus: TaskStatus.queued, clearVideoGenerationErrorMessage: true);
@@ -416,10 +360,6 @@ class TaskManagerService {
       var newEntry = entry;
       if (entry.status == TaskStatus.completed) {
         newEntry = newEntry.copyWith(status: TaskStatus.notStarted, taskChunks: []);
-        changed = true;
-      }
-      if (entry.translationStatus == TaskStatus.completed) {
-        newEntry = newEntry.copyWith(translationStatus: TaskStatus.notStarted, translationTaskChunks: []);
         changed = true;
       }
       if (entry.videoGenerationStatus == TaskStatus.completed) {
@@ -445,9 +385,6 @@ class TaskManagerService {
         status: TaskStatus.notStarted,
         taskChunks: [],
         clearErrorMessage: true,
-        translationStatus: TaskStatus.notStarted,
-        translationTaskChunks: [],
-        clearTranslationErrorMessage: true,
         videoGenerationStatus: TaskStatus.notStarted,
         videoGenerationTaskChunks: [],
         clearVideoGenerationErrorMessage: true,

@@ -5,7 +5,6 @@ import 'widgets/setting_entry_card.dart'; // 引入一级入口卡片
 import 'app_settings/app_settings_page.dart'; // 引入应用设置页
 import 'comfyui_settings_page.dart'; // 引入ComfyUI设置页
 import 'drawing_presets/drawing_presets_settings_page.dart'; // 引入绘图预设设置页
-import 'translation_settings_page.dart'; // 引入翻译设置页
 import 'video_settings_page.dart'; // 引入视频设置页
 import 'log_history_page.dart'; // 引入日志历史页
 import 'character_settings/character_settings_page.dart'; // 引入角色设定页
@@ -65,17 +64,6 @@ class SettingsPage extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const VideoSettingsPage()),
-              );
-            },
-          ),
-          //  翻译设置卡片
-          SettingEntryCard(
-            icon: Icons.translate,
-            title: '翻译设置',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const TranslationSettingsPage()),
               );
             },
           ),
