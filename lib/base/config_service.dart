@@ -1,5 +1,6 @@
 // lib/base/config_service.dart
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -37,6 +38,7 @@ class ConfigService {
   late String _configDirectoryPath;
   late String _appDirectoryPath;
   Map<String, dynamic> _config = {};
+  Future<void>? _pendingSave;
 
   final Map<String, RateLimiter> _rateLimiters = {};
 
@@ -339,14 +341,50 @@ class ConfigService {
   }
 
   /// 保存全部配置文件方法
-  Future<void> save() async {
+  Future<void> save() => _enqueueSave(() => _writeConfig(_config));
+
+  // 串行写入，避免自动保存与批量设置同时覆盖配置文件。
+  Future<void> _enqueueSave(Future<void> Function() operation) async {
+    final previous = _pendingSave;
+    final completion = Completer<void>();
+    _pendingSave = completion.future;
+    try {
+      if (previous != null) await previous;
+      await operation();
+    } finally {
+      if (identical(_pendingSave, completion.future)) _pendingSave = null;
+      // 失败也释放队列，调用方仍会收到 operation 的异常。
+      completion.complete();
+    }
+  }
+
+  Future<void> _writeConfig(Map<String, dynamic> config) async {
     final file = File(_configPath);
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);
     }
     const encoder = JsonEncoder.withIndent('  ');
-    final content = encoder.convert(_config);
-    await file.writeAsString(content);
+    final content = encoder.convert(config);
+    final temporaryFile = File('$_configPath.tmp');
+    try {
+      await temporaryFile.writeAsString(content, flush: true);
+      await temporaryFile.rename(_configPath);
+    } catch (_) {
+      // 写入失败时保留原文件；临时文件清理失败不覆盖原始异常。
+      try {
+        if (await temporaryFile.exists()) await temporaryFile.delete();
+      } catch (_) {}
+      rethrow;
+    }
+  }
+
+  /// 一次保存关联设置，成功后才更新内存中的生效值。
+  Future<void> modifySettings(Map<String, dynamic> settings) {
+    final updates = Map<String, dynamic>.from(settings);
+    return _enqueueSave(() async {
+      await _writeConfig({..._config, ...updates});
+      _config.addAll(updates);
+    });
   }
 
   /// 修改/获取设置项的方法

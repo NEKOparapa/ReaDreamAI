@@ -20,6 +20,8 @@ const Map<String, dynamic> appDefaultConfigs = {
   'image_gen_images_per_scene': 2, // 每个场景生成的图片数
   'image_gen_max_workers': 1, // 最大并发数
   'image_gen_size': '1024*1024', // 图片尺寸
+  'image_gen_size_mode': null, // 未设置时根据已有尺寸推断 preset / custom
+  'image_gen_custom_size': null, // 最近应用的自定义尺寸
   // --- 视频设置 ---
   'video_gen_duration': 5, // 视频时长，单位秒
   'video_gen_resolution': '720p', // 视频分辨率
