@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import 'default_configs.dart';
 import 'api_model.dart';
 import '../models/prompt_card_model.dart';
+import '../models/writing_prompt_preset.dart';
 import '../models/tag_card_model.dart'; 
 import 'rate_limiter.dart';
 import 'log/log_service.dart';
@@ -396,6 +397,19 @@ class ConfigService {
   /// 获取设置项的方法
   T getSetting<T>(String key, T defaultValue) {
     return _config[key] as T? ?? defaultValue;
+  }
+
+  WritingPromptPreset getWritingPromptPreset(WritingPromptStage stage) {
+    return WritingPromptPreset(
+      systemText: getSetting<String>(
+        stage.systemConfigKey,
+        defaultWritingSystemText,
+      ),
+      assistantText: getSetting<String>(
+        stage.assistantConfigKey,
+        defaultWritingAssistantText,
+      ),
+    );
   }
 
   // 为指定的API配置获取或创建速率限制器

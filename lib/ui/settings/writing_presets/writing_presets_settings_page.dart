@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/setting_entry_card.dart';
 import '../general_tags/tag_category_page.dart';
+import 'writing_prompt_settings_page.dart';
 
 class WritingPresetsSettingsPage extends StatelessWidget {
   const WritingPresetsSettingsPage({super.key});
@@ -10,9 +11,7 @@ class WritingPresetsSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('写作预设'),
-      ),
+      appBar: AppBar(title: const Text('写作预设')),
       body: ListView(
         padding: const EdgeInsets.only(top: 8.0),
         children: [
@@ -44,6 +43,18 @@ class WritingPresetsSettingsPage extends StatelessWidget {
                     cardsConfigKey: 'writing_style_cards',
                     activeIdConfigKey: 'active_writing_style_card_id',
                   ),
+                ),
+              );
+            },
+          ),
+          SettingEntryCard(
+            icon: Icons.tune_rounded,
+            title: '破限设置',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const WritingPromptSettingsPage(),
                 ),
               );
             },
