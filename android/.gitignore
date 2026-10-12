@@ -1,8 +1,6 @@
-gradle-wrapper.jar
+# Commit the Gradle Wrapper so local and CI builds use the same launcher.
 /.gradle
 /captures/
-/gradlew
-/gradlew.bat
 /local.properties
 GeneratedPluginRegistrant.java
 .cxx/
