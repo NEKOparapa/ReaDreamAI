@@ -89,6 +89,14 @@ class _NovelGenerationProgressPageState
   bool get _allChaptersCompleted =>
       _chapterInfos.every((info) => info.status == ChapterStatus.completed);
 
+  void _updateChapterContent(int index, String content) {
+    if (!mounted || _isTerminated) return;
+    setState(() {
+      _chapterInfos[index].content = content;
+      _chapterInfos[index].charCount = content.length;
+    });
+  }
+
   void _updateFinishedStatusText({bool globalError = false}) {
     final savableCount = _savableChapterCount;
 
@@ -236,7 +244,8 @@ class _NovelGenerationProgressPageState
                         });
                       }
                     },
-                    isTerminated: () => _isTerminated,
+                    onContent: (content) => _updateChapterContent(i, content),
+                    isTerminated: () => _isTerminated || !mounted,
                   );
 
               if (_isTerminated || !mounted) return;
@@ -364,9 +373,11 @@ class _NovelGenerationProgressPageState
               storyline: storyline,
               chapterIndex: i,
               wordsPerChapter: wordsPerChapter,
-              isTerminated: () => _isTerminated,
+              isTerminated: () => _isTerminated || !mounted,
               previousChapterPlans: cumulativePlans, // 关键：将之前所有章节的规划传进去
             );
+
+        if (_isTerminated || !mounted) return;
 
         // 将生成的规划加入上下文列表
         cumulativePlans.add({
@@ -378,6 +389,7 @@ class _NovelGenerationProgressPageState
         _addLog('第 ${i + 1} 章剧情结构规划完成', Icons.assignment_turned_in_outlined);
       }
     } catch (e, s) {
+      if (_isTerminated || !mounted) return;
       LogService.instance.error('规划阶段发生错误', e, s);
       _addLog('剧情规划中断: $e', Icons.error_outline);
       if (mounted) {
@@ -450,7 +462,8 @@ class _NovelGenerationProgressPageState
                       });
                     }
                   },
-                  isTerminated: () => _isTerminated,
+                  onContent: (content) => _updateChapterContent(i, content),
+                  isTerminated: () => _isTerminated || !mounted,
                 );
 
             if (_isTerminated || !mounted) return;
@@ -513,6 +526,7 @@ class _NovelGenerationProgressPageState
   }
 
   void _handleTermination() {
+    if (!mounted || _isFinished || _isSaving) return;
     _addLog('任务已被用户手动终止', Icons.cancel_outlined);
     setState(() {
       _isFinished = true;
@@ -521,6 +535,7 @@ class _NovelGenerationProgressPageState
   }
 
   void _handleGlobalError(Object e, StackTrace s) {
+    if (_isTerminated || !mounted) return;
     LogService.instance.error('小说生成过程中发生错误', e, s);
     if (!_hasError) _addLog('发生严重错误: $e', Icons.error_outline);
     if (mounted) {
@@ -586,7 +601,8 @@ class _NovelGenerationProgressPageState
                 });
               }
             },
-            isTerminated: () => _isTerminated,
+            onContent: (content) => _updateChapterContent(index, content),
+            isTerminated: () => _isTerminated || !mounted,
           );
 
       if (_isTerminated || !mounted) return;
@@ -623,7 +639,7 @@ class _NovelGenerationProgressPageState
         });
       }
     } finally {
-      if (mounted) {
+      if (mounted && !_isTerminated) {
         final isStillGenerating = _chapterInfos.any(
           (info) =>
               info.status == ChapterStatus.generating ||
@@ -707,7 +723,8 @@ class _NovelGenerationProgressPageState
                 });
               }
             },
-            isTerminated: () => _isTerminated,
+            onContent: (content) => _updateChapterContent(index, content),
+            isTerminated: () => _isTerminated || !mounted,
           );
 
       if (_isTerminated || !mounted) return;
@@ -744,7 +761,7 @@ class _NovelGenerationProgressPageState
         });
       }
     } finally {
-      if (mounted) {
+      if (mounted && !_isTerminated) {
         final isStillGenerating = _chapterInfos.any(
           (info) => info.status == ChapterStatus.generating,
         );
@@ -766,6 +783,7 @@ class _NovelGenerationProgressPageState
 
   /// 最终保存书籍
   Future<void> _saveGeneratedBook() async {
+    if (_isSaving) return;
     final savableChapterCount = _savableChapterCount;
     if (savableChapterCount == 0) {
       ScaffoldMessenger.of(
@@ -939,30 +957,58 @@ class _NovelGenerationProgressPageState
     LogService.instance.success('书籍保存流程完成。');
   }
 
-  void _terminateTask() {
-    showDialog(
+  Future<void> _terminateTask() async {
+    bool keepGeneratedContent = true;
+    final shouldSave = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认终止任务'),
-        content: const Text('您确定要停止生成小说吗？当前进度将不会被保存。'),
-        actions: [
-          TextButton(
-            child: const Text('取消'),
-            onPressed: () => Navigator.of(context).pop(),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('确认终止任务'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('您确定要停止生成小说吗？'),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('保留已生成内容'),
+                subtitle: const Text('将已有正文保存到书架，包括未完成章节中的已生成段落。没有正文时不会创建书籍。'),
+                value: keepGeneratedContent,
+                onChanged: (value) => setDialogState(() {
+                  keepGeneratedContent = value ?? true;
+                }),
+              ),
+            ],
           ),
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.error,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('取消'),
             ),
-            child: const Text('确认终止'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              setState(() => _isTerminated = true);
-            },
-          ),
-        ],
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop(keepGeneratedContent),
+              child: const Text('确认终止'),
+            ),
+          ],
+        ),
       ),
     );
+
+    if (shouldSave == null || !mounted || _isSaving || _isTerminated) return;
+    setState(() {
+      _isTerminated = true;
+      _isFinished = false;
+    });
+    _handleTermination();
+    if (shouldSave) {
+      await _saveGeneratedBook();
+    }
   }
 
   @override
@@ -971,12 +1017,15 @@ class _NovelGenerationProgressPageState
     final colorScheme = theme.colorScheme;
     final progressColor = _hasError ? colorScheme.error : colorScheme.primary;
 
-    return WillPopScope(
-      onWillPop: () async => _isFinished || _isTerminated,
+    return PopScope(
+      canPop: !_isSaving && (_isFinished || _isTerminated),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_isFinished ? '生成完成' : '正在生成小说...'),
-          automaticallyImplyLeading: _isFinished || _isTerminated,
+          title: Text(
+            _isTerminated ? '生成已终止' : (_isFinished ? '生成完成' : '正在生成小说...'),
+          ),
+          automaticallyImplyLeading:
+              !_isSaving && (_isFinished || _isTerminated),
         ),
         body: SafeArea(
           child: Padding(
@@ -1148,6 +1197,12 @@ class _NovelGenerationProgressPageState
           leading = Icon(Icons.error, color: statusColor);
           statusText = '失败';
           break;
+      }
+
+      if (_isTerminated && info.status != ChapterStatus.completed) {
+        statusColor = Theme.of(context).colorScheme.onSurfaceVariant;
+        leading = Icon(Icons.stop_circle_outlined, color: statusColor);
+        statusText = _isSavableChapter(info) ? '已终止（部分内容）' : '已终止';
       }
 
       Widget? buildTrailingActions() {

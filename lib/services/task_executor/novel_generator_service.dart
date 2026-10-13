@@ -459,6 +459,7 @@ $chapterIdsToRegenerate
     required int chapterIndex,
     required int wordsPerChapter,
     Function(String message, double progress)? onProgress,
+    void Function(String content)? onContent,
     bool Function()? isTerminated,
     String? initialContent,
     int? startSegmentIndex,
@@ -535,7 +536,7 @@ $chapterIdsToRegenerate
           isTerminated: checkTerminated,
         );
 
-        if (generatedSegment.isEmpty && checkTerminated()) {
+        if (checkTerminated()) {
           LogService.instance.warn('任务在生成第 ${i + 1} 段时被终止，停止本章生成。');
           return '';
         }
@@ -544,6 +545,8 @@ $chapterIdsToRegenerate
         if (i < segmentPlan.length - 1) {
           chapterContentBuilder.write('\n\n');
         }
+        // 同步已完成的段落，供终止任务时保存尚未写完的章节。
+        onContent?.call(chapterContentBuilder.toString().trim());
       }
     } catch (e, s) {
       LogService.instance.error(
